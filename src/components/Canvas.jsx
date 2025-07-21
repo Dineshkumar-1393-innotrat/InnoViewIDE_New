@@ -1,470 +1,377 @@
-// import React, { useState, useCallback, useRef } from 'react';
-// import ReactFlow, {
-//   addEdge,
-//   useNodesState,
-//   useEdgesState,
-//   useReactFlow,
-//   Background,
-//   MiniMap,
-//   Controls,
-//   MarkerType
-// } from 'reactflow';
-// import { useDrop } from 'react-dnd';
-// import { toPng } from 'html-to-image';
-// import { v4 as uuidv4 } from 'uuid';
+// src/components/Canvas.jsx
 
-// import ResizableNode from './ResizableNode';
-// import Header from './Header';
-// import CustomEdge from './CustomEdge';
-
-// import 'reactflow/dist/style.css';
-// import '@reactflow/node-resizer/dist/style.css';
-
-// const nodeTypes = { resizableNode: ResizableNode };
-// const edgeTypes = { custom: CustomEdge };
-
-// const Canvas = () => {
-//   const reactFlowWrapper = useRef(null);
-//   const { project, setViewport, getViewport } = useReactFlow();
-//   const [nodes, setNodes, onNodesChange] = useNodesState([]);
-//   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-
-//   const [undoStack, setUndoStack] = useState([]);
-//   const [redoStack, setRedoStack] = useState([]);
-
-//   const pushToUndoStack = useCallback(() => {
-//     setUndoStack((prev) => [...prev, { nodes, edges }]);
-//     setRedoStack([]);
-//   }, [nodes, edges]);
-
-//   const undo = () => {
-//     if (undoStack.length === 0) return;
-//     const previous = undoStack[undoStack.length - 1];
-//     setUndoStack((prev) => prev.slice(0, -1));
-//     setRedoStack((prev) => [...prev, { nodes, edges }]);
-//     setNodes(previous.nodes);
-//     setEdges(previous.edges);
-//   };
-
-//   const redo = () => {
-//     if (redoStack.length === 0) return;
-//     const next = redoStack[redoStack.length - 1];
-//     setRedoStack((prev) => prev.slice(0, -1));
-//     setUndoStack((prev) => [...prev, { nodes, edges }]);
-//     setNodes(next.nodes);
-//     setEdges(next.edges);
-//   };
-
-//   const deleteEdge = useCallback((edgeId) => {
-//     pushToUndoStack();
-//     setEdges((eds) => eds.filter((edge) => edge.id !== edgeId));
-//   }, [pushToUndoStack, setEdges]);
-
-//   const onConnect = useCallback((params) => {
-//     console.log('Connecting from', params.sourceHandle, 'to', params.targetHandle);
-//     pushToUndoStack();
-//     setEdges((eds) =>
-//       addEdge(
-//         {
-//           ...params,
-//           id: uuidv4(),
-//           type: 'custom',
-//           markerEnd: { type: MarkerType.ArrowClosed },
-//           data: {
-//             onDelete: deleteEdge,
-//           },
-//         },
-//         eds
-//       )
-//     );
-//   }, [setEdges, pushToUndoStack, deleteEdge]);
-
-//   const onNameChange = useCallback(
-//     (id, name) => {
-//       pushToUndoStack();
-//       setNodes((nds) =>
-//         nds.map((node) =>
-//           node.id === id
-//             ? { ...node, data: { ...node.data, shape: { ...node.data.shape, name } } }
-//             : node
-//         )
-//       );
-//     },
-//     [setNodes, pushToUndoStack]
-//   );
-
-//   const [{ isOver }, drop] = useDrop({
-//     accept: 'shape',
-//     drop: (item, monitor) => {
-//       const offset = monitor.getClientOffset();
-//       if (!reactFlowWrapper.current) return;
-//       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-//       const position = project({
-//         x: offset.x - reactFlowBounds.left,
-//         y: offset.y - reactFlowBounds.top,
-//       });
-
-//       const viewBox = item.icon.viewBox.split(' ').map(Number);
-//       const aspectRatio = viewBox[2] > 0 ? viewBox[3] / viewBox[2] : 1;
-//       const nodeWidth = 150;
-//       const nodeHeight = nodeWidth * aspectRatio;
-
-//       const newNode = {
-//         id: uuidv4(),
-//         type: 'resizableNode',
-//         position,
-//         data: {
-//           shape: item,
-//           onNameChange: onNameChange,
-//         },
-//         style: { width: nodeWidth, height: nodeHeight },
-//       };
-
-//       pushToUndoStack();
-//       setNodes((nds) => nds.concat(newNode));
-//     },
-//     collect: (monitor) => ({
-//       isOver: monitor.isOver(),
-//     }),
-//   });
-
-//   const handleZoomIn = () => {
-//     const { x, y, zoom } = getViewport();
-//     setViewport({ x, y, zoom: zoom * 1.2 }, { duration: 200 });
-//   };
-
-//   const handleZoomOut = () => {
-//     const { x, y, zoom } = getViewport();
-//     setViewport({ x, y, zoom: zoom / 1.2 }, { duration: 200 });
-//   };
-
-//   const handleDownloadImage = () => {
-//     const reactFlowPane = document.querySelector('.react-flow__pane');
-//     if (!reactFlowPane) return;
-
-//     toPng(reactFlowPane, {
-//       backgroundColor: '#1a202c',
-//       width: reactFlowPane.scrollWidth,
-//       height: reactFlowPane.scrollHeight,
-//       style: {
-//         transform: 'translate(0, 0) scale(1)',
-//       },
-//     }).then((dataUrl) => {
-//       const a = document.createElement('a');
-//       a.setAttribute('download', 'diagram.png');
-//       a.setAttribute('href', dataUrl);
-//       a.click();
-//     });
-//   };
-
-//   const handleSave = () => {
-//     const flow = { nodes, edges };
-//     const dataStr = JSON.stringify(flow, null, 2);
-//     const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-//     const exportFileDefaultName = 'diagram.json';
-//     const linkElement = document.createElement('a');
-//     linkElement.setAttribute('href', dataUri);
-//     linkElement.setAttribute('download', exportFileDefaultName);
-//     linkElement.click();
-//   };
-
-//   const handleLoad = (event) => {
-//     const file = event.target.files[0];
-//     if (file) {
-//       const reader = new FileReader();
-//       reader.onload = (e) => {
-//         const flow = JSON.parse(e.target.result);
-//         if (flow && flow.nodes && flow.edges) {
-//           const restoredNodes = flow.nodes.map((node) => ({
-//             ...node,
-//             data: {
-//               ...node.data,
-//               onNameChange: onNameChange,
-//             },
-//           }));
-//           pushToUndoStack();
-//           setNodes(restoredNodes);
-//           setEdges(flow.edges);
-//           setViewport({ x: 0, y: 0, zoom: 1 });
-//         }
-//       };
-//       reader.readAsText(file);
-//     }
-//   };
-
-//   return (
-//     <main className="flex-1 h-full relative" ref={reactFlowWrapper}>
-//       <Header
-//         onZoomIn={handleZoomIn}
-//         onZoomOut={handleZoomOut}
-//         onSave={handleSave}
-//         onLoad={handleLoad}
-//         onDownloadImage={handleDownloadImage}
-//         onUndo={undo}
-//         onRedo={redo}
-//         canUndo={undoStack.length > 0}
-//         canRedo={redoStack.length > 0}
-//       />
-//       <div className="w-full h-full" ref={drop}>
-//         <ReactFlow
-//           nodes={nodes}
-//           edges={edges}
-//           onNodesChange={onNodesChange}
-//           onEdgesChange={onEdgesChange}
-//           onConnect={onConnect}
-//           nodeTypes={nodeTypes}
-//           edgeTypes={edgeTypes}
-//           fitView
-//           deleteKeyCode={46}
-//           className="bg-gray-900"
-//           style={{
-//             backgroundColor: isOver ? '#2d3748' : '#1a202c',
-//           }}
-//         >
-//           <Background color="#4a5568" gap={16} />
-//           <MiniMap nodeStrokeWidth={3} zoomable pannable />
-//           <Controls position="bottom-right" />
-//         </ReactFlow>
-//       </div>
-//     </main>
-//   );
-// };
-
-// export default Canvas;
-import React, { useState, useCallback, useRef } from 'react';
-import ReactFlow, {
+import React, { useCallback, useRef, useEffect, useState, createContext, useContext } from 'react';
+import {
+  ReactFlow,
   addEdge,
-  useNodesState,
-  useEdgesState,
   useReactFlow,
   Background,
-  MiniMap,
   Controls,
-  MarkerType
+  MarkerType,
+  applyEdgeChanges,
+  applyNodeChanges,
+  MiniMap,
+  ReactFlowProvider,
+  useStore,
 } from 'reactflow';
+import { useDispatch, useSelector } from 'react-redux';
 import { useDrop } from 'react-dnd';
 import { toPng } from 'html-to-image';
 import { v4 as uuidv4 } from 'uuid';
+import { ActionCreators as UndoActionCreators } from 'redux-undo';
+
+import {
+  setNodes,
+  setEdges,
+  addNode,
+} from '../features/flow/flowSlice';
+import {
+  selectNodes,
+  selectEdges,
+} from '../features/flow/flowSelectors';
 
 import ResizableNode from './ResizableNode';
-import Header from './Header';
 import CustomEdge from './CustomEdge';
-
 import 'reactflow/dist/style.css';
-import '@reactflow/node-resizer/dist/style.css';
 
-const nodeTypes = { resizableNode: ResizableNode };
-const edgeTypes = { custom: CustomEdge };
+const nodeTypes = {
+  resizableNode: ResizableNode,
+};
 
-const Canvas = () => {
-  const reactFlowWrapper = useRef(null);
-  const { project, setViewport, getViewport } = useReactFlow();
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+const edgeTypes = {
+  custom: CustomEdge,
+};
 
-  const [undoStack, setUndoStack] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
+// Zoom context - now properly connected to ReactFlow
+export const ZoomContext = createContext(1);
 
-  const pushToUndoStack = useCallback(() => {
-    setUndoStack((prev) => [...prev, { nodes, edges }]);
-    setRedoStack([]);
-  }, [nodes, edges]);
-
-  const undo = () => {
-    if (undoStack.length === 0) return;
-    const previous = undoStack[undoStack.length - 1];
-    setUndoStack((prev) => prev.slice(0, -1));
-    setRedoStack((prev) => [...prev, { nodes, edges }]);
-    setNodes(previous.nodes);
-    setEdges(previous.edges);
-  };
-
-  const redo = () => {
-    if (redoStack.length === 0) return;
-    const next = redoStack[redoStack.length - 1];
-    setRedoStack((prev) => prev.slice(0, -1));
-    setUndoStack((prev) => [...prev, { nodes, edges }]);
-    setNodes(next.nodes);
-    setEdges(next.edges);
-  };
-
-  const deleteEdge = useCallback((edgeId) => {
-    pushToUndoStack();
-    setEdges((eds) => eds.filter((edge) => edge.id !== edgeId));
-  }, [pushToUndoStack, setEdges]);
-
-  const onConnect = useCallback((params) => {
-    pushToUndoStack();
-    setEdges((eds) =>
-      addEdge(
-        {
-          ...params,
-          id: uuidv4(),
-          type: 'custom',
-          markerEnd: { type: MarkerType.ArrowClosed },
-          data: {
-            onDelete: deleteEdge,
-          },
-        },
-        eds
-      )
-    );
-  }, [setEdges, pushToUndoStack, deleteEdge]);
-
-  const onNameChange = useCallback(
-    (id, name) => {
-      pushToUndoStack();
-      setNodes((nds) =>
-        nds.map((node) =>
-          node.id === id
-            ? { ...node, data: { ...node.data, shape: { ...node.data.shape, name } } }
-            : node
-        )
-      );
-    },
-    [setNodes, pushToUndoStack]
+// ZoomProvider that gets zoom from ReactFlow context
+export function ZoomProvider({ children }) {
+  return (
+    <ReactFlowProvider>
+      <ZoomProviderWithReactFlow>
+        {children}
+      </ZoomProviderWithReactFlow>
+    </ReactFlowProvider>
   );
+}
 
-  const [{ isOver }, drop] = useDrop({
+function ZoomProviderWithReactFlow({ children }) {
+  const zoom = useStore((state) => state.transform[2]);
+  return (
+    <ZoomContext.Provider value={zoom || 1}>{children}</ZoomContext.Provider>
+  );
+}
+
+// Hook to use zoom context
+export const useZoom = () => {
+  const zoom = useContext(ZoomContext);
+  return zoom || 1;
+};
+
+// ZoomDisplay component for inside ReactFlowProvider
+function ZoomDisplay() {
+  const zoom = useStore((state) => state.transform[2]); // transform = [x, y, zoom]
+  return (
+    <span className="px-2 text-sm text-gray-500 w-16 text-center">{`${Math.round((zoom || 1) * 100)}%`}</span>
+  );
+}
+
+const COLOR_SWATCHES = [
+  '#1970fc', '#ef4444', '#22c55e', '#f59e42', '#a21caf', '#fbbf24', '#0ea5e9', '#64748b', '#000000', '#ffffff'
+];
+
+const CanvasContent = () => {
+  const dispatch = useDispatch();
+  const nodes = useSelector(selectNodes);
+  const edges = useSelector(selectEdges);
+  const reactFlowInstance = useReactFlow();
+
+  const [, drop] = useDrop(() => ({
     accept: 'shape',
     drop: (item, monitor) => {
+      const { shape } = item;
       const offset = monitor.getClientOffset();
-      if (!reactFlowWrapper.current) return;
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
-      const position = project({
-        x: offset.x - reactFlowBounds.left,
-        y: offset.y - reactFlowBounds.top,
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: offset.x,
+        y: offset.y,
       });
-
-      const viewBox = item.icon.viewBox.split(' ').map(Number);
-      const aspectRatio = viewBox[2] > 0 ? viewBox[3] / viewBox[2] : 1;
-      const nodeWidth = 150;
-      const nodeHeight = nodeWidth * aspectRatio;
 
       const newNode = {
         id: uuidv4(),
         type: 'resizableNode',
         position,
-        data: {
-          shape: item,
-          onNameChange: onNameChange,
+        data: { shape },
+        style: {
+          width: shape.width || 150,
+          height: shape.height || 100,
         },
-        style: { width: nodeWidth, height: nodeHeight },
       };
 
-      pushToUndoStack();
-      setNodes((nds) => nds.concat(newNode));
+      dispatch(addNode(newNode));
     },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  });
+  }));
 
-  const handleZoomIn = () => {
-    const { x, y, zoom } = getViewport();
-    setViewport({ x, y, zoom: zoom * 1.2 }, { duration: 200 });
-  };
+  const onNodesChange = useCallback(
+    (changes) => dispatch(setNodes(applyNodeChanges(changes, nodes))),
+    [dispatch, nodes]
+  );
 
-  const handleZoomOut = () => {
-    const { x, y, zoom } = getViewport();
-    setViewport({ x, y, zoom: zoom / 1.2 }, { duration: 200 });
-  };
+  const onEdgesChange = useCallback(
+    (changes) => dispatch(setEdges(applyEdgeChanges(changes, edges))),
+    [dispatch, edges]
+  );
 
-  const handleDownloadImage = () => {
-    const reactFlowPane = document.querySelector('.react-flow__pane');
-    if (!reactFlowPane) return;
+  const onConnect = useCallback(
+    (connection) => {
+      console.log('Connection params:', connection);
+      const newEdges = addEdge({
+        ...connection,
+        type: 'custom',
+        markerEnd: { 
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20,
+          color: '#1970fc',
+        },
+      }, edges);
+      dispatch(setEdges(newEdges));
+    },
+    [dispatch, edges]
+  );
 
-    toPng(reactFlowPane, {
-      backgroundColor: '#1a202c',
-      width: reactFlowPane.scrollWidth,
-      height: reactFlowPane.scrollHeight,
-      style: {
-        transform: 'translate(0, 0) scale(1)',
-      },
-    }).then((dataUrl) => {
-      const a = document.createElement('a');
-      a.setAttribute('download', 'diagram.png');
-      a.setAttribute('href', dataUrl);
-      a.click();
+  const onKeyDown = useCallback(
+    (event) => {
+      // Prevent node/edge deletion if focus is on an input or textarea (e.g., editing label)
+      const tag = event.target.tagName.toLowerCase();
+      if ((tag === 'input' || tag === 'textarea')) {
+        return;
+      }
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        const selectedNodes = nodes.filter((node) => node.selected).map((node) => node.id);
+        const selectedEdges = edges.filter((edge) => edge.selected).map((edge) => edge.id);
+
+        if (selectedNodes.length > 0) {
+          dispatch(setNodes(nodes.filter((node) => !node.selected)));
+        }
+        if (selectedEdges.length > 0) {
+          dispatch(setEdges(edges.filter((edge) => !edge.selected)));
+        }
+      }
+    },
+    [nodes, edges, dispatch]
+  );
+
+  const exportImage = () => {
+    if (!reactFlowInstance) return;
+    toPng(reactFlowInstance.getViewport()).then((dataUrl) => {
+      const link = document.createElement('a');
+      link.download = 'diagram.png';
+      link.href = dataUrl;
+      link.click();
     });
   };
 
-  const handleSave = () => {
-    const flow = { nodes, edges };
-    const dataStr = JSON.stringify(flow, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-    const exportFileDefaultName = 'diagram.json';
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
+  const saveToJSON = () => {
+    const data = { nodes, edges };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
+    const link = document.createElement('a');
+    link.download = 'diagram.json';
+    link.href = URL.createObjectURL(blob);
+    link.click();
   };
 
-  const handleLoad = (event) => {
-    const file = event.target.files[0];
-    if (file) {
+  const loadFromJSON = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const { nodes: loadedNodes, edges: loadedEdges } = JSON.parse(reader.result);
+        dispatch(setNodes(loadedNodes));
+        dispatch(setEdges(loadedEdges));
+        reactFlowInstance.setViewport({ x: 0, y: 0, zoom: 1 });
+      } catch {
+        alert('Invalid JSON file');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const [colorPalette, setColorPalette] = useState({ open: false, x: 0, y: 0, target: null });
+  const [colorTarget, setColorTarget] = useState('stroke'); // 'stroke' or 'text'
+
+  // Helper: open color palette for node or edge
+  const openColorPalette = (event, targetType, targetId) => {
+    event.stopPropagation();
+    setColorPalette({ open: true, x: event.clientX, y: event.clientY, target: { type: targetType, id: targetId } });
+  };
+  const closeColorPalette = () => setColorPalette({ open: false, x: 0, y: 0, target: null });
+
+  // Color change handler
+  const handleColorPick = (color) => {
+    if (!colorPalette.target) return;
+    if (colorPalette.target.type === 'node') {
+      if (colorTarget === 'stroke') {
+        const updated = nodes.map(n => n.id === colorPalette.target.id ? { ...n, style: { ...n.style, stroke: color }, data: { ...n.data, color } } : n);
+        dispatch(setNodes(updated));
+      } else if (colorTarget === 'text') {
+        const updated = nodes.map(n => n.id === colorPalette.target.id ? { ...n, style: { ...n.style, color }, data: { ...n.data, textColor: color } } : n);
+        dispatch(setNodes(updated));
+      }
+    } else if (colorPalette.target.type === 'edge') {
+      const updated = edges.map(e => e.id === colorPalette.target.id ? { ...e, style: { ...e.style, stroke: color }, data: { ...e.data, color } } : e);
+      dispatch(setEdges(updated));
+    }
+    closeColorPalette();
+  };
+
+  useEffect(() => {
+    const handleUndo = () => dispatch(UndoActionCreators.undo());
+    const handleRedo = () => dispatch(UndoActionCreators.redo());
+    const handleAutoLayout = () => {
+      // Implement auto-layout logic here
+    };
+    const handleSaveJson = () => {
+      const flow = reactFlowInstance.toObject();
+      const json = JSON.stringify(flow, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'flow.json';
+      link.click();
+    };
+    const handleLoadJsonFile = (e) => {
+      const file = e.detail;
+      if (!file) return;
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const flow = JSON.parse(e.target.result);
-        if (flow && flow.nodes && flow.edges) {
-          const restoredNodes = flow.nodes.map((node) => ({
+      reader.onload = () => {
+        try {
+          let { nodes: loadedNodes, edges: loadedEdges } = JSON.parse(reader.result);
+          // Autofix nodes
+          loadedNodes = loadedNodes.map(node => ({
             ...node,
+            position: node.position || { x: 0, y: 0 },
             data: {
-              ...node.data,
-              onNameChange: onNameChange,
+              label: node.data?.label || node.data?.shape?.name || 'Node',
+              ...node.data
             },
+            style: {
+              width: node.style?.width || 100,
+              height: node.style?.height || 60,
+              background: node.style?.background || '#f7f8fa',
+              ...node.style
+            }
           }));
-          pushToUndoStack();
-          setNodes(restoredNodes);
-          setEdges(flow.edges);
-          setViewport({ x: 0, y: 0, zoom: 1 });
+          // Autofix edges
+          loadedEdges = loadedEdges.map(edge => ({
+            ...edge,
+            color: edge.color || '#4F46E5',
+            type: edge.type || 'custom',
+          }));
+          dispatch(setNodes(loadedNodes));
+          dispatch(setEdges(loadedEdges));
+        } catch (err) {
+          alert('Invalid JSON file');
         }
       };
       reader.readAsText(file);
-    }
-  };
+    };
+    const handleExportImage = () => {
+      import('../utils/exportUtils').then(({ exportAsPng }) => {
+        exportAsPng(exportRef);
+      });
+    };
+    
+    window.addEventListener('undo', handleUndo);
+    window.addEventListener('redo', handleRedo);
+    window.addEventListener('auto-layout', handleAutoLayout);
+    window.addEventListener('save-json', handleSaveJson);
+    window.addEventListener('load-json-file', handleLoadJsonFile);
+    window.addEventListener('export-image', handleExportImage);
+
+    return () => {
+      window.removeEventListener('undo', handleUndo);
+      window.removeEventListener('redo', handleRedo);
+      window.removeEventListener('auto-layout', handleAutoLayout);
+      window.removeEventListener('save-json', handleSaveJson);
+      window.removeEventListener('load-json-file', handleLoadJsonFile);
+      window.removeEventListener('export-image', handleExportImage);
+    };
+  }, [reactFlowInstance, dispatch, nodes, edges]);
+
+  useEffect(() => {
+    const handleZoomIn = () => reactFlowInstance.zoomIn();
+    const handleZoomOut = () => reactFlowInstance.zoomOut();
+
+    window.addEventListener('zoom-in', handleZoomIn);
+    window.addEventListener('zoom-out', handleZoomOut);
+
+    return () => {
+      window.removeEventListener('zoom-in', handleZoomIn);
+      window.removeEventListener('zoom-out', handleZoomOut);
+    };
+  }, [reactFlowInstance]);
+
+  const exportRef = useRef(null);
 
   return (
-    <main
-      className="flex-1 h-[calc(100vh-3.5rem)] md:h-full relative flex flex-col"
-      ref={reactFlowWrapper}
-    >
-      {/* Header with buttons */}
-      <Header
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onSave={handleSave}
-        onLoad={handleLoad}
-        onDownloadImage={handleDownloadImage}
-        onUndo={undo}
-        onRedo={redo}
-        canUndo={undoStack.length > 0}
-        canRedo={redoStack.length > 0}
-      />
-
-      {/* Flow canvas */}
-      <div className="flex-1 w-full" ref={drop}>
+    <div ref={drop} className="w-full h-full" style={{ pointerEvents: 'auto', position: 'relative' }} tabIndex={0} onKeyDown={onKeyDown}>
+      {/* Floating Color Palette */}
+      {colorPalette.open && (
+        <div style={{ position: 'fixed', left: colorPalette.x, top: colorPalette.y, zIndex: 1000, background: '#fff', border: '1px solid #ddd', borderRadius: 8, padding: 8, boxShadow: '0 2px 8px #0002', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {colorPalette.target?.type === 'node' && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+              <button onClick={() => setColorTarget('stroke')} style={{ padding: '2px 8px', borderRadius: 4, border: colorTarget === 'stroke' ? '2px solid #1970fc' : '1px solid #ccc', background: colorTarget === 'stroke' ? '#e0f2fe' : '#fff', cursor: 'pointer' }}>Border</button>
+              <button onClick={() => setColorTarget('text')} style={{ padding: '2px 8px', borderRadius: 4, border: colorTarget === 'text' ? '2px solid #1970fc' : '1px solid #ccc', background: colorTarget === 'text' ? '#e0f2fe' : '#fff', cursor: 'pointer' }}>Text</button>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {COLOR_SWATCHES.map(color => (
+              <button key={color} style={{ width: 24, height: 24, background: color, border: '2px solid #eee', borderRadius: '50%', cursor: 'pointer' }} onClick={() => handleColorPick(color)} />
+            ))}
+            <button onClick={closeColorPalette} style={{ marginLeft: 8, color: '#888', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+          </div>
+        </div>
+      )}
+      {/* Export-only area: shapes, edges, background */}
+      <div ref={exportRef} className="w-full h-full" style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#e0f2fe' }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          fitView
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          fitView
-          deleteKeyCode={46}
-          className="bg-gray-900"
-          style={{
-            backgroundColor: isOver ? '#2d3748' : '#1a202c',
-          }}
+          proOptions={{ hideAttribution: true }}
+          connectionMode="loose"
+          connectionLineType="bezier"
+          isValidConnection={() => true}
+          onNodeClick={(event, node) => openColorPalette(event, 'node', node.id)}
+          onEdgeClick={(event, edge) => openColorPalette(event, 'edge', edge.id)}
         >
-          <Background color="#4a5568" gap={16} />
-          <MiniMap nodeStrokeWidth={3} zoomable pannable />
-          <Controls position="bottom-right" />
+          <Background variant="dots" gap={12} size={1.5} color="#a5d8ff" />
         </ReactFlow>
       </div>
-    </main>
+      {/* Controls and MiniMap (not exported) */}
+      <Controls position="bottom-right" className="react-flow-controls" style={{ zIndex: 10 }} />
+      <MiniMap position="bottom-left" pannable zoomable style={{ zIndex: 10 }} />
+    </div>
+  );
+};
+
+const Canvas = () => {
+  return (
+    <ZoomProvider>
+      <div className="w-full h-full bg-blue-500">
+        <CanvasContent />
+      </div>
+    </ZoomProvider>
   );
 };
 
