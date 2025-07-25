@@ -1,0 +1,90 @@
+/* Custom Scrollbar for a more integrated look */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #4A5568 #2D3748;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #2D3748;
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #4A5568;
+  border-radius: 4px;
+  border: 2px solid #2D3748;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #718096;
+}
+
+/* Custom React Flow Controls */
+.react-flow-controls {
+  background-color: rgba(248, 249, 250, 0.7) !important;
+  
+  border-radius: 0.5rem !important;
+  border: 1px solid #4A5568 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 4px !important;
+}
+
+.react-flow-controls button {
+  background-color: transparent !important;
+  color: #A0AEC0 !important;
+  border: none !important;
+  border-radius: 0.375rem !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.react-flow-controls button:hover {
+  background-color: rgba(102, 156, 249, 0.7) !important;
+  color: #E2E8F0 !important;
+}
+
+.react-flow-controls svg {
+  fill: currentColor;
+}
+
+/* Modern UI backgrounds */
+.bg-canvas-modern {
+  background-color: #F7FAFF !important; /* deep dark blue-gray */
+}
+.bg-header-modern {
+  background-color: #F7FAFF !important; /* deep dark blue-gray */
+  
+}
+.bg-sidebar-modern {
+  background-color: #a8a8a9 !important; /* distinct but harmonious for sidebar */
+}
+
+/* index.css or global.css */
+
+.custom-blue-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-blue-scrollbar::-webkit-scrollbar-track {
+  background: #e0f2fe; /* light blue track */
+}
+/*
+.custom-blue-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #3b82f6; /* blue-500 thumb 
+  border-radius: 9999px;
+  border: 2px solid #e0f2fe;  matches track for padding effect 
+}*/
+
+.custom-blue-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #2563eb; /* blue-600 on hover */
+}
+
+/* Firefox support */
+.custom-blue-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 #e0f2fe;
+}
