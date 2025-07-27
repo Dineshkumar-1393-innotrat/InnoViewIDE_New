@@ -153,20 +153,3 @@ const Sidebar = ({ sidebarOpen, toggleSidebar }) => {
 
 export default Sidebar;
 
-/* Add this to the bottom of the file for custom blue scrollbar */
-/* Tailwind doesn't support custom scrollbar colors out of the box, so add this style: */
-/*
-Add to your global CSS (e.g., index.css):
-.custom-blue-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  background: #e0e7ff;
-}
-.custom-blue-scrollbar::-webkit-scrollbar-thumb {
-  background: #60a5fa;
-  border-radius: 8px;
-}
-.custom-blue-scrollbar {
-  scrollbar-color: #60a5fa #e0e7ff;
-  scrollbar-width: thin;
-}
-*/

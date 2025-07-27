@@ -1,5 +1,5 @@
 import Sidebarone from '../components/Sidebarone';
-import Canvas, { ZoomProvider } from './Canvas';
+import Canvas, { ZoomProvider, useZoom } from './Canvas';
 import Header from './Header';
 import { useState } from 'react';
 import { exportAsPng as exportImage } from '../utils/exportImage';
@@ -9,6 +9,7 @@ import { ReactFlowProvider } from 'reactflow';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const zoom = useZoom();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -36,6 +37,7 @@ export default function Layout() {
               handleExport={handleExport}
               toggleSidebar={toggleSidebar}
               exportImage={exportImage}
+              zoom={zoom}
             />
           </div>
           <div className="flex flex-1 overflow-hidden relative">
