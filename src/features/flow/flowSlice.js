@@ -13,7 +13,7 @@ const initialState = {
 
 // console.log('Flow slice initial state:', initialState);
 
-const HISTORY_LIMIT = 10;
+const HISTORY_LIMIT = 100;
 
 const flowSlice = createSlice({
   name: 'flow',

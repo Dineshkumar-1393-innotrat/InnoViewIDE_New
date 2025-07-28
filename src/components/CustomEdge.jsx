@@ -165,7 +165,7 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
           orient="auto"
           markerUnits="strokeWidth"
         >
-          <polygon points="0,0 8,4 0,8" fill="none" stroke={markerColor} strokeWidth="1.5" />
+          <polygon points="0,0 8,4 0,8" fill={markerColor} stroke={markerColor} strokeWidth="1.5" />
         </marker>
       </defs>
       <path
