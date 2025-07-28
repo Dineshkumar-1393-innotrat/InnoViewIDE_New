@@ -67,6 +67,12 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
     setLabelText(data?.label || '');
     setLabelColor(data?.labelColor || '#000000');
   }, [data?.label, data?.labelColor]);
+
+  // Validate edge data
+  if (!source || !target) {
+    console.warn('CustomEdge: Missing source or target', { id, source, target });
+    return null;
+  }
   const dispatch = useDispatch();
   const allEdges = useSelector(selectEdges);
   const allNodes = useSelector(selectNodes);
@@ -75,10 +81,16 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
   const sourceNode = allNodes.find(n => n.id === source);
   const targetNode = allNodes.find(n => n.id === target);
 
+  // Validate nodes exist
+  if (!sourceNode || !targetNode) {
+    console.warn('CustomEdge: Source or target node not found', { source, target, sourceNode, targetNode });
+    return null;
+  }
+
   // Helper to get anchors in absolute coordinates
   function getAnchors(node) {
     if (!node || !node.data?.shape?.anchors) return null;
-    const { x: nodeX, y: nodeY } = node.position;
+    const { x: nodeX, y: nodeY } = node.position || { x: 0, y: 0 };
     const width = node.style?.width || 100;
     const height = node.style?.height || 60;
     return node.data.shape.anchors.map(pt => ({
@@ -94,12 +106,23 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
   if (sourceNode && sourceNode.data?.shape?.anchors && data?.sourceHandle) {
     const anchors = getAnchors(sourceNode);
     const idx = parseInt((data.sourceHandle || '').replace('anchor-', ''), 10);
-    if (!isNaN(idx) && anchors[idx]) src = anchors[idx];
+    if (!isNaN(idx) && anchors && anchors[idx]) src = anchors[idx];
   }
   if (targetNode && targetNode.data?.shape?.anchors && data?.targetHandle) {
     const anchors = getAnchors(targetNode);
     const idx = parseInt((data.targetHandle || '').replace('anchor-', ''), 10);
-    if (!isNaN(idx) && anchors[idx]) tgt = anchors[idx];
+    if (!isNaN(idx) && anchors && anchors[idx]) tgt = anchors[idx];
+  }
+
+  // Debug logging for edge rendering (only for invalid edges)
+  if (!sourceNode || !targetNode) {
+    console.warn('CustomEdge rendering with missing nodes:', {
+      id,
+      source,
+      target,
+      sourceNode: sourceNode?.id,
+      targetNode: targetNode?.id
+    });
   }
 
   // If not using handle, fall back to intersection logic
@@ -107,11 +130,17 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
   const targetAnchors = getAnchors(targetNode);
   if (sourceAnchors && !(data?.sourceHandle)) {
     const intersection = getLinePolygonIntersection(sourceAnchors, tgt, src);
-    if (intersection) src = offsetPoint(sourceNode.position, intersection, 4);
+    if (intersection) src = offsetPoint(sourceNode.position || { x: 0, y: 0 }, intersection, 4);
   }
   if (targetAnchors && !(data?.targetHandle)) {
     const intersection = getLinePolygonIntersection(targetAnchors, src, tgt);
-    if (intersection) tgt = offsetPoint(targetNode.position, intersection, 4);
+    if (intersection) tgt = offsetPoint(targetNode.position || { x: 0, y: 0 }, intersection, 4);
+  }
+
+  // Validate coordinates
+  if (isNaN(src.x) || isNaN(src.y) || isNaN(tgt.x) || isNaN(tgt.y)) {
+    console.warn('CustomEdge: Invalid coordinates', { src, tgt, sourceNode, targetNode });
+    return null;
   }
 
   // Use a straight line for the edge path

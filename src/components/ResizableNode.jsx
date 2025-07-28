@@ -70,15 +70,15 @@ export default function ResizableNode(props) {
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    fontSize: Math.max(10, 14 / zoom),
+    fontSize: Math.max(8, Math.min(16, 14 / zoom)), // Responsive font size with min/max bounds
     fontWeight: 500,
     color: style.color || data.textColor || '#222',
     cursor: 'pointer',
     userSelect: 'none',
     pointerEvents: 'auto',
-    width: `calc(100% - ${24 / zoom}px)`,
-    maxWidth: `calc(100% - ${24 / zoom}px)`,
-    maxHeight: `calc(100% - ${24 / zoom}px)`,
+    width: `calc(100% - ${Math.max(8, 24 / zoom)}px)`,
+    maxWidth: `calc(100% - ${Math.max(8, 24 / zoom)}px)`,
+    maxHeight: `calc(100% - ${Math.max(8, 24 / zoom)}px)`,
     textAlign: 'center',
     whiteSpace: 'pre-line',
     zIndex: 2,
@@ -92,7 +92,7 @@ export default function ResizableNode(props) {
   }), [zoom, style.color, data.textColor, currentWidth, currentHeight]);
 
   // Helper to render a single handle per side, centered
-  const handleSize = Math.max(4, 6 / zoom);
+  const handleSize = Math.max(6, Math.min(12, 8 / zoom)); // Responsive handle size with min/max bounds
   const handleStyle = {
     width: handleSize * 1.6,
     height: handleSize * 1.6,
@@ -151,18 +151,24 @@ export default function ResizableNode(props) {
     };
   };
 
-  // Mouse event handlers for rotation
+  // Mouse and touch event handlers for rotation
   const handleRotateStart = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsRotating(true);
 
+    const getEventCoordinates = (event) => {
+      if (event.touches && event.touches[0]) {
+        return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      }
+      return { x: event.clientX, y: event.clientY };
+    };
+
     const onMove = (moveEvent) => {
       const center = getNodeCenter();
-      const mouseX = moveEvent.clientX;
-      const mouseY = moveEvent.clientY;
-      const dx = mouseX - center.x;
-      const dy = mouseY - center.y;
+      const coords = getEventCoordinates(moveEvent);
+      const dx = coords.x - center.x;
+      const dy = coords.y - center.y;
       let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90; // 0 is vertical
       if (angle < 0) angle += 360;
       dispatch(rotateNode({ id, rotation: angle }));
@@ -172,10 +178,14 @@ export default function ResizableNode(props) {
       setIsRotating(false);
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onUp);
     };
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onUp);
   };
 
   // --- End rotation logic ---
@@ -203,18 +213,19 @@ export default function ResizableNode(props) {
       onMouseLeave={() => setIsHovered(false)}
       onDoubleClick={() => setEditing(true)}
     >
-      {/* Explicit drag handle */}
-      <div className="custom-drag-handle" style={{ position: 'absolute', inset: 0, zIndex: 0, cursor: 'grab' }} />
+
       <NodeResizer
-        minWidth={40}
-        minHeight={30}
+        minWidth={Math.max(40, 60 / zoom)} // Responsive minimum width
+        minHeight={Math.max(30, 45 / zoom)} // Responsive minimum height
         isVisible={selected || isHovered}
         lineClassName="border-blue-400 border border-dashed"
-        handleClassName="bg-blue-500 !w-2.5 !h-2.5 rounded-full shadow hover:bg-blue-600 focus:bg-blue-700 transition-all duration-150"
+        handleClassName="bg-blue-500 rounded-full shadow hover:bg-blue-600 focus:bg-blue-700 transition-all duration-150"
         keepAspectRatio={false}
         onResizeEnd={handleResizeEnd}
         handleStyle={{
-          margin: '-6px', // Move handles 6px outside the node to avoid overlap
+          width: Math.max(8, Math.min(16, 12 / zoom)) + 'px', // Responsive handle size
+          height: Math.max(8, Math.min(16, 12 / zoom)) + 'px',
+          margin: `-${Math.max(3, 6 / zoom)}px`, // Responsive margin
           zIndex: 20,
         }}
       />
@@ -224,12 +235,12 @@ export default function ResizableNode(props) {
           viewBox={data.shape.icon.viewBox}
           width={svgWidth}
           height={svgHeight}
-          style={{ ...svgStyle, background: 'none' }}
+          style={{ ...svgStyle, background: 'transparent' }}
           preserveAspectRatio="xMidYMid meet"
         >
           <path
             d={data.shape.icon.path}
-            fill="none"
+            fill="transparent"
             stroke={style.stroke || data.color || '#6b7280'}
             strokeWidth="2"
           />
@@ -249,15 +260,16 @@ export default function ResizableNode(props) {
             background: 'white',
             border: '1px solid #2563eb',
             borderRadius: 4,
-            padding: 2,
+            padding: Math.max(2, 4 / zoom),
             width: '100%',
-            height: '1.8em',
-            maxWidth: 'calc(100% - 16px)',
-            maxHeight: currentHeight - 16,
+            height: Math.max(16, 20 / zoom) + 'px',
+            maxWidth: `calc(100% - ${Math.max(8, 16 / zoom)}px)`,
+            maxHeight: currentHeight - Math.max(8, 16 / zoom),
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             boxSizing: 'border-box',
             outline: 'none',
+            fontSize: Math.max(8, Math.min(16, 14 / zoom)) + 'px',
           }}
               />
             ) : (
@@ -298,12 +310,13 @@ export default function ResizableNode(props) {
         <div
           className="nodrag"
           onMouseDownCapture={handleRotateStart}
+          onTouchStart={handleRotateStart}
           style={{
             position: 'absolute',
-            top: -24,
-            right: -24,
-            width: 28,
-            height: 28,
+            top: -Math.max(20, 24 / zoom),
+            right: -Math.max(20, 24 / zoom),
+            width: Math.max(24, 28 / zoom),
+            height: Math.max(24, 28 / zoom),
             background: 'white',
             borderRadius: '50%',
             boxShadow: '0 2px 8px #0001',
@@ -312,13 +325,22 @@ export default function ResizableNode(props) {
             justifyContent: 'center',
             cursor: 'grab',
             zIndex: 30,
-            border: '1.5px solid #2563eb',
+            border: `${Math.max(1, 1.5 / zoom)}px solid #2563eb`,
             transition: 'background 0.15s',
           }}
           title="Rotate"
         >
           {/* SVG circular arrow icon */}
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg 
+            width={Math.max(14, 18 / zoom)} 
+            height={Math.max(14, 18 / zoom)} 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="#2563eb" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
             <path d="M21 2v6h-6" />
             <path d="M3 13a9 9 0 0 1 15-7.7L21 8" />
           </svg>

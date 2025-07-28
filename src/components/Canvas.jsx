@@ -81,6 +81,7 @@ const CanvasContent = () => {
         style: {
           width: shape.width || 150,
           height: shape.height || 100,
+          background: 'transparent',
         },
       };
 
@@ -101,6 +102,24 @@ const CanvasContent = () => {
   const onConnect = useCallback(
     (connection) => {
       console.log('Connection params:', connection);
+      
+      // Validate connection
+      if (!connection.source || !connection.target) {
+        console.warn('Invalid connection: missing source or target');
+        return;
+      }
+      
+      // Check if connection already exists
+      const existingEdge = edges.find(edge => 
+        edge.source === connection.source && 
+        edge.target === connection.target
+      );
+      
+      if (existingEdge) {
+        console.warn('Connection already exists:', existingEdge);
+        return;
+      }
+      
       const newEdges = addEdge({
         ...connection,
         type: 'custom',
@@ -247,32 +266,199 @@ const CanvasContent = () => {
       const reader = new FileReader();
       reader.onload = () => {
         try {
-          let { nodes: loadedNodes, edges: loadedEdges } = JSON.parse(reader.result);
-          // Autofix nodes
-          loadedNodes = loadedNodes.map(node => ({
-            ...node,
-            position: node.position || { x: 0, y: 0 },
-            data: {
-              label: node.data?.label || node.data?.shape?.name || 'Node',
-              ...node.data
-            },
-            style: {
-              width: node.style?.width || 100,
-              height: node.style?.height || 60,
-              background: node.style?.background || '#f7f8fa',
-              ...node.style
+          let jsonData = JSON.parse(reader.result);
+          console.log('Loading JSON data:', jsonData);
+          
+          // Ensure we have the expected structure
+          if (!jsonData || typeof jsonData !== 'object') {
+            throw new Error('Invalid JSON structure');
+          }
+          
+          let { nodes: loadedNodes, edges: loadedEdges } = jsonData;
+          
+          // Ensure arrays exist
+          if (!Array.isArray(loadedNodes)) loadedNodes = [];
+          if (!Array.isArray(loadedEdges)) loadedEdges = [];
+          
+          console.log('Original nodes:', loadedNodes);
+          console.log('Original edges:', loadedEdges);
+          
+          // Clear existing data before loading new data
+          dispatch(setNodes([]));
+          dispatch(setEdges([]));
+          
+          // Validate and fix nodes
+          loadedNodes = loadedNodes.map((node, index) => {
+            // Generate default position if missing
+            let position = node.position;
+            if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+              position = { x: index * 150, y: index * 100 };
             }
-          }));
-          // Autofix edges
+            
+            // Handle different node data formats
+            let nodeData = node.data || {};
+            if (node.label) {
+              nodeData.label = node.label;
+            }
+            if (node.shape) {
+              nodeData.shape = node.shape;
+            }
+            
+            // Ensure shape data exists
+            if (!nodeData.shape) {
+              nodeData.shape = { 
+                name: 'rectangle', 
+                icon: { 
+                  viewBox: '0 0 100 100', 
+                  path: 'M0,0 L100,0 L100,100 L0,100 Z' 
+                } 
+              };
+            }
+            
+            const processedNode = {
+              ...node,
+              id: node.id || `node-${Math.random().toString(36).substr(2, 9)}`,
+              position: position,
+              data: {
+                label: nodeData.label || nodeData.shape?.name || 'Node',
+                shape: nodeData.shape,
+                ...nodeData
+              },
+              style: {
+                width: node.style?.width || 100,
+                height: node.style?.height || 60,
+                background: node.style?.background || 'transparent',
+                ...node.style
+              },
+              type: node.type || 'resizableNode'
+            };
+            
+            console.log('Processed node:', processedNode);
+            return processedNode;
+          });
+
+          // Validate and fix edges
+          loadedEdges = loadedEdges.map(edge => {
+            // Handle different edge formats
+            let source = edge.source;
+            let target = edge.target;
+            
+            // Check if source/target are objects with id property
+            if (typeof source === 'object' && source?.id) {
+              source = source.id;
+            }
+            if (typeof target === 'object' && target?.id) {
+              target = target.id;
+            }
+            
+            // Handle edge data from different formats
+            let edgeData = edge.data || {};
+            if (edge.label) {
+              edgeData.label = edge.label;
+            }
+            if (edge.labelColor) {
+              edgeData.labelColor = edge.labelColor;
+            }
+            
+            // Ensure edge has required properties
+            const processedEdge = {
+              ...edge,
+              id: edge.id || `edge-${Math.random().toString(36).substr(2, 9)}`,
+              source: source,
+              target: target,
+              sourceHandle: edge.sourceHandle || null,
+              targetHandle: edge.targetHandle || null,
+              type: edge.type || 'custom',
+              data: {
+                label: edgeData.label || '',
+                labelColor: edgeData.labelColor || '#000000',
+                ...edgeData
+              },
+              style: {
+                stroke: edge.style?.stroke || edge.color || '#1970fc',
+                strokeWidth: edge.style?.strokeWidth || 2,
+                ...edge.style
+              },
+              markerEnd: edge.markerEnd || {
+                type: MarkerType.ArrowClosed,
+                width: 20,
+                height: 20,
+                color: edge.style?.stroke || edge.color || '#1970fc',
+              }
+            };
+            
+            console.log('Processed edge:', processedEdge);
+            return processedEdge;
+          });
+
+          // Filter out edges with invalid source/target nodes
+          const validNodeIds = new Set(loadedNodes.map(node => node.id));
+          console.log('Valid node IDs:', Array.from(validNodeIds));
+          
+          loadedEdges = loadedEdges.filter(edge => {
+            const isValid = validNodeIds.has(edge.source) && validNodeIds.has(edge.target);
+            if (!isValid) {
+              console.warn('Filtering out invalid edge:', edge, 'Valid nodes:', Array.from(validNodeIds));
+            }
+            return isValid;
+          });
+
+          // Ensure unique IDs
+          const nodeIds = new Set();
+          const edgeIds = new Set();
+          
+          loadedNodes = loadedNodes.map(node => {
+            let newId = node.id;
+            let counter = 1;
+            while (nodeIds.has(newId)) {
+              newId = `${node.id}-${counter}`;
+              counter++;
+            }
+            nodeIds.add(newId);
+            return { ...node, id: newId };
+          });
+
+          loadedEdges = loadedEdges.map(edge => {
+            let newId = edge.id;
+            let counter = 1;
+            while (edgeIds.has(newId)) {
+              newId = `${edge.id}-${counter}`;
+              counter++;
+            }
+            edgeIds.add(newId);
+            return { ...edge, id: newId };
+          });
+
+          // Update edge source/target to match new node IDs if needed
+          const nodeIdMap = {};
+          loadedNodes.forEach(node => {
+            if (node.originalId) {
+              nodeIdMap[node.originalId] = node.id;
+            }
+          });
+
           loadedEdges = loadedEdges.map(edge => ({
             ...edge,
-            color: edge.color || '#4F46E5',
-            type: edge.type || 'custom',
+            source: nodeIdMap[edge.source] || edge.source,
+            target: nodeIdMap[edge.target] || edge.target
           }));
+
+          console.log('Final nodes to dispatch:', loadedNodes);
+          console.log('Final edges to dispatch:', loadedEdges);
+          
           dispatch(setNodes(loadedNodes));
           dispatch(setEdges(loadedEdges));
+          
+          // Fit view after loading
+          setTimeout(() => {
+            if (reactFlowInstance) {
+              reactFlowInstance.fitView({ padding: 0.1 });
+            }
+          }, 100);
+          
         } catch (err) {
-          alert('Invalid JSON file');
+          console.error('Error loading JSON:', err);
+          alert('Invalid JSON file or corrupted data');
         }
       };
       reader.readAsText(file);
@@ -334,7 +520,7 @@ const CanvasContent = () => {
           </div>
         </div>
       )}
-      {/* Export-only area: shapes, edges, background */}
+      {/* Export-only area: shapes, edges, light blue background */}
       <div ref={exportRef} className="w-full h-full" style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#e0f2fe' }}>
         <ReactFlow
           nodes={nodes}
@@ -348,10 +534,30 @@ const CanvasContent = () => {
           proOptions={{ hideAttribution: true }}
           connectionMode="loose"
           connectionLineType="bezier"
-          isValidConnection={() => true}
+          isValidConnection={(connection) => {
+            // Prevent self-connections
+            if (connection.source === connection.target) {
+              return false;
+            }
+            
+            // Check if connection already exists
+            const existingEdge = edges.find(edge => 
+              edge.source === connection.source && 
+              edge.target === connection.target
+            );
+            
+            if (existingEdge) {
+              return false;
+            }
+            
+            // Only allow connections between valid nodes
+            const sourceNode = nodes.find(n => n.id === connection.source);
+            const targetNode = nodes.find(n => n.id === connection.target);
+            
+            return !!(sourceNode && targetNode);
+          }}
           onNodeClick={(event, node) => openColorPalette(event, node)}
           onEdgeClick={(event, edge) => openColorPalette(event, edge)}
-          dragHandle=".custom-drag-handle"
         >
           <Background variant="dots" gap={12} size={1.5} color="#a5d8ff" />
         </ReactFlow>

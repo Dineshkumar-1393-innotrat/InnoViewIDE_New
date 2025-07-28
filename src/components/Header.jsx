@@ -812,8 +812,9 @@
 
 import React, { useContext, useEffect, useState } from 'react';
 import {
-  FaUndo, FaRedo, FaFileUpload, FaSave,
+  FaUndo, FaRedo, FaFileUpload, FaSave,FaUserCircle,
   FaSearchPlus, FaSearchMinus, FaBars, FaShare, FaTimes,
+  FaSignInAlt, FaSignOutAlt, FaCode, FaPlay, FaProjectDiagram, FaSitemap,
 } from 'react-icons/fa';
 import { useDispatch } from 'react-redux';
 import { undo, redo } from '../features/flow/flowSlice';
@@ -848,9 +849,30 @@ export default function Header({ toggleSidebar, onZoomIn, onZoomOut, zoom = 1 })
   const navigate = useNavigate();
   const location = useLocation();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const { setToken } = useContext(StoreContext);
 
   const currentPath = location.pathname;
+
+  // Check if user is logged in
+  const isLoggedIn = () => {
+    return localStorage.getItem('token') !== null;
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setToken('');
+    setShowMobileMenu(false);
+    navigate('/login');
+  };
+
+  // Handle login
+  const handleLogin = () => {
+    setShowMobileMenu(false);
+    navigate('/login');
+  };
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -875,6 +897,18 @@ export default function Header({ toggleSidebar, onZoomIn, onZoomOut, zoom = 1 })
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showMobileMenu]);
 
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.profile-dropdown')) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMenu]);
+
   // Mobile menu actions
   const mobileMenuActions = [
     {
@@ -896,10 +930,16 @@ export default function Header({ toggleSidebar, onZoomIn, onZoomOut, zoom = 1 })
       icon: <FaShare />, label: 'Export as PNG', onClick: () => { handleExportPng(); setShowMobileMenu(false); }
     },
     {
-      icon: <span className="font-bold text-blue-700">Embedded</span>, label: 'Embedded', onClick: () => { window.open('https://ide.innotrat.in/embedded', '_blank'); setShowMobileMenu(false); }
+      icon: <FaCode />, label: 'Embedded', onClick: () => { window.open('https://ide.innotrat.in/embedded', '_blank'); setShowMobileMenu(false); }
     },
     {
-      icon: <span className="font-bold text-blue-700">Simulation</span>, label: 'Simulation', onClick: () => { window.open('https://ide.innotrat.in/simulation', '_blank'); setShowMobileMenu(false); }
+      icon: <FaPlay />, label: 'Simulation', onClick: () => { window.open('https://ide.innotrat.in/simulation', '_blank'); setShowMobileMenu(false); }
+    },
+    {
+      icon: <FaProjectDiagram />, label: 'Flowchart', onClick: () => { navigate('/e'); setShowMobileMenu(false); }
+    },
+    {
+      icon: <FaSitemap />, label: 'Block Diagram', onClick: () => { navigate('/el'); setShowMobileMenu(false); }
     },
   ];
 
@@ -943,6 +983,7 @@ export default function Header({ toggleSidebar, onZoomIn, onZoomOut, zoom = 1 })
             onClick={() => navigate('/el')}
             className="flex items-center gap-2 px-3 py-2 md:px-4 bg-blue-100 hover:bg-blue-200 rounded-md text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors shadow-sm"
           >
+            <FaSitemap />
             Block-Diagram
           </motion.button>
         )}
@@ -953,6 +994,7 @@ export default function Header({ toggleSidebar, onZoomIn, onZoomOut, zoom = 1 })
             onClick={() => navigate('/e')}
             className="flex items-center gap-2 px-3 py-2 md:px-4 bg-blue-100 hover:bg-blue-200 rounded-md text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors shadow-sm"
           >
+            <FaProjectDiagram />
             Flowchart
           </motion.button>
         )}
@@ -987,6 +1029,7 @@ export default function Header({ toggleSidebar, onZoomIn, onZoomOut, zoom = 1 })
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 py-2 md:px-4 bg-blue-100 hover:bg-blue-200 rounded-md text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors shadow-sm"
           >
+            <FaCode />
             <span>Embedded</span>
           </a>
         </Tooltip>
@@ -997,57 +1040,167 @@ export default function Header({ toggleSidebar, onZoomIn, onZoomOut, zoom = 1 })
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-3 py-2 md:px-4 bg-blue-100 hover:bg-blue-200 rounded-md text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors shadow-sm"
           >
+            <FaPlay />
             <span>Simulation</span>
           </a>
         </Tooltip>
+        
+        {/* Profile Dropdown */}
+        <Tooltip text="Account Menu">
+          <div className="relative profile-dropdown">
+            <button
+              onClick={() => setShowMenu((prev) => !prev)}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md text-blue-700 hover:bg-blue-100 hover:text-blue-900 transition-all duration-200"
+            >
+              <FaUserCircle className="text-2xl" />
+            </button>
+
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-40 border border-gray-200 rounded-md shadow-lg z-50 bg-white">
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-blue-100 transition"
+                  onClick={() => {
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('token');
+                    setToken('');
+                    setShowMenu(false);
+                    navigate('/login');
+                  }}
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
+        </Tooltip>
       </div>
 
-      {/* Mobile Menu Overlay & Drawer */}
+      {/* Modern Mobile Menu Overlay & Drawer */}
       <AnimatePresence>
         {showMobileMenu && (
           <>
-            {/* Overlay */}
+            {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 bg-black bg-opacity-30 z-40"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowMobileMenu(false)}
             />
-            {/* Drawer */}
+            
+            {/* Modern Drawer */}
             <motion.div
-              className="fixed top-0 left-0 w-full mobile-menu z-50 bg-white rounded-b-2xl shadow-xl border-b border-blue-200"
-              initial={{ y: -200, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -200, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="fixed top-0 left-0 w-full mobile-menu z-50 bg-white/95 backdrop-blur-md rounded-b-3xl shadow-2xl border border-white/20"
+              initial={{ y: -300, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: -300, opacity: 0, scale: 0.95 }}
+              transition={{ 
+                type: 'spring', 
+                stiffness: 400, 
+                damping: 40,
+                mass: 0.8
+              }}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <span className="text-lg font-bold text-blue-800">Menu</span>
-                <button
-                  className="p-2 rounded-full hover:bg-blue-100 text-gray-700"
-                  onClick={() => setShowMobileMenu(false)}
-                  aria-label="Close menu"
-                >
-                  <FaTimes size={20} />
-                </button>
-              </div>
-              <div className="flex flex-col gap-1 px-4 py-2">
-                {mobileMenuActions.map((action, idx) => (
+              {/* Header with gradient */}
+              <div className="relative px-6 py-4 bg-gradient-to-r from-blue-50 via-white to-blue-50 border-b border-blue-100/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                      Inno-IDE Menu
+                    </span>
+                  </div>
                   <button
-                    key={action.label}
-                    onClick={action.onClick}
-                    className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all"
+                    className="p-2 rounded-full bg-white/80 hover:bg-white shadow-sm border border-gray-200/50 text-gray-600 hover:text-gray-800 transition-all duration-200"
+                    onClick={() => setShowMobileMenu(false)}
+                    aria-label="Close menu"
                   >
-                    <span className="text-lg">{action.icon}</span>
-                    {action.label}
+                    <FaTimes size={18} />
                   </button>
-                ))}
-                <label className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-blue-50 cursor-pointer">
-                  <span className="text-lg"><FaFileUpload /></span>
-                  Load from JSON
+                </div>
+              </div>
+              
+              {/* Menu Content */}
+              <div className="px-4 py-6 space-y-2">
+                {/* Main Actions */}
+                <div className="space-y-1">
+                  {mobileMenuActions.map((action, idx) => (
+                    <motion.button
+                      key={action.label}
+                      onClick={action.onClick}
+                      className="flex items-center gap-4 w-full px-4 py-4 rounded-2xl text-base font-medium text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 focus:outline-none focus:ring-2 focus:ring-blue-200/50 transition-all duration-200 group"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <span className="text-xl text-blue-600 group-hover:text-blue-700 transition-colors">
+                        {action.icon}
+                      </span>
+                      <span className="flex-1 text-left">{action.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
+                
+                {/* File Upload */}
+                <motion.label 
+                  className="flex items-center gap-4 w-full px-4 py-4 rounded-2xl text-base font-medium text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100/50 cursor-pointer group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: mobileMenuActions.length * 0.05 }}
+                >
+                  <span className="text-xl text-green-600 group-hover:text-green-700 transition-colors">
+                    <FaFileUpload />
+                  </span>
+                  <span className="flex-1 text-left">Load from JSON</span>
                   <input type="file" accept=".json" className="hidden" onChange={handleFileChange} />
-                </label>
+                </motion.label>
+                
+                {/* Divider with gradient */}
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500 font-medium">Account</span>
+                  </div>
+                </div>
+                
+                {/* Auth Section */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: (mobileMenuActions.length + 1) * 0.05 }}
+                >
+                  {isLoggedIn() ? (
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-4 w-full px-4 py-4 rounded-2xl text-base font-medium text-red-600 hover:bg-gradient-to-r hover:from-red-50 hover:to-red-100/50 focus:outline-none focus:ring-2 focus:ring-red-200/50 transition-all duration-200 group"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <span className="text-xl text-red-500 group-hover:text-red-600 transition-colors">
+                        <FaSignOutAlt />
+                      </span>
+                      <span className="flex-1 text-left">Sign Out</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleLogin}
+                      className="flex items-center gap-4 w-full px-4 py-4 rounded-2xl text-base font-medium text-blue-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100/50 focus:outline-none focus:ring-2 focus:ring-blue-200/50 transition-all duration-200 group"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <span className="text-xl text-blue-500 group-hover:text-blue-600 transition-colors">
+                        <FaSignInAlt />
+                      </span>
+                      <span className="flex-1 text-left">Login</span>
+                    </button>
+                  )}
+                </motion.div>
               </div>
             </motion.div>
           </>
