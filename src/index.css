@@ -1,0 +1,614 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styles */
+.custom-blue-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-blue-scrollbar::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.custom-blue-scrollbar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 3px;
+}
+
+.custom-blue-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* ReactFlow specific styles */
+.react-flow__viewport {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.react-flow__renderer {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.react-flow__pane {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.react-flow__container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure the main container takes full height */
+#root {
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Ensure diagram editor takes full space */
+.diagram-editor-route {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* Custom scrollbar styles */
+.custom-blue-scrollbar {
+  scrollbar-color: #6b7280 #374151;
+  scrollbar-width: thin;
+}
+
+/* ReactFlow custom styles - Dark theme */
+.react-flow-controls {
+  background: rgba(31, 41, 55, 0.95) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(75, 85, 99, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.react-flow__controls button {
+  background: #374151 !important;
+  border: 1px solid #4b5563 !important;
+  color: #e5e7eb !important;
+  border-radius: 8px !important;
+  margin: 3px !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.react-flow__controls button:hover {
+  background: #4b5563 !important;
+  color: #ffffff !important;
+  border-color: #6b7280 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.react-flow__controls button:active {
+  transform: translateY(0) !important;
+}
+
+.react-flow__minimap {
+  background: rgba(31, 41, 55, 0.95) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(75, 85, 99, 0.8) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Node selection styles */
+.react-flow__node.selected {
+  outline: 2px solid #2563eb !important;
+  outline-offset: 2px !important;
+}
+
+.react-flow__node.selected:hover {
+  outline: 2px solid #1d4ed8 !important;
+}
+
+/* Edge selection styles */
+.react-flow__edge.selected {
+  stroke: #2563eb !important;
+  stroke-width: 3px !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #2563eb !important;
+  stroke-width: 3px !important;
+}
+
+/* Enhanced node and edge styling */
+.react-flow__node {
+  transition: all 0.2s ease !important;
+  will-change: transform !important;
+}
+
+/* Remove the scale transform on hover to prevent flickering */
+.react-flow__node:hover {
+  /* transform: scale(1.02) !important; */
+}
+
+.react-flow__edge {
+  transition: all 0.2s ease !important;
+}
+
+.react-flow__edge:hover {
+  stroke-width: 3px !important;
+}
+
+/* Connection line styling */
+.react-flow__connection-line {
+  stroke: #3b82f6 !important;
+  stroke-width: 2px !important;
+}
+
+.react-flow__connection-line-path {
+  stroke-dasharray: 5 5 !important;
+}
+
+/* Background pattern enhancement */
+.react-flow__background {
+  background-color: #1f2937 !important;
+}
+
+.react-flow__background-pattern {
+  color: #374151 !important;
+}
+
+/* Enhanced Handle styling */
+.react-flow__handle {
+  background: #3b82f6 !important;
+  border: 2px solid #ffffff !important;
+  width: 10px !important;
+  height: 10px !important;
+  transition: all 0.2s ease !important;
+  z-index: 15 !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3) !important;
+  cursor: crosshair !important;
+  pointer-events: auto !important;
+  /* Allow custom positioning to override */
+  position: absolute;
+}
+
+.react-flow__handle:hover {
+  background: #2563eb !important;
+  transform: scale(1.5) !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.5) !important;
+  z-index: 16 !important;
+  opacity: 1 !important;
+}
+
+/* Connection handle specific styling */
+.connection-handle {
+  pointer-events: auto !important;
+  z-index: 15 !important;
+  opacity: 0.8 !important;
+  transition: all 0.2s ease !important;
+  /* Ensure custom positioning works */
+  position: absolute !important;
+}
+
+.connection-handle:hover {
+  z-index: 16 !important;
+  opacity: 1 !important;
+  transform: scale(1.2) !important;
+}
+
+/* Prevent node dragging when interacting with handles */
+/* Removed :has() selector to prevent flickering issues */
+/* .react-flow__node:has(.react-flow__handle:hover) {
+  pointer-events: none !important;
+}
+
+.react-flow__node:has(.react-flow__handle:active) {
+  pointer-events: none !important;
+} */
+
+/* Ensure handles are always interactive */
+.react-flow__handle {
+  pointer-events: auto !important;
+  z-index: 15 !important;
+}
+
+/* Prevent resize controls from interfering with handles */
+.react-flow__resize-control {
+  z-index: 20 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure rotation handle has highest priority */
+.react-flow__node .nodrag[title="Rotate"] {
+  z-index: 30 !important;
+  pointer-events: auto !important;
+  transition: all 0.15s ease-out !important;
+  will-change: transform !important;
+}
+
+/* Prevent flickering on ResizableNode container */
+.resizable-node-container {
+  transition: transform 0.15s ease-out !important;
+  will-change: transform !important;
+}
+
+/* Ensure resize controls don't interfere with handles */
+.react-flow__resize-control {
+  z-index: 20 !important;
+  pointer-events: auto !important;
+}
+
+.react-flow__resize-control:hover {
+  z-index: 21 !important;
+}
+
+/* Ensure rotation handle has highest priority */
+.react-flow__node .nodrag[title="Rotate"] {
+  z-index: 30 !important;
+  pointer-events: auto !important;
+}
+
+
+
+/* Improve connection line visibility */
+.react-flow__connection-line {
+  stroke: #3b82f6 !important;
+  stroke-width: 2px !important;
+  z-index: 10 !important;
+}
+
+.react-flow__connection-line-path {
+  stroke-dasharray: 5 5 !important;
+  animation: dash 1s linear infinite !important;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10px;
+  }
+}
+
+/* Selection styling */
+.react-flow__selection {
+  background: rgba(59, 130, 246, 0.1) !important;
+  border: 2px solid #3b82f6 !important;
+  border-radius: 4px !important;
+}
+
+/* Panel styling */
+.react-flow__panel {
+  background: rgba(31, 41, 55, 0.95) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid #4b5563 !important;
+}
+
+/* Existing styles - Updated for dark theme consistency */
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  color-scheme: dark;
+  color: #e5e7eb;
+  background-color: #111827;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+a {
+  font-weight: 500;
+  color: #3b82f6;
+  text-decoration: inherit;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: #60a5fa;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #111827;
+}
+
+h1 {
+  font-size: 2.5rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #f9fafb;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.75em 1.5em;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #3b82f6;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+button:hover {
+  background-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Enhanced input styling for dark theme */
+input, textarea, select {
+  border-radius: 8px;
+  border: 1px solid #4b5563;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Utility classes for the diagram editor */
+.diagram-editor-bg {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+}
+
+.sidebar-gradient {
+  background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+}
+
+.header-gradient {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+}
+
+/* Enhanced shadow utilities */
+.shadow-soft {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.shadow-medium {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.shadow-strong {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Smooth transitions */
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus states */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900;
+}
+
+/* Animation classes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Ensure connection handles are visible and properly styled */
+.connection-handle {
+  transition: all 0.15s ease !important;
+  cursor: crosshair !important;
+  width: 9px !important;
+  height: 9px !important;
+  min-width: 9px !important;
+  min-height: 9px !important;
+  background: #10b981 !important;
+  border: 1.5px solid #ffffff !important;
+  border-radius: 50% !important;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.4) !important;
+  position: absolute !important;
+  pointer-events: auto !important;
+  z-index: 10 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.connection-handle:hover {
+  transform: scale(1.1) !important;
+  background: #059669 !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.6) !important;
+}
+
+.connection-handle:active {
+  transform: scale(1.05) !important;
+  background: #047857 !important;
+}
+
+/* Ensure ReactFlow handles are properly styled */
+.react-flow__handle {
+  width: 9px !important;
+  height: 9px !important;
+  background: #10b981 !important;
+  border: 1.5px solid #ffffff !important;
+  border-radius: 50% !important;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.4) !important;
+  transition: all 0.15s ease !important;
+  /* Allow custom positioning to work */
+  position: absolute;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.1) !important;
+  background: #059669 !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.6) !important;
+}
+
+/* Connection line improvements */
+.react-flow__connection-line {
+  stroke: #10b981 !important;
+  stroke-width: 2px !important;
+  stroke-dasharray: 5,5 !important;
+  animation: dash 1s linear infinite !important;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10px;
+  }
+}
+
+/* Connection line preview improvements */
+.react-flow__connection-line-path {
+  stroke: #10b981 !important;
+  stroke-width: 2px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+/* Node selection improvements */
+.react-flow__node.selected .connection-handle {
+  opacity: 1 !important;
+  transform: scale(1.05) !important;
+}
+
+/* Connection handle visibility improvements */
+.react-flow__node:hover .connection-handle,
+.react-flow__node.selected .connection-handle {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Ensure edges are visible */
+.react-flow__edge {
+  z-index: 5 !important;
+}
+
+.react-flow__edge-path {
+  stroke: #1970fc !important;
+  stroke-width: 2px !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+}
+
+/* Edge selection */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #059669 !important;
+  stroke-width: 3px !important;
+}
+
+/* Connection handle tooltip - simplified */
+.connection-handle::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+.connection-handle:hover::after {
+  opacity: 1;
+}
+
+/* Valid connection target highlighting */
+.react-flow__node.valid-connection-target {
+  filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4));
+}
+
+/* Connection handle glow effect - subtle */
+.connection-handle.connecting {
+  animation: pulse 1.5s ease-in-out infinite alternate !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
+}
+
+@keyframes pulse {
+  from {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  }
+  to {
+    box-shadow: 0 0 16px rgba(16, 185, 129, 0.8);
+  }
+}
+
+/* Ensure connection handles are always visible when node is selected or hovered */
+.react-flow__node.selected .react-flow__handle,
+.react-flow__node:hover .react-flow__handle {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
