@@ -157,6 +157,7 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
     strokeLinecap: 'round',
     strokeLinejoin: 'round',
     filter: 'none',
+    fill: 'none',
     ...style 
   };
 
@@ -178,7 +179,7 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
           <div
             style={{
               position: 'absolute',
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`, // center on the line
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
               zIndex: 10,
               pointerEvents: 'all',
               minWidth: 40,
@@ -203,7 +204,6 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
                   borderRadius: 18,
                   border: '2px solid #1970fc',
                   background: '#fff',
-                  boxShadow: '0 2px 8px #0002',
                   fontSize: 15,
                   outline: 'none',
                   minWidth: 60,
@@ -214,6 +214,7 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
               />
             ) : (
               <div
+                className="edge-label-display"
                 onClick={handleLabelClick}
                 onDoubleClick={handleLabelClick}
                 style={{
@@ -222,7 +223,7 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
                   borderRadius: 16,
                   background: labelText ? '#fff' : 'rgba(255,255,255,0.8)',
                   border: labelText ? '2px solid #1970fc' : '1px dashed #9ca3af',
-                  boxShadow: labelText ? '0 2px 8px #0002' : 'none',
+                  boxShadow: 'none',
                   fontSize: 14,
                   color: labelColor,
                   cursor: 'text',

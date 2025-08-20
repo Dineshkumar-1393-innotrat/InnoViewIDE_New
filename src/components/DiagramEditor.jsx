@@ -15,6 +15,8 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useDrop } from 'react-dnd';
 import { toPng } from 'html-to-image';
+import { toast } from 'react-toastify';
+import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { DndProvider } from 'react-dnd';
@@ -254,48 +256,75 @@ const DiagramEditorContent = () => {
       console.error('Export ref not available');
       return;
     }
-    
-    // Show watermark before export
+
     if (watermarkRef.current) {
       watermarkRef.current.style.visibility = 'visible';
     }
-    
-    // Use the exportRef for PNG export
+
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .react-flow__edge-path { fill: none !important; }
+      .edge-label-display { background: transparent !important; }
+    `;
+    document.head.appendChild(style);
+
+    const cleanup = () => {
+      if (watermarkRef.current) {
+        watermarkRef.current.style.visibility = 'hidden';
+      }
+      document.head.removeChild(style);
+    };
+
     toPng(exportRef.current, {
       quality: 1.0,
-      backgroundColor: '#374151', // Match the canvas background color
+      backgroundColor: '#374151',
+      cacheBust: true,
+      filter: (node) => {
+        if (
+          node.classList?.contains('react-flow__controls') ||
+          node.classList?.contains('react-flow__minimap')
+        ) {
+          return false;
+        }
+        return true;
+      },
     }).then((dataUrl) => {
       const link = document.createElement('a');
       link.download = 'diagram.png';
       link.href = dataUrl;
       link.click();
-      
-      // Hide watermark after export
-      if (watermarkRef.current) {
-        watermarkRef.current.style.visibility = 'hidden';
-      }
+      cleanup();
     }).catch((error) => {
       console.error('Error exporting image:', error);
-      // Hide watermark on error
-      if (watermarkRef.current) {
-        watermarkRef.current.style.visibility = 'hidden';
-      }
+      cleanup();
     });
   }, []);
 
-  const saveToJSON = useCallback(() => {
-    const data = { nodes: nodesFromStore, edges };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: 'application/json',
-    });
-    const link = document.createElement('a');
-    link.download = 'diagram.json';
-    link.href = URL.createObjectURL(blob);
-    link.click();
+  const saveToJSON = useCallback(async () => {
+    const payload = {
+      nodes: nodesFromStore,
+      edges: edges,
+      fileORFolderId: "6867c3c158c6ae8e6b9b7fe3",
+      productId: "6867c3bf58c6ae8e6b9b7fe0",
+      userId: "67add4f3d16ff7c76ba10bcf"
+    };
+
+    try {
+      const response = await axios.post('https://eureka.innotrat.in/api/v1/addFlowDiagram', payload, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Diagram saved successfully:', response.data);
+      toast.success('Diagram saved successfully!');
+    } catch (error) {
+      console.error('Error saving diagram:', error);
+      toast.error('Failed to save diagram. See console for details.');
+    }
   }, [nodesFromStore, edges]);
 
-  const loadFromJSON = useCallback((e) => {
-    const file = e.target.files[0];
+  const loadFromJSON = useCallback((event) => {
+    const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
@@ -304,42 +333,28 @@ const DiagramEditorContent = () => {
         let jsonData = JSON.parse(reader.result);
         console.log('Loading JSON data:', jsonData);
         
-        // Ensure we have the expected structure
         if (!jsonData || typeof jsonData !== 'object') {
           throw new Error('Invalid JSON structure');
         }
         
         let { nodes: loadedNodes, edges: loadedEdges } = jsonData;
         
-        // Ensure arrays exist
         if (!Array.isArray(loadedNodes)) loadedNodes = [];
         if (!Array.isArray(loadedEdges)) loadedEdges = [];
         
-        console.log('Original nodes:', loadedNodes);
-        console.log('Original edges:', loadedEdges);
-        
-        // Clear existing data before loading new data
         dispatch(setNodes([]));
         dispatch(setEdges([]));
         
-        // Validate and fix nodes
         loadedNodes = loadedNodes.map((node, index) => {
-          // Generate default position if missing
           let position = node.position;
           if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
             position = { x: index * 150, y: index * 100 };
           }
           
-          // Handle different node data formats
           let nodeData = node.data || {};
-          if (node.label) {
-            nodeData.label = node.label;
-          }
-          if (node.shape) {
-            nodeData.shape = node.shape;
-          }
+          if (node.label) nodeData.label = node.label;
+          if (node.shape) nodeData.shape = node.shape;
           
-          // Ensure shape data exists
           if (!nodeData.shape) {
             nodeData.shape = { 
               name: 'rectangle', 
@@ -350,7 +365,7 @@ const DiagramEditorContent = () => {
             };
           }
           
-          const processedNode = {
+          return {
             ...node,
             id: node.id || `node-${Math.random().toString(36).substr(2, 9)}`,
             position: position,
@@ -367,36 +382,17 @@ const DiagramEditorContent = () => {
             },
             type: node.type || 'resizableNode'
           };
-          
-          console.log('Processed node:', processedNode);
-          return processedNode;
         });
 
-        // Validate and fix edges
         loadedEdges = loadedEdges.map(edge => {
-          // Handle different edge formats
-          let source = edge.source;
-          let target = edge.target;
+          let source = typeof edge.source === 'object' && edge.source?.id ? edge.source.id : edge.source;
+          let target = typeof edge.target === 'object' && edge.target?.id ? edge.target.id : edge.target;
           
-          // Check if source/target are objects with id property
-          if (typeof source === 'object' && source?.id) {
-            source = source.id;
-          }
-          if (typeof target === 'object' && target?.id) {
-            target = target.id;
-          }
-          
-          // Handle edge data from different formats
           let edgeData = edge.data || {};
-          if (edge.label) {
-            edgeData.label = edge.label;
-          }
-          if (edge.labelColor) {
-            edgeData.labelColor = edge.labelColor;
-          }
+          if (edge.label) edgeData.label = edge.label;
+          if (edge.labelColor) edgeData.labelColor = edge.labelColor;
           
-          // Ensure edge has required properties
-          const processedEdge = {
+          return {
             ...edge,
             id: edge.id || `edge-${Math.random().toString(36).substr(2, 9)}`,
             source: source,
@@ -421,27 +417,13 @@ const DiagramEditorContent = () => {
               color: edge.style?.stroke || edge.color || '#3b82f6',
             }
           };
-          
-          console.log('Processed edge:', processedEdge);
-          return processedEdge;
         });
 
-        // Filter out edges with invalid source/target nodes
         const validNodeIds = new Set(loadedNodes.map(node => node.id));
-        console.log('Valid node IDs:', Array.from(validNodeIds));
-        
-        loadedEdges = loadedEdges.filter(edge => {
-          const isValid = validNodeIds.has(edge.source) && validNodeIds.has(edge.target);
-          if (!isValid) {
-            console.warn('Filtering out invalid edge:', edge, 'Valid nodes:', Array.from(validNodeIds));
-          }
-          return isValid;
-        });
+        loadedEdges = loadedEdges.filter(edge => validNodeIds.has(edge.source) && validNodeIds.has(edge.target));
 
-        // Ensure unique IDs and update edge connections
         const nodeIdMap = {};
         const uniqueNodeIds = new Set();
-        
         loadedNodes = loadedNodes.map(node => {
           let newId = node.id;
           let counter = 1;
@@ -449,9 +431,7 @@ const DiagramEditorContent = () => {
             newId = `${node.id}-${counter}`;
             counter++;
           }
-          if (newId !== node.id) {
-            nodeIdMap[node.id] = newId;
-          }
+          if (newId !== node.id) nodeIdMap[node.id] = newId;
           uniqueNodeIds.add(newId);
           return { ...node, id: newId };
         });
@@ -462,7 +442,6 @@ const DiagramEditorContent = () => {
           target: nodeIdMap[edge.target] || edge.target
         }));
 
-        // Ensure unique edge IDs (less critical but good practice)
         const uniqueEdgeIds = new Set();
         loadedEdges = loadedEdges.map(edge => {
           let newId = edge.id;
@@ -475,13 +454,9 @@ const DiagramEditorContent = () => {
           return { ...edge, id: newId };
         });
 
-        console.log('Final nodes to dispatch:', loadedNodes);
-        console.log('Final edges to dispatch:', loadedEdges);
-        
         dispatch(setNodes(loadedNodes));
         dispatch(setEdges(loadedEdges));
         
-        // Fit view after loading
         setTimeout(() => {
           if (reactFlowInstance) {
             reactFlowInstance.fitView({ padding: 0.1 });
@@ -735,8 +710,8 @@ const DiagramEditorContent = () => {
             borderRadius: '6px',
           }}
         >
-          <img src={watermarkLogo} alt="Watermark" style={{color:'#0413e0', width:'24px', height:'auto' }} />
-          <span style={{ color: '#333', fontSize: '12px', fontWeight: '500' }}>Made with InnoTrat Labs</span>
+          <img src={watermarkLogo} alt="Watermark" style={{ width:'24px', height:'auto' }} />
+          <span style={{ color: '#000000', fontSize: '12px', fontWeight: '600' }}>Made with InnoTrat Labs</span>
           
         </div>
       </div>

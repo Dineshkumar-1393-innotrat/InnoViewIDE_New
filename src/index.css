@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.toast-container-custom {
+  z-index: 99999 !important;
+}
+
 /* Custom scrollbar styles */
 .custom-blue-scrollbar::-webkit-scrollbar {
   width: 6px;
@@ -120,16 +124,18 @@
   stroke-width: 3px !important;
 }
 
+/* Fix for exported image artifacts */
+.react-flow__edge-path {
+  fill: none !important;
+}
+
 /* Enhanced node and edge styling */
 .react-flow__node {
   transition: all 0.2s ease !important;
   will-change: transform !important;
 }
 
-/* Remove the scale transform on hover to prevent flickering */
-.react-flow__node:hover {
-  /* transform: scale(1.02) !important; */
-}
+/* The scale transform on hover was removed to prevent flickering */
 
 .react-flow__edge {
   transition: all 0.2s ease !important;

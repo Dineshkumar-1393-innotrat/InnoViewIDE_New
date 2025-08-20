@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { Routes, Route } from "react-router-dom";
 import { ChakraProvider } from "@chakra-ui/react"; 
 import { Provider } from 'react-redux';
@@ -42,6 +44,19 @@ const App = () => {
       <ChakraProvider>
         {/* <Navbar />  */}
         
+        <ToastContainer
+          className="toast-container-custom"
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/template" element={<Template />} />
