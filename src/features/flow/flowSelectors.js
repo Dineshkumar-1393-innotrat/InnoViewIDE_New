@@ -14,6 +14,9 @@ export const selectCanRedo = (state) => state.flow.future && state.flow.future.l
 // Selector for editing edge ID
 export const selectEditingEdgeId = (state) => state.flow.present?.editingEdgeId || null;
 
+// Selector for connector type
+export const selectConnectorType = (state) => state.flow.present?.connectorType || 'single';
+
 // Selector for selected nodes
 export const selectSelectedNodes = createSelector(
   [selectNodes],

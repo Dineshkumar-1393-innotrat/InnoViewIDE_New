@@ -10,10 +10,11 @@ export default function ResizableNode(props) {
     id,
     data,
     selected,
-    isHovering, // New prop from DiagramEditor
     dragHandle,
     ...rest
   } = props;
+
+  const { isHovering } = data;
 
   const nodeId = useNodeId();
   const { getNode, getZoom } = useReactFlow();
@@ -38,6 +39,15 @@ export default function ResizableNode(props) {
   useEffect(() => {
     setIsSelected(selected);
   }, [selected]);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      // Move cursor to the end of the text
+      inputRef.current.select();
+    }
+  }, [editing]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -190,26 +200,27 @@ export default function ResizableNode(props) {
 
   // Connection handle style - distinct from drag handles
   const connectionHandleStyle = {
-    width: Math.max(8, Math.min(12, 10 / zoom)),
-    height: Math.max(8, Math.min(12, 10 / zoom)),
-    background: '#10b981', // Green color to distinguish from drag handles
+    width: Math.max(10, Math.min(14, 12 / zoom)),
+    height: Math.max(10, Math.min(14, 12 / zoom)),
+    background: '#3b82f6', // Blue color for better visibility
     border: '2px solid #ffffff',
     borderRadius: '50%',
-    zIndex: 10,
-    boxShadow: '0 2px 6px rgba(16, 185, 129, 0.5)',
+    zIndex: 15,
+    boxShadow: '0 2px 6px rgba(59, 130, 246, 0.4)',
     transition: 'all 0.15s ease',
     cursor: 'crosshair',
     position: 'absolute',
-    opacity: showConnectionHandles ? 0.9 : 0, // Hide when not interacting
-    // Ensure handles are truly fixed
+    opacity: showConnectionHandles ? 1 : 0, // Full opacity when visible
     transform: 'translate(-50%, -50%)',
     pointerEvents: 'auto',
   };
 
   // Generate connection handles based on shape type and anchors
   const getConnectionHandles = () => {
-    // Default connection handles - positioned exactly on shape boundaries
-    // Use fewer, more precise connection points to avoid clutter
+    if (data?.shape?.getHandles) {
+      return data.shape.getHandles();
+    }
+    // Default connection handles if none are provided by the shape
     return [
       { id: 'top', position: Position.Top, style: { top: '0%', left: '50%', transform: 'translate(-50%, -50%)' } },
       { id: 'bottom', position: Position.Bottom, style: { top: '100%', left: '50%', transform: 'translate(-50%, -50%)' } },
@@ -252,9 +263,26 @@ export default function ResizableNode(props) {
       const coords = getEventCoordinates(moveEvent);
       const dx = coords.x - center.x;
       const dy = coords.y - center.y;
-      let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90; // 0 is vertical
-      if (angle < 0) angle += 360;
-      dispatch(rotateNode({ id, rotation: angle }));
+      
+      // Calculate angle from center to mouse position
+      let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      
+      // Add 90 degrees to make 0 degrees point upward
+      angle += 90;
+      
+      // Snap to 15-degree increments when Shift is held
+      if (moveEvent.shiftKey) {
+        angle = Math.round(angle / 15) * 15;
+      }
+      
+      // Normalize angle to 0-360 range
+      angle = ((angle % 360) + 360) % 360;
+      
+      // Update the node rotation in Redux
+      const updatedNodes = allNodes.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, rotation: angle } } : n
+      );
+      dispatch(setNodes(updatedNodes));
     };
 
     const onUp = () => {
@@ -302,7 +330,7 @@ export default function ResizableNode(props) {
         minWidth={Math.max(40, 60 / zoom)}
         minHeight={Math.max(30, 45 / zoom)}
         isVisible={showHandles}
-        lineClassName="border-blue-400 border border-dashed"
+        lineClassName=""
         handleClassName="resize-handle"
         keepAspectRatio={false}
         onResizeStart={handleResizeStart}
@@ -315,8 +343,7 @@ export default function ResizableNode(props) {
           zIndex: 20,
         }}
         lineStyle={{
-          border: '1.5px dashed #2563eb',
-          borderRadius: 0,
+          display: 'none',
         }}
       />
 
@@ -324,17 +351,27 @@ export default function ResizableNode(props) {
       {isValidShape && (
         <svg
           viewBox={data.shape.icon.viewBox}
-          width={svgWidth}
-          height={svgHeight}
-          style={{ ...svgStyle, background: 'transparent' }}
-          preserveAspectRatio="xMidYMid meet"
+          width="100%"
+          height="100%"
+          style={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 1,
+            pointerEvents: 'none'
+          }}
+          preserveAspectRatio="none"
         >
           <path
             d={data.shape.icon.path}
-            fill="transparent"
-            stroke={style.stroke || data.color || '#6b7280'}
-            strokeWidth="2"
+            fill="none"
+            stroke={style.stroke || data.color || '#1f2937'}
+            strokeWidth="2.5"
             vectorEffect="non-scaling-stroke"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </svg>
       )}
@@ -401,33 +438,33 @@ export default function ResizableNode(props) {
       )}
 
       {/* Connection handles - only visible when interacting */}
-      {connectionHandles.map((h, i) => (
-        <Handle
-          key={h.id}
-          id={h.id}
-          type="source"
-          position={h.position}
-          isConnectable={true}
-          style={{
-            ...connectionHandleStyle,
-            ...h.style,
-            display: showConnectionHandles ? 'block' : 'none', // Only show when interacting
-            // Ensure handles are truly fixed and don't move
-            position: 'absolute',
-            pointerEvents: 'auto',
-            // Use the handle's own transform if it has one, otherwise use default
-            transform: h.style?.transform || 'translate(-50%, -50%)',
-          }}
-          onMouseDown={(e) => {
-            console.log('Connection handle clicked:', h.id, h.position, h.style);
-            e.stopPropagation();
-          }}
-          onMouseEnter={(e) => {
-            console.log('Connection handle hover:', h.id, h.position);
-          }}
-          className="connection-handle nodrag"
-          title={`Connect from ${h.id}`} // Tooltip for better UX
-        />
+      {connectionHandles.map((h) => (
+        <React.Fragment key={h.id}>
+          <Handle
+            id={`${h.id}-source`}
+            type="source"
+            position={h.position}
+            isConnectable={true}
+            style={{
+              ...connectionHandleStyle,
+              ...h.style,
+              display: showConnectionHandles ? 'block' : 'none',
+            }}
+            className="connection-handle nodrag"
+          />
+          <Handle
+            id={`${h.id}-target`}
+            type="target"
+            position={h.position}
+            isConnectable={true}
+            style={{
+              ...connectionHandleStyle,
+              ...h.style,
+              display: showConnectionHandles ? 'block' : 'none',
+            }}
+            className="connection-handle nodrag"
+          />
+        </React.Fragment>
       ))}
 
       {/* Rotation handle: only show on hover or selected */}

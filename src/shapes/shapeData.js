@@ -516,6 +516,17 @@ export const shapeData = {
       }
     },
     {
+      id: 'connector-double-arrow',
+      name: 'Double Arrow',
+      icon: {
+        viewBox: '0 0 100 100',
+        path: 'M5 95 L95 5 M75 25 L95 5 L75 5 M25 75 L5 95 L25 95',
+        stroke: '#000',
+        strokeWidth: 2,
+        fill: 'none'
+      }
+    },
+    {
       id: 'connector-curved-1',
       name: 'Curved Connector',
       icon: {
@@ -536,7 +547,23 @@ export const shapeData = {
         strokeWidth: 2,
         fill: 'none'
       }
+    },
+    {
+      id: 'connector-double-arrow-header',
+      name: 'Double Arrow Header',
+      icon: {
+        viewBox: '0 0 100 100',
+        path: `
+          M10 50 L90 50
+          M10 50 L20 45 L20 55 Z
+          M90 50 L80 45 L80 55 Z
+        `,
+        stroke: '#000',
+        strokeWidth: 2,
+        fill: 'none'
+      }
     }
+    
   ],
 
 }; 

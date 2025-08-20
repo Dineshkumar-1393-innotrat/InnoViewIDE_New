@@ -340,12 +340,6 @@ button {
   gap: 0.5rem;
 }
 
-button:hover {
-  background-color: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
 button:active {
   transform: translateY(0);
 }
@@ -357,7 +351,9 @@ button:focus-visible {
 }
 
 /* Enhanced input styling for dark theme */
-input, textarea, select {
+input,
+textarea,
+select {
   border-radius: 8px;
   border: 1px solid #4b5563;
   padding: 0.75rem;
@@ -367,13 +363,16 @@ input, textarea, select {
   color: #e5e7eb;
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-input::placeholder, textarea::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: #9ca3af;
 }
 
@@ -419,6 +418,7 @@ input::placeholder, textarea::placeholder {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -429,6 +429,7 @@ input::placeholder, textarea::placeholder {
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -439,6 +440,7 @@ input::placeholder, textarea::placeholder {
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -455,4 +457,12 @@ input::placeholder, textarea::placeholder {
 
 .animate-scale-in {
   animation: scaleIn 0.2s ease-out;
+}
+
+/* navabar hover effect */
+button:hover {
+  background-color: #1f2937 !important;
+  transition-property: all !important;
+ transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }

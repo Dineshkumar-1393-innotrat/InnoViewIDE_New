@@ -11,9 +11,11 @@
   will-change: filter;
   transition: filter 300ms;
 }
+
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
+
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
 }
@@ -22,6 +24,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -48,13 +51,16 @@
   position: absolute !important;
   transform-origin: center !important;
   transition: all 0.15s ease !important;
-  opacity: 0 !important; /* Hidden by default */
+  opacity: 0 !important;
+  /* Hidden by default */
 }
 
 .connection-handle:hover {
-  background: #059669 !important; /* Darker green on hover */
+  background: #059669 !important;
+  /* Darker green on hover */
   box-shadow: 0 3px 10px rgba(16, 185, 129, 0.6) !important;
-  transform: scale(1.1) !important; /* Slight scale on hover for feedback */
+  transform: scale(1.1) !important;
+  /* Slight scale on hover for feedback */
 }
 
 .nodrag {
@@ -64,7 +70,8 @@
 .react-flow__resize-control {
   pointer-events: auto !important;
   cursor: nw-resize !important;
-  background: #2563eb !important; /* Blue for drag handles */
+  background: #2563eb !important;
+  /* Blue for drag handles */
 }
 
 .react-flow__resize-control:hover {
@@ -121,6 +128,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -147,11 +155,13 @@
 
 /* Visual distinction between connection and drag handles */
 .connection-handle {
-  background: #10b981 !important; /* Green for connection */
+  background: #10b981 !important;
+  /* Green for connection */
 }
 
 .react-flow__resize-control {
-  background: #2563eb !important; /* Blue for drag */
+  background: #2563eb !important;
+  /* Blue for drag */
 }
 
 /* Responsive improvements */
@@ -160,17 +170,17 @@
     min-width: 260px;
     max-width: 280px;
   }
-  
+
   .shape-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
   }
-  
+
   .category-button {
     padding: 0.5rem 0.75rem;
     font-size: 0.75rem;
   }
-  
+
   .category-button span {
     display: none;
   }
@@ -181,7 +191,7 @@
     min-width: 280px;
     max-width: 320px;
   }
-  
+
   .shape-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.75rem;
@@ -193,7 +203,7 @@
     min-width: 300px;
     max-width: 350px;
   }
-  
+
   .shape-grid {
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
@@ -226,17 +236,17 @@
     transform: scale(0.8);
     transform-origin: bottom right;
   }
-  
+
   .react-flow__node {
     min-width: 80px;
     min-height: 40px;
   }
-  
+
   .connection-handle {
     width: 10px !important;
     height: 10px !important;
   }
-  
+
   .delete-button {
     width: 18px;
     height: 18px;
@@ -249,11 +259,11 @@
   .connection-handle:hover {
     transform: none !important;
   }
-  
+
   .category-button:hover {
     transform: none;
   }
-  
+
   .delete-button:hover {
     transform: none;
   }
@@ -275,7 +285,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
   z-index: 30;
 }
@@ -283,7 +293,7 @@
 .delete-button:hover {
   background: #dc2626;
   transform: scale(1.1);
-  box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 .delete-button:active {
@@ -317,6 +327,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -340,6 +351,7 @@
     opacity: 1;
     transform: translateY(0);
   }
+
   to {
     opacity: 0;
     transform: translateY(10px);
@@ -356,6 +368,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -370,3 +383,4 @@
   background-color: #4b5563;
   transform: translateX(2px);
 }
+

@@ -27,12 +27,14 @@ import {
   MenuList,
   MenuItem
 } from "@chakra-ui/react";
+import { FiCpu, FiPlay, FiLayout, FiGrid, FiCode, FiLogOut, FiLogIn } from 'react-icons/fi';
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";  
 import MenuOptions from "./MenuOptions";  
 import BackToHome from "./BackToHome";
 import Ellipse521 from '../images/Ellipse 521.svg';
 import SimulationPopup from './SimulationPopup';
+import HeaderButton from './HeaderButton';
 
 const Navbar = () => {
   const { isAuthenticated, user, loginWithGoogle, logout } = useAuth();
@@ -93,6 +95,7 @@ const Navbar = () => {
         padding="0 10px"
         borderBottom="1px solid gray"
         zIndex={999}
+        className="bg-gray-800"
       >
         {/* Left Side: Logo, Back to Home and Menu Options */}
         <Box display="flex" alignItems="center" gap="15px">
@@ -139,76 +142,107 @@ const Navbar = () => {
 
           {/* Navigation Buttons */}
           {location.pathname !== '/embedded' && (
-            <Button 
-              size="sm" 
+            <HeaderButton 
               onClick={handleEmbeddedClick} 
-              bg={'transparent'}
-              color={textColor}
-              _hover={{ bg: 'blue.500', color: 'white' }}
+              title="Go to Embedded Page"
+              icon={FiCpu}
             >
               Embedded
-            </Button>
+            </HeaderButton>
           )}
           {location.pathname !== '/simulation' && (
-            <Button 
-              size="sm" 
+            <HeaderButton 
               onClick={handleSimulationClick} 
-              bg={'transparent'}
-              color={textColor}
-              _hover={{ bg: 'blue.500', color: 'white' }}
+              title="Go to Simulation Page"
+              icon={FiPlay}
             >
               Simulation
-            </Button>
+            </HeaderButton>
           )}
-          <Button 
-            size="sm" 
+          <HeaderButton 
             onClick={handleDiagramRedirect} 
-            bg={'transparent'}
-            color={textColor}
-            _hover={{ bg: 'blue.500', color: 'white' }}
+            title="Go to Flowchart"
+            icon={FiLayout}
           >
             Flowchart
-          </Button>
+          </HeaderButton>
 
-          <Button 
-            size="sm" 
+          <HeaderButton 
             onClick={handleDiagramRedirect} 
-            bg={'transparent'}
-            color={textColor}
-            _hover={{ bg: 'blue.500', color: 'white' }}
+            title="Go to Block Diagram"
+            icon={FiGrid}
           >
             Block Diagram
-          </Button>
+          </HeaderButton>
 
           {/* Conditional Code Button */}
           {location.pathname === '/simulation' && (
             <SimulationPopup>
-              <Button 
-                size="sm" 
-                bg={'transparent'}
-                color={textColor}
-                _hover={{ bg: 'blue.500', color: 'white' }}
+              <HeaderButton 
+                icon={FiCode}
               >
                 Code
-              </Button>
+              </HeaderButton>
             </SimulationPopup>
           )}
 
           {/* Profile Section */}
-          <Avatar
-            name={isAuthenticated ? (user?.name || "User") : "Guest User"}
-            src={isAuthenticated ? user?.picture : undefined}
-            boxSize="28px"
-            border="2px solid"
-            borderColor={isAuthenticated ? "green.400" : "gray.400"}
-            cursor="pointer"
-            _hover={{
-              transform: "scale(1.1)",
-              boxShadow: "lg",
-            }}
-            transition="all 0.2s"
-            onClick={onProfileOpen}
-          />
+          <Menu>
+            <MenuButton
+              as={Avatar}
+              name={isAuthenticated ? (user?.name || "User") : "Guest User"}
+              src={isAuthenticated ? user?.picture : undefined}
+              boxSize="28px"
+              border="2px solid"
+              borderColor={isAuthenticated ? "green.400" : "gray.400"}
+              cursor="pointer"
+              _hover={{
+                transform: "scale(1.1)",
+                boxShadow: "lg",
+              }}
+              transition="all 0.2s"
+            />
+            <MenuList>
+              {isAuthenticated ? (
+                <>
+                  <MenuItem>
+                    <Box display="flex" alignItems="center" w="100%">
+                      <Avatar
+                        name={user?.name || "User"}
+                        src={user?.picture}
+                        boxSize="32px"
+                        mr={3}
+                        border="2px solid"
+                        borderColor="green.400"
+                      />
+                      <Box>
+                        <Text fontWeight="bold" fontSize="sm">{user?.name}</Text>
+                        <Text fontSize="xs" color="gray.500">{user?.email}</Text>
+                      </Box>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem 
+                    onClick={logout}
+                    icon={<FiLogOut />}
+                    _hover={{ bg: 'red.50', color: 'red.600' }}
+                    color="red.500"
+                  >
+                    Log Out
+                  </MenuItem>
+                </>
+              ) : (
+                <MenuItem 
+                  onClick={loginWithGoogle}
+                  icon={<FiLogIn />}
+                  _hover={{ bg: 'blue.50', color: 'blue.600' }}
+                  color="blue.500"
+                  fontWeight="medium"
+                >
+                  Log In
+                </MenuItem>
+              )}
+            </MenuList>
+          </Menu>
 
           {/* Debug info - remove after testing */}
           {console.log('Auth Debug:', { isAuthenticated, user })}
@@ -281,6 +315,7 @@ const Navbar = () => {
       </Modal>
 
       {/* Profile Modal */}
+      {/*
       <Modal isOpen={isProfileOpen} onClose={onProfileClose}>
         <ModalOverlay />
         <ModalContent>
@@ -337,6 +372,7 @@ const Navbar = () => {
           </ModalBody>
         </ModalContent>
       </Modal>
+      */}
     </Box>
   );
 };

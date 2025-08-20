@@ -16,7 +16,8 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { ChevronDownIcon } from "@chakra-ui/icons";
-import { FaFile, FaEdit, FaEye, FaTools, FaQuestionCircle } from "react-icons/fa";
+import { FiTool, FiHelpCircle, FiFile } from 'react-icons/fi';
+import HeaderButton from './HeaderButton';
 
 const MenuOptions = ({ onOpen }) => {
   const { colorMode } = useColorMode();
@@ -382,20 +383,21 @@ const MenuOptions = ({ onOpen }) => {
 
       {/* File Menu code */}
       <Menu>
-        <MenuButton variant="link" rightIcon={<ChevronDownIcon />}>
-          File
-        </MenuButton>
-        <MenuList>
-          <MenuItem icon={<FaFile />} onClick={onOpen}>
-            New
-          </MenuItem>
-          <MenuItem icon={<FaFile />} onClick={handleOpen}>Open</MenuItem>
-          <MenuItem icon={<FaFile />} onClick={handleSave}>Save</MenuItem>
-          {/* <MenuItem icon={<FaFile />}>Save As</MenuItem> */}
-          <MenuItem icon={<FaFile />} onClick={handleExport}>Export</MenuItem>
-          <MenuItem icon={<FaFile />} onClick={handleImport}>Import</MenuItem>
-          <MenuItem icon={<FaFile />} onClick={handleExit}>Exit</MenuItem>
-        </MenuList>
+        {({ isOpen }) => (
+          <>
+            <MenuButton as={HeaderButton} icon={FiFile} isActive={isOpen}>
+              File
+            </MenuButton>
+            <MenuList>
+              <MenuItem onClick={onOpen}>New</MenuItem>
+              <MenuItem onClick={handleOpen}>Open</MenuItem>
+              <MenuItem onClick={handleSave}>Save</MenuItem>
+              <MenuItem onClick={handleExport}>Export</MenuItem>
+              <MenuItem onClick={handleImport}>Import</MenuItem>
+              <MenuItem onClick={handleExit}>Exit</MenuItem>
+            </MenuList>
+          </>
+        )}
       </Menu>
 
       {/* Edit Menu code */}
@@ -435,30 +437,38 @@ const MenuOptions = ({ onOpen }) => {
 
       {/* Tools Menu code */}
       <Menu>
-        <MenuButton variant="link" rightIcon={<ChevronDownIcon />}>
-          Tools
-        </MenuButton>
-        <MenuList>
-          <MenuItem icon={<FaTools />} onClick={handleOptions}>Options</MenuItem>
-          <MenuItem icon={<FaTools />} onClick={handleCompile}>Compile</MenuItem>
-          <MenuItem icon={<FaTools />} onClick={handleBuild}>Build</MenuItem>
-          <MenuItem icon={<FaTools />} onClick={handleDebug}>Debug</MenuItem>
-          <MenuItem icon={<FaTools />} onClick={handleFlash}>Flash</MenuItem>
-          <MenuItem icon={<FaTools />} onClick={handleErase}>Erase</MenuItem>
-          <MenuItem icon={<FaTools />} onClick={handleSerialMonitor}>Serial Monitor</MenuItem>
-          <MenuItem icon={<FaTools />} onClick={handleTerminal}>Terminal</MenuItem>
-        </MenuList>
+        {({ isOpen }) => (
+          <>
+            <MenuButton as={HeaderButton} icon={FiTool} isActive={isOpen}>
+              Tools
+            </MenuButton>
+            <MenuList>
+              <MenuItem onClick={handleOptions}>Options</MenuItem>
+              <MenuItem onClick={handleCompile}>Compile</MenuItem>
+              <MenuItem onClick={handleBuild}>Build</MenuItem>
+              <MenuItem onClick={handleDebug}>Debug</MenuItem>
+              <MenuItem onClick={handleFlash}>Flash</MenuItem>
+              <MenuItem onClick={handleErase}>Erase</MenuItem>
+              <MenuItem onClick={handleSerialMonitor}>Serial Monitor</MenuItem>
+              <MenuItem onClick={handleTerminal}>Terminal</MenuItem>
+            </MenuList>
+          </>
+        )}
       </Menu>
 
       {/* Help Menu code */}
       <Menu>
-        <MenuButton variant="link" rightIcon={<ChevronDownIcon />}>
-          Help
-        </MenuButton>
-        <MenuList>
-          <MenuItem icon={<FaQuestionCircle />} onClick={handleDocumentation}>Documentation</MenuItem>
-          <MenuItem icon={<FaQuestionCircle />} onClick={handleAbout}>About</MenuItem>
-        </MenuList>
+        {({ isOpen }) => (
+          <>
+            <MenuButton as={HeaderButton} icon={FiHelpCircle} isActive={isOpen}>
+              Help
+            </MenuButton>
+            <MenuList>
+              <MenuItem onClick={handleDocumentation}>Documentation</MenuItem>
+              <MenuItem onClick={handleAbout}>About</MenuItem>
+            </MenuList>
+          </>
+        )}
       </Menu>
 
       {/* Terminal Menu code */}

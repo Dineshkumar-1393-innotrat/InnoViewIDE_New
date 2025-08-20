@@ -1,8 +1,11 @@
 import { shapeData } from '../shapes/shapeData';
-import { FiSearch, FiX, FiChevronDown, FiGrid, FiBox } from 'react-icons/fi';
+import { FiSearch, FiX, FiChevronDown, FiGrid, FiBox, FiArrowUp, FiRepeat } from 'react-icons/fi';
 import { useState } from 'react';
 import { useDrag } from 'react-dnd';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDispatch, useSelector } from 'react-redux';
+import { setConnectorType } from '../features/flow/flowSlice';
+import { selectConnectorType } from '../features/flow/flowSelectors';
 
 // DraggableShape - Compact and properly sized
 const DraggableShape = ({ shape }) => {
@@ -92,6 +95,47 @@ const ShapeCategory = ({ title, shapes }) => {
         )}
       </AnimatePresence>
     </motion.div>
+  );
+};
+
+const ConnectorTypeSelector = () => {
+  const dispatch = useDispatch();
+  const connectorType = useSelector(selectConnectorType);
+
+  const handleConnectorTypeChange = (type) => {
+    dispatch(setConnectorType(type));
+  };
+
+  return (
+    <div className="p-4 border-t border-gray-700">
+      <h3 className="text-sm font-medium text-gray-300 mb-3">Connector Type</h3>
+      <div className="flex gap-2">
+        <button
+          onClick={() => handleConnectorTypeChange('single')}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+            connectorType === 'single'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+          title="Single Arrow"
+        >
+          <FiArrowUp size={14} />
+          <span>Single</span>
+        </button>
+        <button
+          onClick={() => handleConnectorTypeChange('double')}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+            connectorType === 'double'
+              ? 'bg-blue-600 text-white shadow-md'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+          title="Double Arrow"
+        >
+          <FiRepeat size={14} />
+          <span>Double</span>
+        </button>
+      </div>
+    </div>
   );
 };
 
@@ -303,6 +347,7 @@ const DiagramSidebar = ({ sidebarOpen, toggleSidebar }) => {
         className="flex-1 overflow-y-auto p-4 space-y-2 custom-blue-scrollbar"
         key={activeCategory} // Force re-render when category changes
       >
+        <ConnectorTypeSelector />
         {isLoading ? (
           <motion.div
             initial={{ opacity: 0 }}

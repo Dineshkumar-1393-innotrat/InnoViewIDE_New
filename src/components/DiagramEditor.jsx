@@ -1,11 +1,11 @@
 import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import {
   ReactFlow,
-  addEdge,
   useReactFlow,
   Controls,
   ControlButton, // Import ControlButton
   MarkerType,
+  ConnectionMode,
   applyEdgeChanges,
   applyNodeChanges,
   MiniMap,
@@ -16,33 +16,33 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useDrop } from 'react-dnd';
 import { toPng } from 'html-to-image';
 import { v4 as uuidv4 } from 'uuid';
-import { ActionCreators } from 'redux-undo';
-import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-
-import {
-  setNodes,
-  setEdges,
-  addNode,
-  deleteNode,
-  deleteEdge,
-  setEditingEdgeId,
-} from '../features/flow/flowSlice';
+import { DndProvider } from 'react-dnd';
+import { ActionCreators } from 'redux-undo';
+import ResizableNode from './ResizableNode';
+import CustomEdge from './CustomEdge';
+import CustomConnectionLine from './CustomConnectionLine';
 import {
   selectNodes,
   selectEdges,
   selectCanUndo,
   selectCanRedo,
+  selectConnectorType,
   selectEditingEdgeId,
-} from '../features/flow/flowSelectors';
-
-import ResizableNode from './ResizableNode';
-import CustomEdge from './CustomEdge';
+  setNodes,
+  setEdges,
+  addNode,
+  addEdge,
+  deleteNode,
+  deleteEdge,
+  setEditingEdgeId,
+} from '../features/flow/flowSlice';
 import LabelNode from './LabelNode';
 import DiagramSidebar from './DiagramSidebar';
 import DiagramHeader from './DiagramHeader';
 import { ZoomProvider } from '../contexts/ZoomContext.jsx';
 import { applyAutoLayout } from '../utils/autoLayout';
+import watermarkLogo from '../assets/hex_bg.png';
 import 'reactflow/dist/style.css';
 import './DiagramEditor.css';
 
@@ -50,7 +50,12 @@ const COLOR_SWATCHES = [
   '#1970fc', '#ef4444', '#22c55e', '#f59e42', '#a21caf', '#fbbf24', '#0ea5e9', '#64748b', '#000000', '#ffffff'
 ];
 
-// Define edgeTypes outside the component to prevent recreation
+// Define nodeTypes and edgeTypes outside the component to prevent recreation
+const nodeTypes = {
+  resizableNode: ResizableNode,
+  labelNode: LabelNode,
+};
+
 const edgeTypes = {
   custom: CustomEdge,
 };
@@ -61,19 +66,18 @@ const DiagramEditorContent = () => {
   const edges = useSelector(selectEdges);
   const canUndo = useSelector(selectCanUndo);
   const canRedo = useSelector(selectCanRedo);
+  const connectorType = useSelector(selectConnectorType);
   const reactFlowInstance = useReactFlow();
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
   const [colorPalette, setColorPalette] = useState({ open: false, x: 0, y: 0, target: null });
   const [colorTarget, setColorTarget] = useState('stroke'); // 'stroke' or 'text'
   const editingEdgeId = useSelector(selectEditingEdgeId);
 
-  // Memoize nodeTypes to prevent recreation on every render
-  const nodeTypes = useMemo(() => ({
-    resizableNode: (props) => {
-      return <ResizableNode {...props} isHovering={props.id === hoveredNodeId} />;
-    },
-    labelNode: LabelNode,
-  }), [hoveredNodeId]);
+  // Use a ref to hold the latest connectorType to avoid stale closures in callbacks
+  const connectorTypeRef = useRef(connectorType);
+  useEffect(() => {
+    connectorTypeRef.current = connectorType;
+  }, [connectorType]);
 
   const closeColorPalette = () => setColorPalette({ open: false, x: 0, y: 0, target: null });
 
@@ -121,15 +125,19 @@ const DiagramEditorContent = () => {
     closeColorPalette();
   };
 
-  const nodes = nodesFromStore.map(node => ({
-    ...node,
-    data: {
-      ...node.data,
-      diagramEditorState: {
-        hoveredNodeId,
+  const nodes = useMemo(() => {
+    return nodesFromStore.map(node => ({
+      ...node,
+      data: {
+        ...node.data,
+        isHovering: node.id === hoveredNodeId,
       },
-    },
-  }));
+    }));
+  }, [nodesFromStore, hoveredNodeId]);
+
+
+  const onNodeMouseEnter = (event, node) => setHoveredNodeId(node.id);
+  const onNodeMouseLeave = () => setHoveredNodeId(null);
 
   const [, drop] = useDrop(() => ({
     accept: 'shape',
@@ -160,26 +168,50 @@ const DiagramEditorContent = () => {
   }));
 
   const onNodesChange = useCallback(
-    (changes) => dispatch(setNodes(applyNodeChanges(changes, nodes))),
-    [dispatch, nodes]
+    (changes) => {
+      const currentNodes = reactFlowInstance.getNodes();
+      dispatch(setNodes(applyNodeChanges(changes, currentNodes)));
+    },
+    [dispatch, reactFlowInstance]
   );
 
   const onEdgesChange = useCallback(
-    (changes) => dispatch(setEdges(applyEdgeChanges(changes, edges))),
-    [dispatch, edges]
+    (changes) => {
+      const currentEdges = reactFlowInstance.getEdges();
+      dispatch(setEdges(applyEdgeChanges(changes, currentEdges)));
+    },
+    [dispatch, reactFlowInstance]
   );
+
+  const isValidConnection = (connection) => {
+    // Simple validation: prevent connecting a source to a source
+    const { sourceHandle, targetHandle } = connection;
+    if (sourceHandle && targetHandle) {
+      return sourceHandle.split('-')[0] !== targetHandle.split('-')[0];
+    }
+    // Allow connections if handles are not specified (e.g. node-to-node)
+    return true;
+  };
 
   const onConnect = useCallback(
     (params) => {
       const newEdge = {
+        ...params,
         id: `edge-${params.source}-${params.target}-${Date.now()}`,
-        ...params, // Includes source, target, sourceHandle, targetHandle
         type: 'custom',
         data: { label: '' },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
+        style: { stroke: '#3b82f6', strokeWidth: 2 },
       };
-      dispatch(setEdges([...edges, newEdge]));
+
+      // Access the latest connectorType from the store directly inside the callback
+      if (connectorTypeRef.current === 'double') {
+        newEdge.markerStart = { type: MarkerType.ArrowClosed, color: '#3b82f6' };
+      }
+
+      dispatch(addEdge(newEdge));
     },
-    [dispatch, edges]
+    [dispatch]
   );
 
   const onUndo = useCallback(() => {
@@ -496,14 +528,6 @@ const DiagramEditorContent = () => {
     };
   }, [saveToJSON, loadFromJSON, exportImage]);
 
-  const onNodeMouseEnter = useCallback((event, node) => {
-    setHoveredNodeId(node.id);
-  }, []);
-
-  const onNodeMouseLeave = useCallback((event, node) => {
-    setHoveredNodeId(null);
-  }, []);
-
   const onNodesDelete = useCallback(
     (deletedNodes) => {
       for (const node of deletedNodes) {
@@ -525,8 +549,8 @@ const DiagramEditorContent = () => {
   return (
     <div 
       ref={drop} 
-      className="w-full h-full" 
-      style={{ pointerEvents: 'auto', position: 'relative' }} 
+      className="flex-grow w-full h-full relative" 
+      style={{ pointerEvents: 'auto' }} 
       tabIndex={0} 
       onKeyDown={onKeyDown}
       onContextMenu={(e) => e.preventDefault()}
@@ -546,7 +570,7 @@ const DiagramEditorContent = () => {
             border: '1px solid #4b5563', 
             borderRadius: 12, 
             padding: 12, 
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)', 
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)', 
             display: 'flex', 
             flexDirection: 'column', 
             gap: 8 
@@ -635,7 +659,7 @@ const DiagramEditorContent = () => {
         }}
       >
         <ReactFlow
-          nodes={nodesFromStore}
+          nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
@@ -643,7 +667,10 @@ const DiagramEditorContent = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodeContextMenu={openColorPalette}
-          onEdgeContextMenu={openColorPalette}
+          onEdgeContextMenu={(event, edge) => {
+            event.preventDefault();
+            // This functionality is now handled by the sidebar, so we can disable the context menu.
+          }}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
           deleteKeyCode={['Backspace', 'Delete']}
@@ -653,21 +680,18 @@ const DiagramEditorContent = () => {
           attributionPosition="bottom-left"
           style={{ background: 'transparent' }}
           proOptions={{ hideAttribution: true }}
-          connectionMode="loose"
-          connectionLineType="bezier"
-          snapToGrid={false}
-          snapGrid={[15, 15]}
+          connectionMode={ConnectionMode.Handles}
+          connectionLineComponent={CustomConnectionLine}
+          connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}
           isValidConnection={(connection) => {
             // Prevent self-connections
-            if (connection.source === connection.target) {
-              return false;
-            }
-            
-            // Only allow connections between valid nodes
-            const sourceNode = nodesFromStore.find(n => n.id === connection.source);
-            const targetNode = nodesFromStore.find(n => n.id === connection.target);
-            
-            return !!(sourceNode && targetNode);
+            if (connection.source === connection.target) return false;
+
+            // Ensure connection is from a source handle to a target handle
+            const sourceHandleIsSource = connection.sourceHandle?.endsWith('-source');
+            const targetHandleIsTarget = connection.targetHandle?.endsWith('-target');
+
+            return sourceHandleIsSource && targetHandleIsTarget;
           }}
           onNodeClick={(event, node) => {
             // Handle node selection
@@ -678,62 +702,50 @@ const DiagramEditorContent = () => {
             dispatch(setNodes(updatedNodes));
           }}
           onEdgeClick={(event, edge) => {
-            // Handle edge selection
+            event.stopPropagation();
+            // Handle edge selection only
             const updatedEdges = edges.map(e => ({
               ...e,
-              selected: e.id === edge.id ? !e.selected : e.selected
+              selected: e.id === edge.id ? !e.selected : false
             }));
             dispatch(setEdges(updatedEdges));
           }}
+          onEdgeDoubleClick={(event, edge) => {
+            event.stopPropagation();
+            // Start editing edge label
+            dispatch(setEditingEdgeId(edge.id));
+          }}
         />
-      </div>
-      
-      {/* Watermark for export - placed outside ReactFlow */}
-      <div
-        ref={watermarkRef}
-        style={{
-          position: 'absolute',
-          left: 20,
-          bottom: 20,
-          display: 'flex',
-          alignItems: 'center',
-          background: 'rgba(255, 255, 255, 0.95)',
-          borderRadius: 8,
-          padding: '12px 20px',
-          fontSize: 16,
-          zIndex: 100,
-          pointerEvents: 'none',
-          userSelect: 'none',
-          gap: 8,
-          visibility: 'hidden', // default hidden
-          boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-          border: '1px solid rgba(0,0,0,0.1)',
-          backdropFilter: 'blur(10px)',
-        }}
-      >
-        {/* Small logo icon */}
-        <svg 
-          width="20" 
-          height="20" 
-          viewBox="0 0 24 24" 
-          fill="none" 
-          stroke="#1970fc" 
-          strokeWidth="2" 
-          strokeLinecap="round" 
-          strokeLinejoin="round"
-          style={{ flexShrink: 0 }}
+        {/* Watermark for export - placed inside the export area */}
+        <div
+          ref={watermarkRef}
+          style={{
+            position: 'absolute',
+            left: 20,
+            bottom: 20,
+            visibility: 'hidden', // default hidden
+            pointerEvents: 'none',
+            userSelect: 'none',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(255, 255, 255, 0.8)',
+            padding: '4px 8px',
+            borderRadius: '6px',
+          }}
         >
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-        </svg>
-        <span style={{ color: '#6b7280', fontWeight: 500 }}>Made with</span>
-        <span style={{ color: '#1970fc', fontWeight: 700, fontSize: '18px' }}>InnoTraitLabs</span>
+          <img src={watermarkLogo} alt="Watermark" style={{color:'#0413e0', width:'24px', height:'auto' }} />
+          <span style={{ color: '#333', fontSize: '12px', fontWeight: '500' }}>Made with InnoTrat Labs</span>
+          
+        </div>
       </div>
       
       {/* Controls and MiniMap (not exported) */}
       <Controls position="bottom-right" className="react-flow-controls" style={{ zIndex: 10 }}>
         {/* Undo Button */}
         <div title="Undo">
-          <ControlButton onClick={onUndo} disabled={!canUndo}>
+          <ControlButton onClick={onUndo} disabled={!canUndo} className="custom-control-button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
               <path d="M3 12h6v6"></path>
@@ -742,7 +754,7 @@ const DiagramEditorContent = () => {
         </div>
         {/* Redo Button */}
         <div title="Redo">
-          <ControlButton onClick={onRedo} disabled={!canRedo}>
+          <ControlButton onClick={onRedo} disabled={!canRedo} className="custom-control-button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 12a9 9 0 1 0 6.219-8.56"></path>
               <path d="M21 12h-6v6"></path>
@@ -762,7 +774,7 @@ const DiagramEditor = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="diagram-editor-route flex flex-col bg-gray-900">
+      <div className="diagram-editor-route flex flex-col h-screen bg-gray-900">
         <DiagramHeader
           onZoomIn={() => window.dispatchEvent(new Event('zoom-in'))}
           onZoomOut={() => window.dispatchEvent(new Event('zoom-out'))}
@@ -780,7 +792,7 @@ const DiagramEditor = () => {
           )}
 
           {/* Main Canvas Area */}
-          <main className="flex-1 h-full relative bg-gray-900 min-w-0">
+          <main className="flex-1 flex flex-col h-full relative bg-gray-900 min-w-0">
             <ReactFlowProvider>
               <ZoomProvider>
                 <DiagramEditorContent />

@@ -1,10 +1,11 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, current } from '@reduxjs/toolkit';
 
 const initialState = {
   nodes: [],
   edges: [],
   editingEdgeId: null,
   viewport: { zoom: 1 },
+  connectorType: 'single',
 };
 
 const flowSlice = createSlice({
@@ -156,6 +157,9 @@ const flowSlice = createSlice({
         node.height = height;
       }
     },
+    setConnectorType(state, action) {
+      state.connectorType = action.payload;
+    },
   },
 });
 
@@ -182,6 +186,15 @@ export const {
   clearFlow,
   updateNodePosition,
   updateNodeSize,
+  setConnectorType,
 } = flowSlice.actions;
+
+// Selectors
+export const selectNodes = (state) => state.flow.present.nodes;
+export const selectEdges = (state) => state.flow.present.edges;
+export const selectEditingEdgeId = (state) => state.flow.present.editingEdgeId;
+export const selectConnectorType = (state) => state.flow.present.connectorType;
+export const selectCanUndo = (state) => state.flow.past.length > 0;
+export const selectCanRedo = (state) => state.flow.future.length > 0;
 
 export default flowSlice.reducer; 
