@@ -196,6 +196,8 @@ const Home = () => {
 
     {/* Here i have exported the footer  */}
     {/* <Footer  /> */}
+    <div style={{ textAlign: 'center' }}><p>InnoIDE_V1_Rev0.5_19_08_2025</p></div>
+    
     </>
   );
 };

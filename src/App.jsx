@@ -25,7 +25,13 @@ import SimulationPopup from "./components/SimulationPopup"
 import DiagramEditor from "./components/DiagramEditor";
 
 const App = () => {
-  const [currentPanel, setCurrentPanel] = useState("fileExplorer");
+    const [currentPanel, setCurrentPanel] = useState("fileExplorer");
+
+  const handleToggleRun = () => {
+    setCurrentPanel((prevPanel) =>
+      prevPanel === "run" ? "fileExplorer" : "run"
+    );
+  };
 
   const handleToggleDebug = () => {
     setCurrentPanel((prevPanel) =>
@@ -66,7 +72,8 @@ const App = () => {
               <CodeEditor
                 currentPanel={currentPanel}
                 onDebugClick={handleToggleDebug}
-                onFlashClick={handleToggleFlash}
+                                onFlashClick={handleToggleFlash}
+                onRunClick={handleToggleRun}
               />
             }
           />

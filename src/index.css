@@ -12,7 +12,7 @@
 }
 
 .custom-blue-scrollbar::-webkit-scrollbar-track {
-  background: #374151;
+  background: #e0f2fe;
 }
 
 .custom-blue-scrollbar::-webkit-scrollbar-thumb {
@@ -60,7 +60,7 @@
 
 /* Custom scrollbar styles */
 .custom-blue-scrollbar {
-  scrollbar-color: #6b7280 #374151;
+  scrollbar-color: #6b7280 #e0f2fe;
   scrollbar-width: thin;
 }
 
@@ -74,8 +74,8 @@
 }
 
 .react-flow__controls button {
-  background: #374151 !important;
-  border: 1px solid #4b5563 !important;
+  background: #c8d9f5 !important;
+  border: 1px solid #c8d9f5 !important;
   color: #e5e7eb !important;
   border-radius: 8px !important;
   margin: 3px !important;
@@ -84,11 +84,11 @@
 }
 
 .react-flow__controls button:hover {
-  background: #4b5563 !important;
+  background: #c8d9f5 !important;
   color: #ffffff !important;
   border-color: #6b7280 !important;
   transform: translateY(-1px) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 2px 8px rgba(232, 235, 76, 0.3) !important;
 }
 
 .react-flow__controls button:active {
@@ -96,7 +96,7 @@
 }
 
 .react-flow__minimap {
-  background: rgba(31, 41, 55, 0.95) !important;
+  background: rgba(113, 169, 247, 0.95) !important;
   border-radius: 12px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
   border: 1px solid rgba(75, 85, 99, 0.8) !important;
@@ -157,11 +157,11 @@
 
 /* Background pattern enhancement */
 .react-flow__background {
-  background-color: #1f2937 !important;
+  background-color: #8cbafa !important;
 }
 
 .react-flow__background-pattern {
-  color: #374151 !important;
+  color: #e0f2fe !important;
 }
 
 /* Enhanced Handle styling */
@@ -365,7 +365,7 @@ select {
   padding: 0.75rem;
   font-size: 0.875rem;
   transition: all 0.2s ease;
-  background-color: #374151;
+  background-color: #e0f2fe;
   color: #e5e7eb;
 }
 
@@ -384,15 +384,15 @@ textarea::placeholder {
 
 /* Utility classes for the diagram editor */
 .diagram-editor-bg {
-  background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background: linear-gradient(135deg, #8cbafa 0%, #111827 100%);
 }
 
 .sidebar-gradient {
-  background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(180deg, #e0f2fe 0%, #8cbafa 100%);
 }
 
 .header-gradient {
-  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  background: linear-gradient(135deg, #e0f2fe 0%, #8cbafa 100%);
 }
 
 /* Enhanced shadow utilities */
@@ -467,7 +467,7 @@ textarea::placeholder {
 
 /* navabar hover effect */
 button:hover {
-  background-color: #1f2937 !important;
+  background-color: #8cbafa !important;
   transition-property: all !important;
  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);

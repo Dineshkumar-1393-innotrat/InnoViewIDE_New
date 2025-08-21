@@ -85,9 +85,8 @@ const DiagramHeader = ({
     );
   };
 
-  //save josn start
+  //save json start
   const [diagram, setDiagram] = useState("")
-  console.log(diagram, "diagram---")
   
   const saveDiagram = async () => {
     const payload = {

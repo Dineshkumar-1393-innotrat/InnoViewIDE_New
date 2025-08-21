@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
+import { createSelector } from '@reduxjs/toolkit';
 import {
   ReactFlow,
   useReactFlow,
@@ -49,7 +50,9 @@ import 'reactflow/dist/style.css';
 import './DiagramEditor.css';
 
 const COLOR_SWATCHES = [
-  '#1970fc', '#ef4444', '#22c55e', '#f59e42', '#a21caf', '#fbbf24', '#0ea5e9', '#64748b', '#000000', '#ffffff'
+  '#1970fc', '#ef4444', '#22c55e', '#f59e42', '#a21caf', '#fbbf24', '#0ea5e9', '#64748b',
+  '#ec4899', '#8b5cf6', '#14b8a6', '#6366f1', '#78350f', '#84cc16', '#06b6d4', '#9ca3af',
+  '#000000', '#ffffff'
 ];
 
 // Define nodeTypes and edgeTypes outside the component to prevent recreation
@@ -85,6 +88,7 @@ const DiagramEditorContent = () => {
 
   // Helper: open color palette for node or edge
   const openColorPalette = (event, target) => {
+    event.preventDefault(); // Prevent default context menu
     event.stopPropagation();
     const targetIsNode = 'width' in target;
     const targetId = target.id;
@@ -217,16 +221,53 @@ const DiagramEditorContent = () => {
   );
 
   const onUndo = useCallback(() => {
+    console.log('↩️ Undo button clicked');
+    console.log('canUndo state:', canUndo);
+    console.log('Current nodes before undo:', nodesFromStore.length);
+    
     if (canUndo) {
+      console.log('✅ Dispatching undo action');
       dispatch(ActionCreators.undo());
+      
+      setTimeout(() => {
+        console.log('📊 State after undo dispatch - nodes:', nodesFromStore.length);
+      }, 100);
+    } else {
+      console.log('❌ Undo not available - no past history');
     }
-  }, [canUndo, dispatch]);
+  }, [canUndo, dispatch, nodesFromStore]);
+
+  // Memoized selector to prevent unnecessary re-renders
+  const selectReduxFlowState = useMemo(() => createSelector(
+    [(state) => state.flow.past?.length || 0, (state) => state.flow.future?.length || 0],
+    (pastLength, futureLength) => ({
+      pastLength,
+      futureLength
+    })
+  ), []);
+
+  const reduxFlowState = useSelector(selectReduxFlowState);
 
   const onRedo = useCallback(() => {
+    console.log('🔄 Redo button clicked');
+    console.log('canRedo state:', canRedo);
+    console.log('Redux flow state:', reduxFlowState);
+    console.log('Current nodes:', nodesFromStore.length);
+    console.log('Current edges:', edges.length);
+    
     if (canRedo) {
+      console.log('✅ Dispatching redo action');
+      console.log('ActionCreators.redo():', ActionCreators.redo());
       dispatch(ActionCreators.redo());
+      
+      // Log state after dispatch
+      setTimeout(() => {
+        console.log('📊 State after redo dispatch - nodes:', nodesFromStore.length, 'edges:', edges.length);
+      }, 100);
+    } else {
+      console.log('❌ Redo not available - no future history');
     }
-  }, [canRedo, dispatch]);
+  }, [canRedo, dispatch, reduxFlowState, nodesFromStore, edges]);
 
   const onKeyDown = useCallback(
     (event) => {
@@ -277,7 +318,7 @@ const DiagramEditorContent = () => {
 
     toPng(exportRef.current, {
       quality: 1.0,
-      backgroundColor: '#374151',
+      backgroundColor: '#87C3FF',
       cacheBust: true,
       filter: (node) => {
         if (
@@ -541,8 +582,8 @@ const DiagramEditorContent = () => {
             top: colorPalette.y, 
             zIndex: 1000, 
             transform: 'translateX(-50%)', 
-            background: '#374151', 
-            border: '1px solid #4b5563', 
+            background: '#87C3FF',
+            border: '1px solid #BFDBF6', 
             borderRadius: 12, 
             padding: 12, 
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)', 
@@ -559,7 +600,7 @@ const DiagramEditorContent = () => {
                   padding: '4px 12px', 
                   borderRadius: 8, 
                   border: colorTarget === 'stroke' ? '2px solid #3b82f6' : '1px solid #4b5563', 
-                  background: colorTarget === 'stroke' ? '#1e3a8a' : '#374151', 
+                  background: colorTarget === 'stroke' ? '#1e3a8a' : '#e0f2fe', 
                   cursor: 'pointer',
                   fontSize: '12px',
                   fontWeight: '500',
@@ -574,7 +615,7 @@ const DiagramEditorContent = () => {
                   padding: '4px 12px', 
                   borderRadius: 8, 
                   border: colorTarget === 'text' ? '2px solid #3b82f6' : '1px solid #4b5563', 
-                  background: colorTarget === 'text' ? '#1e3a8a' : '#374151', 
+                  background: colorTarget === 'text' ? '#1e3a8a' : '#e0f2fe', 
                   cursor: 'pointer',
                   fontSize: '12px',
                   fontWeight: '500',
@@ -610,7 +651,7 @@ const DiagramEditorContent = () => {
                 padding: '4px 8px', 
                 borderRadius: 8, 
                 border: '1px solid #4b5563', 
-                background: '#374151', 
+                background: '#e0f2fe', 
                 cursor: 'pointer',
                 fontSize: '12px',
                 color: '#e5e7eb'
@@ -630,7 +671,9 @@ const DiagramEditorContent = () => {
           position: 'absolute',
           inset: 0,
           zIndex: 0,
-          backgroundColor: '#374151', // Light blue-gray background to match sidebar
+          backgroundColor: '#e0f2fe', // Light blue-gray background to match sidebar
+          minHeight: '400px',
+          minWidth: '400px'
         }}
       >
         <ReactFlow
@@ -653,7 +696,7 @@ const DiagramEditorContent = () => {
           onEdgesDelete={onEdgesDelete}
           fitView
           attributionPosition="bottom-left"
-          style={{ background: 'transparent' }}
+          style={{ background: 'transparent', width: '100%', height: '100%' }}
           proOptions={{ hideAttribution: true }}
           connectionMode={ConnectionMode.Handles}
           connectionLineComponent={CustomConnectionLine}
@@ -729,7 +772,16 @@ const DiagramEditorContent = () => {
         </div>
         {/* Redo Button */}
         <div title="Redo">
-          <ControlButton onClick={onRedo} disabled={!canRedo} className="custom-control-button">
+          <ControlButton 
+            onClick={(e) => {
+              console.log('🖱️ Redo button DOM click event triggered');
+              e.preventDefault();
+              e.stopPropagation();
+              onRedo();
+            }} 
+            disabled={!canRedo} 
+            className="custom-control-button"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 12a9 9 0 1 0 6.219-8.56"></path>
               <path d="M21 12h-6v6"></path>

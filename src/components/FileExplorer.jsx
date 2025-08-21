@@ -1,359 +1,228 @@
-
 import React, { useState } from 'react';
 import {
   Box,
   VStack,
   HStack,
-  Divider,
-  useColorMode,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Button,
-  List,
-  ListItem,
   Text,
-  CloseButton,
+  IconButton,
+  Collapse,
+  Input,
+  Button,
+  useDisclosure,
+  Icon,
+  useColorModeValue,
 } from "@chakra-ui/react";
-import { ChevronDownIcon } from '@chakra-ui/icons';
+import { FaFolder, FaFolderOpen, FaFile, FaPlus, FaFolderPlus, FaTrash, FaPencilAlt } from 'react-icons/fa';
 
-const FileExplorer = () => {
-  const { colorMode } = useColorMode();
-  const [selectedPanel, setSelectedPanel] = useState('');
-  const [isPopupOpen, setPopupOpen] = useState(true);
+// Initial file structure
+// Initial file structure
+const initialFiles = {
+  id: 'root',
+  name: 'Project',
+  isFolder: true,
+  isOpen: true,
+  children: [],
+};
 
-  const peripheralsList = [
-    { id: '01', name: 'ADC' },
-    { id: '02', name: 'COMP1' },
-    { id: '03', name: 'COMP2' },
-    { id: '04', name: 'CRC' },
-    { id: '05', name: 'I2C1' },
-    { id: '06', name: 'I2C2' },
-    { id: '07', name: '1252' },
-    { id: '08', name: 'IWDG' },
-    { id: '09', name: 'LPTIM1' },
-    { id: '10', name: 'LPUA' },
-    { id: '11', name: 'RT1' },
-    { id: '12', name: 'RCC' },
-    { id: '13', name: 'RTC' },
-    { id: '14', name: 'SPI1' },
-    { id: '15', name: 'SPI2' },
-    { id: '16', name: 'SYS' },
-    { id: '17', name: 'TIM2' },
-    { id: '18', name: 'TIM6' },
-    { id: '19', name: 'TIM21' },
-    { id: '20', name: 'TIM22' },
-    { id: '21', name: 'USART1' },
-    { id: '22', name: 'USART2' },
-    { id: '23', name: 'WWDG' },
-    { id: '24', name: 'LPTIM' } // New item
-  ];
-
-  const handlePanelSelect = (panel) => {
-    setSelectedPanel(panel);
-  };
-
-  const closePopup = () => {
-    setPopupOpen(false);
-  };
-
-  // Function to format the peripheral name with dots between ID and content
-  const formatPeripheralName = (id, name) => {
-    const maxLength = 20; // Adjust the total length of each item
-    const baseString = `${id}${name}`;
-    const dotsCount = maxLength - baseString.length;
-    const dots = '.'.repeat(dotsCount > 0 ? dotsCount : 0);
-    return `${id}${dots}${name}`;
-  };
+// Component to render a single file
+const File = ({ name, onDelete, onEdit }) => {
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <Box
-      bg={colorMode === "light" ? "white" : "gray.800"}
-      w="100%"
-      h="full"
-      p={4}
-      borderRightWidth={1}
-      borderColor={colorMode === "light" ? "gray.300" : "gray.600"}
-      boxShadow={colorMode === "light" ? "sm" : "none"}
-      position="relative"
+    <HStack 
+      spacing={2} 
+      pl={6} 
+      py={1} 
+      w="full" 
+      justifyContent="space-between" 
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+      borderRadius="md"
     >
-      {/* Dropdown for File Explorer */}
-      <Menu>
-        <MenuButton as={Button} rightIcon={<ChevronDownIcon />} fontWeight="bold" mb={2}>
-          File Explorer
-        </MenuButton>
-        <MenuList>
-          <MenuItem onClick={() => handlePanelSelect('Device Status Panel')}>
-            Device Status Panel
-          </MenuItem>
-          <MenuItem onClick={() => handlePanelSelect('Peripheral Configurations')}>
-            Peripheral Configurations
-          </MenuItem>
-        </MenuList>
-      </Menu>
-
-      <Divider />
-
-      {/* Path Display */}
-      <VStack spacing={2} align="start" mt={4}>
-        <Text fontWeight="bold">📁 C:\users\dc1mu\desktop\56142810</Text>
-        <VStack spacing={1} align="start" pl={4}>
-          <Text>📄 text1.txt</Text>
-          <Text>📄 text2.txt</Text>
-          <Text>📄 text3.txt</Text>
-          <Text>📄 text4.txt</Text>
-          <Text>📄 text5.txt</Text>
-        </VStack>
-        <Divider />
-      </VStack>
-
-      {/* Conditional Rendering for Device Status Panel */}
-      {selectedPanel === 'Device Status Panel' && (
-        <Box mt={4}>
-          <Text fontWeight="bold">Device Status Panel</Text>
-          <List spacing={2} mt={2}>
-            <ListItem>
-              <HStack>
-                <Text fontWeight="bold">Device name:</Text>
-                <Text>Actuator</Text>
-              </HStack>
-            </ListItem>
-            <ListItem>
-              <HStack>
-                <Text fontWeight="bold">Power status:</Text>
-                <Text>35 watts</Text>
-              </HStack>
-            </ListItem>
-            <ListItem>
-              <HStack>
-                <Text fontWeight="bold">Program execution state:</Text>
-                <Text>Running</Text>
-              </HStack>
-            </ListItem>
-            <ListItem>
-              <HStack>
-                <Text fontWeight="bold">Temperature:</Text>
-                <Text>35°C</Text>
-              </HStack>
-            </ListItem>
-            <ListItem>
-              <HStack>
-                <Text fontWeight="bold">Device status:</Text>
-                <Text>Connected</Text>
-              </HStack>
-            </ListItem>
-          </List>
-        </Box>
+      <HStack spacing={2}>
+        <Icon as={FaFile} color="gray.500" />
+        <Text>{name}</Text>
+      </HStack>
+      {isHovered && (
+        <><IconButton icon={<FaPencilAlt />} size="xs" onClick={onEdit} aria-label="Edit file" variant="ghost" /><IconButton icon={<FaTrash />} size="xs" onClick={onDelete} aria-label="Delete file" variant="ghost" /></>
       )}
+    </HStack>
+  );
+};
 
-      {/* Conditional Rendering for Peripheral Configurations */}
-      {selectedPanel === 'Peripheral Configurations' && (
-        <>
-          <Box mt={4}>
-            <Text fontWeight="bold">Peripheral Configurations</Text>
-            <List spacing={2} mt={2}>
-              <ListItem>
-                <HStack>
-                  <Text fontWeight="bold">Peripheral in usage:</Text>
-                  <Text>558</Text>
-                </HStack>
-              </ListItem>
-              <ListItem>
-                <HStack>
-                  <Text fontWeight="bold">Temperature:</Text>
-                  <Text>35°C</Text>
-                </HStack>
-              </ListItem>
-              <ListItem>
-                <HStack>
-                  <Text fontWeight="bold">Device status:</Text>
-                  <Text>Connected</Text>
-                </HStack>
-              </ListItem>
-            </List>
-          </Box>
+// Component to render a folder and its contents
+const Folder = ({ name, isOpen, children, onToggle, onAddFile, onAddFolder, onEdit, onDelete }) => (
+  <Box w="100%">
+    <HStack justifyContent="space-between" _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }} py={1} pr={2} borderRadius="md">
+      <HStack as="button" onClick={onToggle} w="full" spacing={2} >
+        <Icon as={isOpen ? FaFolderOpen : FaFolder} color="blue.500" />
+        <Text fontWeight="bold">{name}</Text>
+      </HStack>
+      <HStack spacing={1}>
+        <IconButton icon={<FaPlus />} size="xs" onClick={onAddFile} aria-label="Add file" variant="ghost" />
+        <IconButton icon={<FaFolderPlus />} size="xs" onClick={onAddFolder} aria-label="Add folder" variant="ghost" /><IconButton icon={<FaPencilAlt />} size="xs" onClick={onEdit} aria-label="Edit folder" variant="ghost" /><IconButton icon={<FaTrash />} size="xs" onClick={onDelete} aria-label="Delete folder" variant="ghost" />
+      </HStack>
+    </HStack>
+    <Collapse in={isOpen}>
+      <Box pt={1}>
+        {children}
+      </Box>
+    </Collapse>
+  </Box>
+);
 
-          {/* Peripherals Popup */}
-          {isPopupOpen && (
-            <Box
-              position="absolute"
-              top={0}
-              right={0}
-              w="56"
-              bg={colorMode === "light" ? "white" : "gray.700"}
-              border="1px solid"
-              borderColor={colorMode === "light" ? "gray.300" : "gray.600"}
-              rounded="lg"
-              shadow="lg"
-              mt={16}
-              mr={4}
-              maxH="96"
-              overflowY="auto"
-              zIndex={10}
-            >
-              {/* Close button */}
-              <Box display="flex" justifyContent="flex-end" p={2}>
-                <CloseButton onClick={closePopup} />
-              </Box>
+// Recursive component to render the file tree
+const FileTree = ({ node, onAddNode, onDeleteNode, onEditNode }) => {
+  const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: node.isOpen });
+  const [isAdding, setIsAdding] = useState(null); // 'file' or 'folder'
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(node.name);
+  const [newItemName, setNewItemName] = useState('');
 
-              <Box p={2} spaceY={1}>
-                {peripheralsList.map((peripheral) => (
-                  <Box key={peripheral.id} p={2} borderBottom="1px solid" borderColor="gray.200">
-                    <HStack>
-                      <Text>{peripheral.name}</Text>
-                      {/* ChevronDownIcon added beside each peripheral name */}
-                      <ChevronDownIcon />
-                    </HStack>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
+  const handleAdd = (type) => {
+    if (!newItemName.trim()) {
+      setIsAdding(null);
+      return;
+    }
+    onAddNode(node.id, newItemName, type === 'folder');
+    setNewItemName('');
+    setIsAdding(null);
+  };
+
+    const handleCancel = () => {
+    setIsAdding(null);
+    setNewItemName('');
+  }
+
+  const handleEdit = () => {
+    if (editedName.trim() && editedName !== node.name) {
+      onEditNode(node.id, editedName);
+    }
+    setIsEditing(false);
+  };
+
+      if (isEditing) {
+    return (
+      <HStack pl={node.isFolder ? 0 : 6} py={1} w="full">
+        <Icon as={node.isFolder ? FaFolder : FaFile} color={node.isFolder ? 'blue.500' : 'gray.500'} />
+        <Input 
+          size="sm" 
+          value={editedName} 
+          onChange={(e) => setEditedName(e.target.value)} 
+          onBlur={handleEdit}
+          onKeyPress={(e) => e.key === 'Enter' && handleEdit()}
+          autoFocus
+        />
+      </HStack>
+    )
+  }
+
+  if (!node.isFolder) {
+    return <File name={node.name} onDelete={() => onDeleteNode(node.id)} onEdit={() => setIsEditing(true)} />;
+  }
+
+  return (
+    <VStack align="start" w="100%">
+      <Folder
+        name={node.name}
+        isOpen={isOpen}
+        onToggle={onToggle}
+        onAddFile={() => setIsAdding('file')}
+                onAddFolder={() => setIsAdding('folder')}
+        onEdit={() => setIsEditing(true)}
+        onDelete={() => onDeleteNode(node.id)}
+      >
+        <VStack align="start" pl={6} w="100%">
+          {node.children.map((child) => (
+                        <FileTree key={child.id} node={child} onAddNode={onAddNode} onDeleteNode={onDeleteNode} onEditNode={onEditNode} />
+          ))}
+          {isAdding && (
+            <HStack pt={2} w="full">
+              <Icon as={isAdding === 'file' ? FaFile : FaFolder} color={isAdding === 'file' ? 'gray.500' : 'blue.500'}/>
+              <Input 
+                size="sm" 
+                value={newItemName} 
+                onChange={(e) => setNewItemName(e.target.value)} 
+                placeholder={`New ${isAdding} name`}
+                onKeyPress={(e) => e.key === 'Enter' && handleAdd(isAdding)}
+                autoFocus
+              />
+              <Button size="sm" colorScheme="blue" onClick={() => handleAdd(isAdding)}>Add</Button>
+              <Button size="sm" variant="ghost" onClick={handleCancel}>Cancel</Button>
+            </HStack>
           )}
-        </>
-      )}
-    </Box>
+        </VStack>
+      </Folder>
+    </VStack>
+  );
+};
+
+// Main FileExplorer component
+const FileExplorer = () => {
+    const [files, setFiles] = useState(initialFiles);
+
+  const deleteNodeFromTree = (tree, nodeId) => {
+    if (tree.children) {
+      const filteredChildren = tree.children.filter(child => child.id !== nodeId);
+      if (filteredChildren.length !== tree.children.length) {
+        return { ...tree, children: filteredChildren };
+      }
+      return { ...tree, children: tree.children.map(node => deleteNodeFromTree(node, nodeId)) };
+    }
+    return tree;
+  };
+
+    const handleDeleteNode = (nodeId) => {
+    if (nodeId === 'root') return; // Cannot delete root
+    const updatedFiles = deleteNodeFromTree(files, nodeId);
+    setFiles(updatedFiles);
+  };
+
+  const editNodeInTree = (tree, nodeId, newName) => {
+    if (tree.id === nodeId) {
+      return { ...tree, name: newName };
+    }
+    if (tree.children) {
+      return { ...tree, children: tree.children.map(node => editNodeInTree(node, nodeId, newName)) };
+    }
+    return tree;
+  };
+
+  const handleEditNode = (nodeId, newName) => {
+    if (nodeId === 'root') return; // Cannot edit root
+    const updatedFiles = editNodeInTree(files, nodeId, newName);
+    setFiles(updatedFiles);
+  };
+
+  const addNodeToTree = (tree, parentId, newNode) => {
+    if (tree.id === parentId) {
+      return { ...tree, children: [...tree.children, newNode] };
+    }
+    if (tree.children) {
+      return { ...tree, children: tree.children.map(node => addNodeToTree(node, parentId, newNode)) };
+    }
+    return tree;
+  };
+
+  const handleAddNode = (parentId, name, isFolder) => {
+    const newNode = {
+      id: new Date().getTime().toString(),
+      name,
+      isFolder,
+      ...(isFolder && { children: [], isOpen: false }),
+    };
+    const updatedFiles = addNodeToTree(files, parentId, newNode);
+    setFiles(updatedFiles);
+  };
+
+
+  return (
+    <VStack align="start" p={2} spacing={3} w="100%">
+      <Text fontSize="lg" fontWeight="bold" px={2}>File Explorer</Text>
+      <FileTree node={files} onAddNode={handleAddNode} onDeleteNode={handleDeleteNode} onEditNode={handleEditNode} />
+    </VStack>
   );
 };
 
 export default FileExplorer;
-
-
-// import React, { useState } from "react";
-// import {
-//   Box,
-//   Text,
-//   VStack,
-//   HStack,
-//   Collapse,
-//   useDisclosure,
-// } from "@chakra-ui/react";
-// import {
-//   ChevronRightIcon,
-//   ChevronDownIcon,
-// } from "@chakra-ui/icons";
-// import {
-//   FaFolder,
-//   FaFolderOpen,
-//   FaFile,
-//   FaCogs,
-// } from "react-icons/fa";
-
-// // Recursive Folder Component
-// const Folder = ({ name, children }) => {
-//   const { isOpen, onToggle } = useDisclosure({ defaultIsOpen: false });
-
-//   return (
-//     <Box w="full">
-//       <HStack
-//         spacing={2}
-//         cursor="pointer"
-//         _hover={{ bg: "#2a2d2e" }}
-//         px={2}
-//         py={1}
-//         onClick={onToggle}
-//       >
-//         {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-//         {isOpen ? <FaFolderOpen size={14} /> : <FaFolder size={14} />}
-//         <Text>{name}</Text>
-//       </HStack>
-//       <Collapse in={isOpen} animateOpacity>
-//         <VStack align="start" spacing={0} pl={6}>
-//           {children}
-//         </VStack>
-//       </Collapse>
-//     </Box>
-//   );
-// };
-
-// // File Component
-// const File = ({ name }) => (
-//   <HStack
-//     spacing={2}
-//     cursor="pointer"
-//     _hover={{ bg: "#2a2d2e" }}
-//     px={2}
-//     py={1}
-//     w="full"
-//   >
-//     <FaFile size={14} />
-//     <Text>{name}</Text>
-//   </HStack>
-// );
-
-// const FileExplorer = () => {
-//   const { isOpen: isDevicesOpen, onToggle: toggleDevices } = useDisclosure({ defaultIsOpen: true });
-//   const { isOpen: isPeripheralsOpen, onToggle: togglePeripherals } = useDisclosure({ defaultIsOpen: true });
-
-//   return (
-//     <Box
-//       w="280px"
-//       bg="#1e1e1e"
-//       color="white"
-//       borderRight="1px solid #333"
-//       h="100vh"
-//       fontSize="sm"
-//       overflowY="auto"
-//     >
-//       {/* Device Status Section */}
-//       <Box>
-//         <HStack
-//           px={3}
-//           py={2}
-//           _hover={{ bg: "#2a2d2e" }}
-//           cursor="pointer"
-//           onClick={toggleDevices}
-//         >
-//           {isDevicesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-//           <Text fontWeight="bold">Device Status</Text>
-//         </HStack>
-//         <Collapse in={isDevicesOpen} animateOpacity>
-//           <VStack align="start" spacing={0} pl={4} py={1}>
-//             <Folder name="src">
-//               <File name="main.c" />
-//               <File name="utils.c" />
-//               <Folder name="drivers">
-//                 <File name="uart.c" />
-//                 <File name="spi.c" />
-//               </Folder>
-//             </Folder>
-//             <File name="config.h" />
-//           </VStack>
-//         </Collapse>
-//       </Box>
-
-//       {/* Peripheral Configurations Section */}
-//       <Box>
-//         <HStack
-//           px={3}
-//           py={2}
-//           _hover={{ bg: "#2a2d2e" }}
-//           cursor="pointer"
-//           onClick={togglePeripherals}
-//         >
-//           {isPeripheralsOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-//           <Text fontWeight="bold">Peripheral Configurations</Text>
-//         </HStack>
-//         <Collapse in={isPeripheralsOpen} animateOpacity>
-//           <VStack align="start" spacing={0} pl={4} py={1}>
-//             <HStack spacing={2} cursor="pointer" _hover={{ bg: "#2a2d2e" }} px={2} py={1}>
-//               <FaCogs size={14} />
-//               <Text>UART</Text>
-//             </HStack>
-//             <HStack spacing={2} cursor="pointer" _hover={{ bg: "#2a2d2e" }} px={2} py={1}>
-//               <FaCogs size={14} />
-//               <Text>SPI</Text>
-//             </HStack>
-//             <HStack spacing={2} cursor="pointer" _hover={{ bg: "#2a2d2e" }} px={2} py={1}>
-//               <FaCogs size={14} />
-//               <Text>I2C</Text>
-//             </HStack>
-//           </VStack>
-//         </Collapse>
-//       </Box>
-//     </Box>
-//   );
-// };
-
-// export default FileExplorer;
-

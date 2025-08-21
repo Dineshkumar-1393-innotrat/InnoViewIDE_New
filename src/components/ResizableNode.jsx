@@ -367,7 +367,7 @@ export default function ResizableNode(props) {
           <path
             d={data.shape.icon.path}
             fill="none"
-            stroke={style.stroke || data.color || '#1f2937'}
+            stroke={style.stroke || data.color || '#8cbafa'}
             strokeWidth="2.5"
             vectorEffect="non-scaling-stroke"
             strokeLinecap="round"
