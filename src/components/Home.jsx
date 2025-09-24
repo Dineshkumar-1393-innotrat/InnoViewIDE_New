@@ -114,7 +114,7 @@ const Home = () => {
             {/* Right Side - Form */}
             <VStack as="form" onSubmit={handleLogin} spacing={{ base: 6, md: 8 }} p={{ base: 6, md: 8 }} flex={1} bg={boxBgColor} borderRightRadius="lg" alignItems="flex-start">
               <VStack spacing={2} align="flex-start" w="full">
-                <Heading as="h1" size={{ base: 'xl', md: '2xl' }}>Innotrat labs pvt LTD</Heading>
+                <Heading as="h1" size={{ base: 'xl', md: '2xl' }}color="black">Innotrat labs pvt LTD</Heading>
                 {/* <Text>We're so excited to see you again!</Text> */}
               </VStack>
               
@@ -186,7 +186,6 @@ const Home = () => {
     </ChakraLink>
 
 
-
               </Flex>
             </VStack>
           </Flex>
@@ -196,7 +195,8 @@ const Home = () => {
 
     {/* Here i have exported the footer  */}
     {/* <Footer  /> */}
-    <div style={{ textAlign: 'center' }}><p>InnoIDE_V1_Rev0.5_19_08_2025</p></div>
+    <div style={{ textAlign: 'center', color:'red'}}><p>Version: InnoIDE_V1_Rev0.5_24_09_2025, time:06.45pm </p>
+</div>
     
     </>
   );
