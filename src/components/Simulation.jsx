@@ -6,7 +6,6 @@ import { Rnd } from 'react-rnd';
 import { FiTrash } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
-import Navbar from './Navbar';
 // import Footer from './Footer';
 import SimulationSidebar from './SimulationSidebar';
 import SimulationPopup from './SimulationPopup';
@@ -101,6 +100,7 @@ const BlockDiagram = () => {
   const [openCategories, setOpenCategories] = useState({});
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, itemIndex: null });
   const [selectedItem, setSelectedItem] = useState(null); // Track selected item for showing handles
+  const [zoom, setZoom] = useState(1);
   const navigate = useNavigate();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -416,9 +416,8 @@ const BlockDiagram = () => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="simulation-container flex flex-col bg-gray-900">
-        <Navbar />
-        <div style={{ paddingTop: '35px' }}>
+      <div className="simulation-container flex flex-col bg-gray-900 h-full">
+        <div className="flex-grow">
         {/* Top Controls - Commented out to remove duplicate header */}
         {/*
         <div className="top-controls flex items-center gap-2 p-4 bg-gray-800 border-b border-gray-700">
@@ -432,7 +431,6 @@ const BlockDiagram = () => {
 
         {/* Main Content */}
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-          {/* Sidebar */}
           {sidebarOpen && (
             <div className="w-full md:w-64 flex-shrink-0 bg-gray-800 border-r border-gray-700 overflow-y-auto">
               <SimulationSidebar sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
@@ -441,6 +439,19 @@ const BlockDiagram = () => {
 
           {/* Main Canvas and Output Area */}
           <div className="flex-1 flex flex-col h-full bg-gray-900 min-w-0 relative">
+            {/* Toolbar */}
+            <div className="w-full bg-gray-800 p-2 flex items-center justify-between border-b border-gray-700">
+              <div className="flex items-center gap-2">
+                <button className="control-button p-2 text-green-400 bg-gray-700 hover:bg-gray-600 rounded-md">Play</button>
+                <button className="control-button p-2 text-red-400 bg-gray-700 hover:bg-gray-600 rounded-md">Stop</button>
+                <button className="control-button p-2 text-blue-400 bg-gray-700 hover:bg-gray-600 rounded-md">View Data</button>
+              </div>
+              <div className="flex items-center gap-2 text-white">
+                <button onClick={() => setZoom(z => Math.max(0.2, z - 0.1))} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md">-</button>
+                <span>{Math.round(zoom * 100)}%</span>
+                <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md">+</button>
+              </div>
+            </div>
             {/* Sidebar Toggle Button */}
             {!sidebarOpen && (
               <button
@@ -454,9 +465,35 @@ const BlockDiagram = () => {
               </button>
             )}
             {/* Main Canvas Area */}
-            <main className="flex-1 h-full relative bg-gray-900 min-w-0">
+            <main className="flex-1 h-full relative bg-gray-900 min-w-0" style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
               <Canvas />
             </main>
+            {selectedItem !== null && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: canvasItems[selectedItem].y + canvasItems[selectedItem].height + 10,
+                  left: canvasItems[selectedItem].x,
+                  zIndex: 100,
+                }}
+              >
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const item = canvasItems[selectedItem];
+                    const newRotation = (item.rotation || 0) + 15;
+                    setCanvasItems(prev =>
+                      prev.map((canvasItem, i) =>
+                        i === selectedItem ? { ...canvasItem, rotation: newRotation } : canvasItem
+                      )
+                    );
+                  }}
+                  className="p-1 bg-blue-500 text-white rounded-full"
+                >
+                  ⟳
+                </button>
+              </div>
+            )}
 
             {/* Simulation Output */}
             <div className="bg-gray-900 text-gray-200 p-4 border-t-2 border-gray-700 h-48 font-mono overflow-y-auto shadow-lg">

@@ -1,65 +1,30 @@
+import React from 'react';
+import { FaShapes, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import HeaderButton from './HeaderButton';
 
-import React, { useState } from "react";
-import { Flex, IconButton } from "@chakra-ui/react";
-import { FaBug, FaCogs, FaTrashAlt } from "react-icons/fa";
-import { MdFlashOn } from "react-icons/md";
-import Erase from "./Erase"; 
-import Popup from "./Popup";
-
-const IconBar = ({ onDebugClick, onFlashClick }) => {
-  const [isEraseOpen, setEraseOpen] = useState(false);
+const IconBar = ({ isSidebarCollapsed, setIsSidebarCollapsed, activeTab, setActiveTab }) => {
+  const tabs = [
+    { id: 'flowchart', icon: FaShapes, tooltip: 'Shapes' },
+  ];
 
   return (
-    <Flex
-      direction="column"
-      position="absolute"
-      top="50%"
-      right="0"
-      transform="translateY(-50%)"
-      spacing={2}
-    >
-      {/* <IconButton
-        icon={<FaCogs />}
-        aria-label="Build"
-        size="md"
-        colorScheme="blue"
-        mb={2}
-        variant="outline"
-      /> */}
-      <IconButton
-        icon={<FaBug />}
-        aria-label="Debug"
-        size="md"
-        colorScheme="green"
-        mb={2}
-        variant="outline"
-        onClick={onDebugClick}
+    <div className="flex items-center space-x-1 bg-gray-800 p-1 rounded-lg">
+      <HeaderButton
+        icon={isSidebarCollapsed ? FaChevronRight : FaChevronLeft}
+        tooltip={isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar'}
+        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      <IconButton
-        icon={<MdFlashOn />}
-        aria-label="Flash"
-        size="md"
-        colorScheme="yellow"
-        mb={2}
-        variant="outline"
-        onClick={onFlashClick}
-        
-      />
-      <IconButton
-        icon={<FaTrashAlt />}
-        aria-label="Erase"
-        size="md"
-        colorScheme="red"
-        mb={2}
-        variant="outline"
-        onClick={() => setEraseOpen(true)} // Open the Erase modal on click
-      />
-      
-      {/* Render the Erase modal so this code i have introduced  */}
-      <Erase isOpen={isEraseOpen} onClose={() => setEraseOpen(false)} />
-    </Flex>
+      {!isSidebarCollapsed && tabs.map(tab => (
+        <HeaderButton
+          key={tab.id}
+          icon={tab.icon}
+          tooltip={tab.tooltip}
+          isActive={activeTab === tab.id}
+          onClick={() => setActiveTab(tab.id)}
+        />
+      ))}
+    </div>
   );
 };
 
 export default IconBar;
-

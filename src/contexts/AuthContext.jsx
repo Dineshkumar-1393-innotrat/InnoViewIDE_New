@@ -12,32 +12,59 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      axios.get(`https://www.googleapis.com/oauth2/v1/userinfo?access_token=${token}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json'
-        }
-      })
-      .then(res => {
-        setUser(res.data);
-      })
-      .catch(err => {
-        console.error("Failed to fetch user info", err);
-        setToken(null);
-        localStorage.removeItem('google_auth_token');
-      });
+      axios
+        .get(`https://www.googleapis.com/oauth2/v3/userinfo`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+          },
+        })
+        .then((res) => {
+          setUser(res.data);
+        })
+        .catch((err) => {
+          console.error('Failed to fetch user info', err);
+          setToken(null);
+          localStorage.removeItem('google_auth_token');
+        });
     } else {
       setUser(null);
     }
   }, [token]);
 
   const loginWithGoogle = useGoogleLogin({
-    onSuccess: (codeResponse) => {
-      setToken(codeResponse.access_token);
-      localStorage.setItem('google_auth_token', codeResponse.access_token);
-      navigate('/embedded');
+    // Ensure we request the correct scopes for userinfo
+    scope: 'openid profile email https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+    prompt: 'select_account',
+    onSuccess: async (codeResponse) => {
+      try {
+        const accessToken = codeResponse.access_token;
+        if (!accessToken) throw new Error('No access token received');
+
+        // Persist token first so refreshes still work
+        setToken(accessToken);
+        localStorage.setItem('google_auth_token', accessToken);
+
+        // Fetch user profile immediately so UI can update and then navigate
+        const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
+          },
+        });
+        setUser(data);
+        navigate('/embedded');
+      } catch (err) {
+        console.error('Google login flow failed:', err);
+        // Clean up any partial state if we failed
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem('google_auth_token');
+      }
     },
-    onError: (error) => console.log('Login Failed:', error)
+    onError: (error) => {
+      console.log('Login Failed:', error);
+    },
   });
 
   const loginWithEmail = (email) => {

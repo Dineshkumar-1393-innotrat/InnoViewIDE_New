@@ -11,7 +11,6 @@ import {
   applyNodeChanges,
   MiniMap,
   ReactFlowProvider,
-  useStore,
 } from 'reactflow';
 import { useDispatch, useSelector } from 'react-redux';
 import { useDrop } from 'react-dnd';
@@ -41,13 +40,14 @@ import {
   setEditingEdgeId,
 } from '../features/flow/flowSlice';
 import LabelNode from './LabelNode';
-import DiagramSidebar from './DiagramSidebar';
-import DiagramHeader from './DiagramHeader';
+import DyteMeetingComponent from './DyteMeeting';
 import { ZoomProvider } from '../contexts/ZoomContext.jsx';
-import { applyAutoLayout } from '../utils/autoLayout';
 import watermarkLogo from '../assets/hex_bg.png';
 import 'reactflow/dist/style.css';
 import './DiagramEditor.css';
+import HistoryPanel from './HistoryPanel';
+import DiagramSidebar from './DiagramSidebar';
+import { useOutletContext } from 'react-router-dom';
 
 const COLOR_SWATCHES = [
   '#1970fc', '#ef4444', '#22c55e', '#f59e42', '#a21caf', '#fbbf24', '#0ea5e9', '#64748b',
@@ -65,7 +65,7 @@ const edgeTypes = {
   custom: CustomEdge,
 };
 
-const DiagramEditorContent = () => {
+const DiagramEditorContent = ({ fileSystem, onFileSystemUpdate, setFlowchartRef }) => {
   const dispatch = useDispatch();
   const nodesFromStore = useSelector(selectNodes);
   const edges = useSelector(selectEdges);
@@ -77,12 +77,28 @@ const DiagramEditorContent = () => {
   const [colorPalette, setColorPalette] = useState({ open: false, x: 0, y: 0, target: null });
   const [colorTarget, setColorTarget] = useState('stroke'); // 'stroke' or 'text'
   const editingEdgeId = useSelector(selectEditingEdgeId);
+  const [sourceNodeForConnection, setSourceNodeForConnection] = useState(null);
+  const [showMeeting, setShowMeeting] = useState(false);
+  const [meetingInfo, setMeetingInfo] = useState({ authToken: null, roomName: null });
+  const [isConnecting, setIsConnecting] = useState(false);
 
   // Use a ref to hold the latest connectorType to avoid stale closures in callbacks
   const connectorTypeRef = useRef(connectorType);
   useEffect(() => {
     connectorTypeRef.current = connectorType;
   }, [connectorType]);
+
+  // Guard to prevent onNodesChange/onEdgesChange from firing immediately after undo/redo
+  const isUndoRedoRef = useRef(false);
+  const undoRedoTimerRef = useRef(null);
+  const startUndoRedoGuard = useCallback(() => {
+    isUndoRedoRef.current = true;
+    if (undoRedoTimerRef.current) clearTimeout(undoRedoTimerRef.current);
+    undoRedoTimerRef.current = setTimeout(() => {
+      isUndoRedoRef.current = false;
+      undoRedoTimerRef.current = null;
+    }, 150);
+  }, []);
 
   const closeColorPalette = () => setColorPalette({ open: false, x: 0, y: 0, target: null });
 
@@ -137,9 +153,10 @@ const DiagramEditorContent = () => {
       data: {
         ...node.data,
         isHovering: node.id === hoveredNodeId,
+        isConnecting,
       },
     }));
-  }, [nodesFromStore, hoveredNodeId]);
+  }, [nodesFromStore, hoveredNodeId, isConnecting]);
 
 
   const onNodeMouseEnter = (event, node) => setHoveredNodeId(node.id);
@@ -157,11 +174,62 @@ const DiagramEditorContent = () => {
 
       const { getHandles, ...serializableShape } = shape;
 
+      // Compute text slots based on shape metadata so we can initialize defaults
+      const computeSlots = (s) => {
+        if (!s) return [];
+        if (Array.isArray(s.textSlots) && s.textSlots.length > 0) return s.textSlots;
+        const g = s.slotGrid;
+        if (g && g.rows > 0 && g.cols > 0) {
+          const margin = typeof g.margin === 'number' ? g.margin : 2;
+          const inset = g.inset || { top: 0, right: 0, bottom: 0, left: 0 };
+          const slots = [];
+          const usableWidth = 100 - (inset.left || 0) - (inset.right || 0);
+          const usableHeight = 100 - (inset.top || 0) - (inset.bottom || 0);
+          const cellW = usableWidth / g.cols;
+          const cellH = usableHeight / g.rows;
+          for (let r = 0; r < g.rows; r++) {
+            for (let c = 0; c < g.cols; c++) {
+              const left = (inset.left || 0) + c * cellW + margin;
+              const top = (inset.top || 0) + r * cellH + margin;
+              const width = Math.max(0, cellW - 2 * margin);
+              const height = Math.max(0, cellH - 2 * margin);
+              slots.push({ id: `r${r}c${c}`, left, top, width, height, r, c, i: r * g.cols + c });
+            }
+          }
+          return slots;
+        }
+        return [];
+      };
+
+      const slots = computeSlots(serializableShape);
+
+      // Build default slot texts from shape.slotDefaults.format if available
+      let slotTexts = undefined;
+      if (slots.length > 0) {
+        const fmt = serializableShape.slotDefaults?.format;
+        if (fmt) {
+          const rows = serializableShape.slotGrid?.rows || 1;
+          const cols = serializableShape.slotGrid?.cols || slots.length;
+          const format = (template, ctx) =>
+            template
+              .replace(/\{i\}/g, String(ctx.i))
+              .replace(/\{n\}/g, String(ctx.i + 1))
+              .replace(/\{r\}/g, String(ctx.r))
+              .replace(/\{c\}/g, String(ctx.c));
+          slotTexts = {};
+          slots.forEach((s, index) => {
+            const r = typeof s.r === 'number' ? s.r : Math.floor(index / cols);
+            const c = typeof s.c === 'number' ? s.c : index % cols;
+            slotTexts[s.id] = format(fmt, { i: index, r, c });
+          });
+        }
+      }
+
       const newNode = {
         id: uuidv4(),
         type: 'resizableNode',
         position,
-        data: { shape: serializableShape },
+        data: { shape: serializableShape, ...(slotTexts ? { slotTexts } : {}) },
         style: {
           width: serializableShape.width || 120,
           height: serializableShape.height || 80,
@@ -175,6 +243,7 @@ const DiagramEditorContent = () => {
 
   const onNodesChange = useCallback(
     (changes) => {
+      if (isUndoRedoRef.current) return; // ignore synthetic changes from undo/redo
       const currentNodes = reactFlowInstance.getNodes();
       dispatch(setNodes(applyNodeChanges(changes, currentNodes)));
     },
@@ -183,6 +252,7 @@ const DiagramEditorContent = () => {
 
   const onEdgesChange = useCallback(
     (changes) => {
+      if (isUndoRedoRef.current) return; // ignore synthetic changes from undo/redo
       const currentEdges = reactFlowInstance.getEdges();
       dispatch(setEdges(applyEdgeChanges(changes, currentEdges)));
     },
@@ -216,37 +286,45 @@ const DiagramEditorContent = () => {
       }
 
       dispatch(addEdge(newEdge));
+      // stop connecting UI state
+      setIsConnecting(false);
     },
     [dispatch]
   );
+
+  // When connection starts, make handles larger and always visible to ease joining
+  const onConnectStart = useCallback(() => {
+    setIsConnecting(true);
+  }, []);
+
+  const onConnectEnd = useCallback(() => {
+    setIsConnecting(false);
+  }, []);
+
+  const onConnectStop = onConnectEnd;
+
+  // Memoized selector to prevent unnecessary re-renders for undo/redo panel state
+  const selectReduxFlowState = useMemo(() => createSelector(
+    [(state) => state.flow.past?.length || 0, (state) => state.flow.future?.length || 0],
+    (pastLength, futureLength) => ({ pastLength, futureLength })
+  ), []);
+
+  const reduxFlowState = useSelector(selectReduxFlowState);
 
   const onUndo = useCallback(() => {
     console.log('↩️ Undo button clicked');
     console.log('canUndo state:', canUndo);
     console.log('Current nodes before undo:', nodesFromStore.length);
-    
     if (canUndo) {
-      console.log('✅ Dispatching undo action');
+      startUndoRedoGuard();
       dispatch(ActionCreators.undo());
-      
       setTimeout(() => {
         console.log('📊 State after undo dispatch - nodes:', nodesFromStore.length);
       }, 100);
     } else {
       console.log('❌ Undo not available - no past history');
     }
-  }, [canUndo, dispatch, nodesFromStore]);
-
-  // Memoized selector to prevent unnecessary re-renders
-  const selectReduxFlowState = useMemo(() => createSelector(
-    [(state) => state.flow.past?.length || 0, (state) => state.flow.future?.length || 0],
-    (pastLength, futureLength) => ({
-      pastLength,
-      futureLength
-    })
-  ), []);
-
-  const reduxFlowState = useSelector(selectReduxFlowState);
+  }, [canUndo, dispatch, nodesFromStore, startUndoRedoGuard]);
 
   const onRedo = useCallback(() => {
     console.log('🔄 Redo button clicked');
@@ -254,20 +332,16 @@ const DiagramEditorContent = () => {
     console.log('Redux flow state:', reduxFlowState);
     console.log('Current nodes:', nodesFromStore.length);
     console.log('Current edges:', edges.length);
-    
     if (canRedo) {
-      console.log('✅ Dispatching redo action');
-      console.log('ActionCreators.redo():', ActionCreators.redo());
+      startUndoRedoGuard();
       dispatch(ActionCreators.redo());
-      
-      // Log state after dispatch
       setTimeout(() => {
         console.log('📊 State after redo dispatch - nodes:', nodesFromStore.length, 'edges:', edges.length);
       }, 100);
     } else {
       console.log('❌ Redo not available - no future history');
     }
-  }, [canRedo, dispatch, reduxFlowState, nodesFromStore, edges]);
+  }, [canRedo, dispatch, reduxFlowState, nodesFromStore, edges, startUndoRedoGuard]);
 
   const onKeyDown = useCallback(
     (event) => {
@@ -290,6 +364,13 @@ const DiagramEditorContent = () => {
   );
 
   const exportRef = useRef(null);
+  // Expose the export surface to parent for PNG export
+  const attachExportSurfaceRef = useCallback((el) => {
+    exportRef.current = el;
+    if (typeof setFlowchartRef === 'function') {
+      setFlowchartRef(el);
+    }
+  }, [setFlowchartRef]);
   const watermarkRef = useRef(null);
 
   const exportImage = useCallback(() => {
@@ -318,7 +399,7 @@ const DiagramEditorContent = () => {
 
     toPng(exportRef.current, {
       quality: 1.0,
-      backgroundColor: '#87C3FF',
+      backgroundColor: '#070808',
       cacheBust: true,
       filter: (node) => {
         if (
@@ -562,6 +643,7 @@ const DiagramEditorContent = () => {
     [dispatch]
   );
 
+
   return (
     <div 
       ref={drop} 
@@ -663,15 +745,16 @@ const DiagramEditorContent = () => {
         </div>
       )}
       
-      {/* Export-only area: shapes, edges, light blue background */}
+      {/* Export-only area: shapes, edges, light blue background in UI.
+          This element is the export surface; MainLayout overrides its background to white during export. */}
       <div
-        ref={exportRef}
-        className="w-full h-full"
+        ref={attachExportSurfaceRef}
+        className="diagram-export-surface w-full h-full"
         style={{
           position: 'absolute',
           inset: 0,
           zIndex: 0,
-          backgroundColor: '#e0f2fe', // Light blue-gray background to match sidebar
+          backgroundColor: '#e0f2fe', // UI background; will be forced to white in export onclone
           minHeight: '400px',
           minWidth: '400px'
         }}
@@ -682,6 +765,8 @@ const DiagramEditorContent = () => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodeContextMenu={openColorPalette}
@@ -701,6 +786,7 @@ const DiagramEditorContent = () => {
           connectionMode={ConnectionMode.Handles}
           connectionLineComponent={CustomConnectionLine}
           connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}
+          connectionRadius={30}
           isValidConnection={(connection) => {
             // Prevent self-connections
             if (connection.source === connection.target) return false;
@@ -712,12 +798,25 @@ const DiagramEditorContent = () => {
             return sourceHandleIsSource && targetHandleIsTarget;
           }}
           onNodeClick={(event, node) => {
-            // Handle node selection
-            const updatedNodes = nodesFromStore.map(n => ({
-              ...n,
-              selected: n.id === node.id ? !n.selected : n.selected
-            }));
-            dispatch(setNodes(updatedNodes));
+            // Handle one-click connection
+            if (sourceNodeForConnection) {
+              const newEdge = {
+                id: `e${sourceNodeForConnection.id}-${node.id}`,
+                source: sourceNodeForConnection.id,
+                target: node.id,
+                type: 'custom',
+                animated: true,
+              };
+              dispatch(addEdge(newEdge));
+              setSourceNodeForConnection(null);
+            } else {
+              // Handle node selection
+              const updatedNodes = nodesFromStore.map(n => ({
+                ...n,
+                selected: n.id === node.id ? !n.selected : n.selected
+              }));
+              dispatch(setNodes(updatedNodes));
+            }
           }}
           onEdgeClick={(event, edge) => {
             event.stopPropagation();
@@ -734,33 +833,34 @@ const DiagramEditorContent = () => {
             dispatch(setEditingEdgeId(edge.id));
           }}
         />
-        {/* Watermark for export - placed inside the export area */}
+        {/* Watermark for export - placed inside the export area (hidden in UI, shown during export) */}
         <div
           ref={watermarkRef}
+          className="export-watermark"
           style={{
             position: 'absolute',
-            left: 20,
+            right: 20,
             bottom: 20,
-            visibility: 'hidden', // default hidden
+            visibility: 'hidden', // default hidden; will be enabled in MainLayout on export
             pointerEvents: 'none',
             userSelect: 'none',
             zIndex: 100,
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            background: 'rgba(255, 255, 255, 0.8)',
-            padding: '4px 8px',
-            borderRadius: '6px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            padding: '6px 10px',
+            borderRadius: '10px',
           }}
         >
-          <img src={watermarkLogo} alt="Watermark" style={{ width:'24px', height:'auto' }} />
-          <span style={{ color: '#000000', fontSize: '12px', fontWeight: '600' }}>Made with InnoTrat Labs</span>
-          
+          <img src={watermarkLogo} alt="Innotrat" style={{ width:'20px', height:'20px' }} />
+          <span style={{ color: '#000000', fontSize: '12px', fontWeight: 600 }}>made with innotrat labs</span>
         </div>
       </div>
       
       {/* Controls and MiniMap (not exported) */}
-      <Controls position="bottom-right" className="react-flow-controls" style={{ zIndex: 10 }}>
+      <Controls position="bottom-right" className="react-flow-controls" style={{ zIndex: 10, right: 15, bottom: 15 }}>
         {/* Undo Button */}
         <div title="Undo">
           <ControlButton onClick={onUndo} disabled={!canUndo} className="custom-control-button">
@@ -789,47 +889,84 @@ const DiagramEditorContent = () => {
           </ControlButton>
         </div>
       </Controls>
-      <MiniMap position="bottom-left" pannable zoomable style={{ zIndex: 10 }} />
+      <MiniMap position="bottom-left" pannable zoomable style={{ zIndex: 10, left: 15, bottom: 15 }} />
     </div>
   );
 };
 
-const DiagramEditor = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+const DiagramEditor = ({ fileSystem, onFileSystemUpdate, refreshFileSystem }) => {
+  const { setFlowchartRef } = useOutletContext();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState('flowchart');
+  const [showMeeting, setShowMeeting] = useState(false);
+  const [meetingInfo, setMeetingInfo] = useState({ authToken: null, roomName: null });
+  const [showHistory, setShowHistory] = useState(false);
+  const dispatch = useDispatch();
+  const edges = useSelector(selectEdges);
+
+  const handleStartCall = async () => {
+    const devAuthToken = 'Basic NTE1NDA1YWYtMDljNy00NzM1LTg3ZjgtMzM1OThhNjc2OGNhOjkwMTNmZTdjMzc4N2FlNWUwNmE5';
+    console.log('Starting video call with developer token...');
+    setMeetingInfo({
+      authToken: devAuthToken,
+      roomName: 'innoid-diagram-collaboration-dev',
+    });
+    setShowMeeting(true);
+  };
+
+  const handleCloseMeeting = () => {
+    setShowMeeting(false);
+    setMeetingInfo({ authToken: null, roomName: null });
+  };
+
+  const handleFlipDirection = () => {
+    const selectedEdge = edges.find((edge) => edge.selected);
+    if (selectedEdge) {
+      const updatedEdges = edges.map((e) =>
+        e.id === selectedEdge.id
+          ? {
+              ...e,
+              source: selectedEdge.target,
+              target: selectedEdge.source,
+              sourceHandle: selectedEdge.targetHandle,
+              targetHandle: selectedEdge.sourceHandle,
+            }
+          : e
+      );
+      dispatch(setEdges(updatedEdges));
+    }
+  };
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="diagram-editor-route flex flex-col h-screen bg-gray-900">
-        <DiagramHeader
-          onZoomIn={() => window.dispatchEvent(new Event('zoom-in'))}
-          onZoomOut={() => window.dispatchEvent(new Event('zoom-out'))}
-          handleSave={() => window.dispatchEvent(new Event('save-json'))}
-          handleExport={() => window.dispatchEvent(new Event('export-image'))}
-          toggleSidebar={toggleSidebar}
-          exportImage={() => window.dispatchEvent(new Event('export-image'))}
+    <div className="h-full w-full bg-gray-900 text-white">
+      {showMeeting && meetingInfo.authToken && (
+        <DyteMeetingComponent
+          authToken={meetingInfo.authToken}
+          roomName={meetingInfo.roomName}
+          onClose={handleCloseMeeting}
         />
-        <div className="flex flex-1 overflow-hidden">
-          {/* Sidebar */}
-          {sidebarOpen && (
-            <div className="w-full md:w-56 lg:w-64 flex-shrink-0 bg-gray-800 border-r border-gray-700">
-              <DiagramSidebar sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      )}
+      <DndProvider backend={HTML5Backend}>
+        <ReactFlowProvider>
+          <div className="flex h-full w-full">
+            <DiagramSidebar 
+              isCollapsed={isSidebarCollapsed} 
+              activeTab={activeTab} 
+              setActiveTab={setActiveTab} 
+              onFlipDirection={handleFlipDirection} 
+              onFileSystemUpdate={onFileSystemUpdate} 
+            />
+            <div className="flex-1 flex flex-col relative">
+              <main className="flex-1 relative">
+                <DiagramEditorContent fileSystem={fileSystem} onFileSystemUpdate={onFileSystemUpdate} setFlowchartRef={setFlowchartRef} />
+              </main>
             </div>
-          )}
-
-          {/* Main Canvas Area */}
-          <main className="flex-1 flex flex-col h-full relative bg-gray-900 min-w-0">
-            <ReactFlowProvider>
-              <ZoomProvider>
-                <DiagramEditorContent />
-              </ZoomProvider>
-            </ReactFlowProvider>
-          </main>
-        </div>
-      </div>
-    </DndProvider>
+          </div>
+        </ReactFlowProvider>
+      </DndProvider>
+    </div>
   );
 };
 
-export default DiagramEditor; 
+export default DiagramEditor;

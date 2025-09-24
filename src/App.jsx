@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Routes, Route } from "react-router-dom";
@@ -23,9 +23,12 @@ import ForgotPassword from "./components/ForgotPassword"
 import CreateAccount from "./components/CreateAccount"
 import SimulationPopup from "./components/SimulationPopup"
 import DiagramEditor from "./components/DiagramEditor";
+import MainLayout from "./components/MainLayout";
 
 const App = () => {
-    const [currentPanel, setCurrentPanel] = useState("fileExplorer");
+  const [fileSystem, setFileSystem] = useState(null);
+  const refreshFileSystem = useRef(null);
+  const [currentPanel, setCurrentPanel] = useState("fileExplorer");
 
   const handleToggleRun = () => {
     setCurrentPanel((prevPanel) =>
@@ -44,6 +47,10 @@ const App = () => {
       prevPanel === "flash" ? "fileExplorer" : "flash"
     );
   };
+
+  const handleFileSystemUpdate = useCallback((newFileSystem) => {
+    setFileSystem(newFileSystem);
+  }, []);
 
   return (
     <Provider store={store}>
@@ -64,32 +71,51 @@ const App = () => {
           theme="dark"
         />
         <Routes>
+          {/* Standalone routes without the sidebar */}
           <Route path="/" element={<Home />} />
-          <Route path="/template" element={<Template />} />
-          <Route
-            path="/editor"
+          <Route path="/createaccount" element={<CreateAccount />} />
+          <Route path="/forgotpassword" element={<ForgotPassword />} />
+
+          {/* Routes with the persistent sidebar */}
+          <Route 
             element={
-              <CodeEditor
-                currentPanel={currentPanel}
-                onDebugClick={handleToggleDebug}
-                                onFlashClick={handleToggleFlash}
-                onRunClick={handleToggleRun}
+              <MainLayout 
+                fileSystem={fileSystem} 
+                onFileSystemUpdate={handleFileSystemUpdate} 
+                refreshFileSystem={refreshFileSystem} 
               />
             }
-          />
-          <Route path="/flowchart" element={<Flowchart />} />
-          <Route path="/feedback" element={<Feedback />} /> {/* Add the Feedback route */}
-          <Route path="/embedded" element={<Embedded />} />
-          <Route path="/blockdiagram" element={<BlockDiagram />} />
+          >
+            <Route 
+              path="/diagram-editor" 
+              element={<DiagramEditor fileSystem={fileSystem} onFileSystemUpdate={handleFileSystemUpdate} refreshFileSystem={refreshFileSystem} />} 
+            />
+            <Route
+              path="/editor"
+              element={
+                <CodeEditor
+                  currentPanel={currentPanel}
+                  onDebugClick={handleToggleDebug}
+                  onFlashClick={handleToggleFlash}
+                  onRunClick={handleToggleRun}
+                />
+              }
+            />
+            <Route path="/flowchart" element={<Flowchart />} />
+            <Route path="/embedded" element={<Embedded />} />
+            <Route path="/blockdiagram" element={<BlockDiagram />} />
+            <Route path="/simulation" element={<Simulation />} />
+            {/* Add other routes that need the sidebar here */}
+          </Route>
+
+          {/* Other routes that might not need the sidebar */}
+          <Route path="/template" element={<Template />} />
+          <Route path="/feedback" element={<Feedback />} />
           <Route path="/defineproduct" element={<DefineProduct />} />
           <Route path="/textbox" element={<TextBox />} />
           <Route path="/fileupload" element={<FileUpload />} />
-          <Route path="/simulation" element={<Simulation />} />
-          <Route path="/createaccount" element={<CreateAccount />} />
-          <Route path="/forgotpassword" element={<ForgotPassword />} />
           <Route path="/simulationpopup" element={<SimulationPopup />} />
-          <Route path="/diagram-editor" element={<DiagramEditor />} />
-            <Route path = "/flash" element={<Flash />} />
+          <Route path="/flash" element={<Flash />} />
         </Routes>
 
         {/* <Footer />  */}

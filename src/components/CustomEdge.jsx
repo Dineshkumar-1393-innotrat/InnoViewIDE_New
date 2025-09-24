@@ -83,6 +83,7 @@ export default function CustomEdge({ id, source, target, sourceX, sourceY, targe
     targetX: p2.x,
     targetY: p2.y,
     targetPosition,
+    curvature: 0.2, // Add some curvature for a smoother look
   });
 
   const handleLabelChange = (e) => {

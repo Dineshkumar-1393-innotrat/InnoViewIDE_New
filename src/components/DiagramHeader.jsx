@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import DefineProduct from './DefineProduct';
 import {
   FiZoomIn,
   FiZoomOut,
@@ -16,22 +17,20 @@ import {
   FiLogOut,
   FiChevronDown,
   FiCpu,
-  FiPlay
+  FiPlay,
+  FiVideo
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import hex_bg1 from '../assets/hex_bg1.png';
+import IconBar from './IconBar';
 
 
-const DiagramHeader = ({
-  onZoomIn,
-  onZoomOut,
-  handleSave,
-  handleExport,
-  toggleSidebar,
-  exportImage
-}) => {
+import { FiClock } from 'react-icons/fi';
+
+const DiagramHeader = ({ onStartCall, onToggleHistory, fileSystem, onFileSystemUpdate, refreshFileSystem, isSidebarCollapsed, setIsSidebarCollapsed, activeTab, setActiveTab, onZoomIn, onZoomOut, handleSave, handleExport, toggleSidebar, exportImage }) => {
   const [fileInputRef] = useState(React.createRef());
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showDefineProduct, setShowDefineProduct] = useState(false);
   const navigate = useNavigate();
 
   const handleLoadJSON = (event) => {
@@ -69,7 +68,8 @@ const DiagramHeader = ({
       default: "text-gray-300 hover:text-white hover:bg-gray-700",
       primary: "text-gray-300 hover:text-white hover:bg-blue-600",
       danger: "text-gray-300 hover:text-white hover:bg-red-600",
-      blue: "bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 rounded-md font-medium text-sm"
+      blue: "bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 rounded-md font-medium text-sm",
+      teal: "bg-teal-500 text-white hover:bg-teal-600 px-3 py-1.5 rounded-md font-medium text-sm"
     };
 
     return (
@@ -121,41 +121,18 @@ const DiagramHeader = ({
     <header className="bg-gray-800 text-white shadow-lg border-b border-gray-700">
       <div className="flex items-center justify-between px-2 py-2 sm:px-4">
         {/* Left side - Logo and Menu */}
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-2">
-            <img src={hex_bg1} alt="InnoIDE Logo" className="w-8 h-8 rounded-full" />
-            <span className="hidden sm:inline font-semibold text-lg">InnoIDE</span>
-          </div>
-          <HeaderButton
-            onClick={toggleSidebar}
-            icon={FiMenu}
-            title="Toggle Sidebar"
-            variant="default"
-          />
+        <div className="flex items-center space-x-4">
         </div>
 
-        {/* Center - Navigation Buttons */}
-        <div className="flex-1 flex justify-center space-x-2">
-          <HeaderButton
-            onClick={() => navigate('/embedded')}
-            title="Go to Embedded Page"
-            variant="default"
-          >
-            <FiCpu size={16} className="md:hidden" />
-            <span className="hidden md:inline">Embedded</span>
-          </HeaderButton>
-          <HeaderButton
-            onClick={() => navigate('/simulation')}
-            title="Go to Simulation Page"
-            variant="default"
-          >
-            <FiPlay size={16} className="md:hidden" />
-            <span className="hidden md:inline">Simulation</span>
-          </HeaderButton>
-        </div>
 
         {/* Right side - Tools */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-2">
+        <IconBar 
+          isSidebarCollapsed={isSidebarCollapsed} 
+          setIsSidebarCollapsed={setIsSidebarCollapsed} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+        />
           {/* Load */}
           <HeaderButton
             onClick={() => fileInputRef.current?.click()}
@@ -179,6 +156,18 @@ const DiagramHeader = ({
             title="Export as PNG"
             variant="default"
           />
+          <HeaderButton
+            onClick={onStartCall}
+            icon={FiVideo}
+            title="Start Video Call"
+            variant="default"
+          />
+          {/* <HeaderButton
+            onClick={onToggleHistory}
+            icon={FiClock}
+            title="Toggle History"
+            variant="default"
+          /> */}
 
           {/* Profile Dropdown - Hidden as per request */}
           {/*
@@ -207,6 +196,13 @@ const DiagramHeader = ({
             )}
           </div>
           */}
+          <HeaderButton
+            onClick={() => setShowDefineProduct(true)}
+            title="Define Product"
+            variant="teal"
+          >
+            <span className="hidden md:inline">Define Product</span>
+          </HeaderButton>
         </div>
       </div>
 
@@ -226,8 +222,19 @@ const DiagramHeader = ({
           onClick={() => setShowProfileMenu(false)}
         />
       )}
+      {showDefineProduct && (
+        <div className="fixed inset-0 z-50 bg-white">
+          <DefineProduct />
+          <button 
+            onClick={() => setShowDefineProduct(false)} 
+            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          >
+            <FiX size={24} />
+          </button>
+        </div>
+      )}
     </header>
   );
 };
 
-export default DiagramHeader; 
+export default DiagramHeader;

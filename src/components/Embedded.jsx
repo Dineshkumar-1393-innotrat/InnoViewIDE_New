@@ -1,65 +1,115 @@
-import React, { useState } from 'react';
-import { useColorMode, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, RadioGroup, Stack, Radio } from '@chakra-ui/react';
-import Navbar from './Navbar';
-// import Footer from './Footer';
-import OutputStatus from './OutputStatus'; // Assuming OutputStatus is a component you have
+import React, { useState, useRef } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import {
+    useColorMode,
+    Button,
+    Modal,
+    ModalOverlay,
+    ModalContent,
+    ModalHeader,
+    ModalCloseButton,
+    ModalBody,
+    ModalFooter,
+    RadioGroup,
+    Stack,
+    Radio,
+    Flex,
+    HStack,
+    IconButton,
+    Text,
+    Box
+} from '@chakra-ui/react';
+import { Editor } from "@monaco-editor/react";
+import { AddIcon, CloseIcon } from "@chakra-ui/icons";
+import LanguageSelector from "./LanguageSelector";
+import { CODE_SNIPPETS } from "../constants";
+import OutputStatus from './OutputStatus';
+import Terminal from './Terminal';
+import SerialConsole from './SerialConsole';
 
 const Embedded = () => {
-    const [code, setCode] = useState('');
-    const [response, setResponse] = useState('');
-    const [isFlashing, setIsFlashing] = useState(false); // New state for flashing status
-    const { colorMode } = useColorMode(); // Get current color mode
-    const [isModalOpen, setIsModalOpen] = useState(false); // State to control modal visibility
-    const [alignment, setAlignment] = useState('left'); // State to control alignment
-    const closeModal = () => setIsModalOpen(false); // Close modal function
+    const {
+        startFlashing,
+        device,
+        tabs,
+        activeTab,
+        language,
+        handleEditorChange,
+        handleLanguageChange,
+        addNewTab,
+        closeTab,
+        setActiveTab,
+        activeView,
+        setActiveView,
+        setEditorRef
+    } = useOutletContext();
+    const editorRef = useRef();
+    const { colorMode } = useColorMode();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [alignment, setAlignment] = useState('left');
 
+    // --- Definitive State Management for Output ---
+    const [output, setOutput] = useState('');
+    const [problemOutput, setProblemOutput] = useState('');
+        const [status, setStatus] = useState({ errors: 1, warnings: 1, branch: 'main', errorLine: { line: 11, row: 2 } });
+    // ---------------------------------------------
+
+    const MAX_TABS = 5;
+
+    const onMount = (editor, monaco) => {
+        setEditorRef(editor.getDomNode());
+        editor.focus();
+    };
+
+
+
+
+
+
+    const closeModal = () => setIsModalOpen(false);
+
+    const activeTabContent = tabs.find(tab => tab.id === activeTab)?.content || "";
+
+    // --- Definitive handleSubmit Logic ---
     const handleSubmit = async (event) => {
         event.preventDefault();
-        setIsFlashing(true); // Disable the button
 
+        if (!device) {
+            alert('Device not found. Please ensure the device is connected.');
+            return;
+        }
+
+        startFlashing();
+
+        // Simulate dynamic status updates
+        const newErrors = Math.floor(Math.random() * 5);
+        const newWarnings = Math.floor(Math.random() * 10);
+        setStatus(prevStatus => ({
+            ...prevStatus,
+            errors: newErrors,
+            warnings: newWarnings,
+            errorLine: newErrors > 0 ? { line: Math.floor(Math.random() * 20) + 1, row: Math.floor(Math.random() * 10) + 1 } : null
+        }));
+
+        // Original fetch logic
         try {
             const res = await fetch('https://admin.innotrat.in/submit-code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code })
+                body: JSON.stringify({ code: activeTabContent })
             });
 
             const result = await res.json();
-            setResponse(result.message); // Update UI with the response message
+            setProblemOutput(result.message || 'No output received.');
+            setOutput('Code received and stored for flashing');
+            setActiveView('output');
         } catch (error) {
             console.error('Error:', error);
-            setResponse('Error flashing code to the device');
-        } finally {
-            setIsFlashing(false); // Re-enable the button after flashing completes
+            setOutput('Error flashing code to the device');
         }
     };
+    // -----------------------------------
 
-    const containerStyle = {
-        padding: '20px',
-        marginTop: '55px', // Added to push content below the fixed navbar
-        backgroundColor: colorMode === 'dark' ? '#2D3748' : '#F7FAFC',
-        color: colorMode === 'dark' ? '#E2E8F0' : '#2D3748',
-        borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-    };
-
-    const headingStyle = {
-        fontSize: '24px',
-        fontWeight: 'bold',
-        marginBottom: '20px',
-    };
-
-    const textareaStyle = {
-        width: '100%',
-        height: '300px',
-        padding: '10px',
-        fontSize: '16px',
-        borderRadius: '5px',
-        border: `1px solid ${colorMode === 'dark' ? '#4A5568' : '#CBD5E0'}`,
-        backgroundColor: colorMode === 'dark' ? '#1A202C' : '#F7FAFC',
-        color: colorMode === 'dark' ? '#E2E8F0' : '#2D3748',
-        resize: 'none',
-    };
 
     const buttonStyle = {
         padding: '10px 20px',
@@ -70,7 +120,7 @@ const Embedded = () => {
         borderRadius: '5px',
         cursor: 'pointer',
         marginTop: '10px',
-        opacity: isFlashing ? 0.6 : 1,
+        // opacity: isFlashing ? 0.6 : 1,
     };
 
     const responseStyle = {
@@ -82,43 +132,109 @@ const Embedded = () => {
         border: `1px solid ${colorMode === 'dark' ? '#4A5568' : '#CBD5E0'}`,
     };
 
+    const editorTheme = colorMode === "dark" ? "vs-dark" : "vs-light";
+
     return (
         <>
-            <Navbar />
-            <div style={containerStyle}>
-                <h1 style={headingStyle}>Let's Flash it Out!</h1>
-                <form onSubmit={handleSubmit}>
-                    <textarea
-                        style={textareaStyle}
-                        placeholder="Enter your code here..."
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                    />
-                    <br />
-                    <button
-                        type="submit"
-                        style={buttonStyle}
-                        disabled={isFlashing || code.trim().length === 0} // Disable if flashing or no code
-                    >
-                        {isFlashing ? 'Flashing Code...' : 'Flash Code'}
-                    </button>
-                    &nbsp;&nbsp;&nbsp;
+            <Box p={4}>
+                <Flex justifyContent="flex-end">
+                    <LanguageSelector language={language} onSelect={handleLanguageChange} />
+                </Flex>
 
-                    <Button size="sm" colorScheme="blue" variant="outline" onClick={() => console.log('Problem Output clicked')}>
-                        Problem Output
-                    </Button>
-                    <Button size="sm" colorScheme="blue" variant="outline" onClick={() => console.log('Serial Console clicked')} ml={2}>
-                        Serial Console
-                    </Button>
-                    <Button size="sm" colorScheme="blue" variant="outline" onClick={() => console.log('Terminal clicked')} ml={2}>
-                        Terminal
-                    </Button>
+                <HStack
+                    spacing={1}
+                    p={2}
+                    borderBottom="1px solid"
+                    borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
+                    bg={colorMode === "dark" ? "gray.800" : "gray.100"}
+                    overflowX="auto"
+                >
+                    {tabs.map((tab) => (
+                        <Flex
+                            key={tab.id}
+                            align="center"
+                            onClick={() => setActiveTab(tab.id)}
+                            p={2}
+                            bg={activeTab === tab.id ? "blue.500" : "gray.600"}
+                            color="white"
+                            fontSize="sm"
+                            flexShrink={0}
+                            borderRadius="md"
+                            whiteSpace="nowrap"
+                            cursor="pointer"
+                            _hover={{ bg: "blue.400" }}
+                            maxW="100px"
+                            textOverflow="ellipsis"
+                            overflow="hidden"
+                        >
+                            <Text mr={2} noOfLines={1}>{tab.name}</Text>
+                            <IconButton
+                                icon={<CloseIcon />}
+                                size="xs"
+                                ml={1}
+                                aria-label="Close tab"
+                                variant="ghost"
+                                onClick={(event) => closeTab(tab.id, event)}
+                                _hover={{ bg: "red.500" }}
+                                color="white"
+                            />
+                        </Flex>
+                    ))}
+                    <IconButton
+                        icon={<AddIcon />}
+                        size="sm"
+                        onClick={addNewTab}
+                        aria-label="Add new tab"
+                        variant="outline"
+                        _hover={{ bg: "gray.300" }}
+                    />
+                </HStack>
+
+                <Editor
+                    height="300px"
+                    theme={editorTheme}
+                    language={language.toLowerCase()}
+                    value={activeTabContent}
+                    onMount={onMount}
+                    onChange={handleEditorChange}
+                    options={{ minimap: { enabled: false } }}
+                />
+
+                <form onSubmit={handleSubmit} style={{ marginTop: '10px' }}>
+                    <Flex align="center">
+                        <button
+                            type="submit"
+                            style={buttonStyle}
+                            disabled={activeTabContent.trim().length === 0}
+                        >
+                            'Flash Code'
+                        </button>
+                        {/* --- Definitive onClick Handlers --- */}
+                        <Button size="sm" colorScheme="blue" variant="outline" onClick={() => { setOutput(problemOutput); setActiveView('output'); }} ml={4}>
+                            Problem Output
+                        </Button>
+                        <Button size="sm" colorScheme="blue" variant="outline" onClick={() => setActiveView('serial')} ml={2}>
+                            Serial Console
+                        </Button>
+                        <Button size="sm" colorScheme="blue" variant="outline" onClick={() => setActiveView('terminal')} ml={2}>
+                            Terminal
+                        </Button>
+                        {/* ------------------------------------ */}
+                    </Flex>
                 </form>
 
-                <pre style={responseStyle}>{response}</pre>
+                {/* --- Definitive Rendering Logic --- */}
+                <Box mt={4}>
+                    {activeView === 'output' && output && (
+                        <pre style={responseStyle}>{output}</pre>
+                    )}
+                    {activeView === 'serial' && <SerialConsole />}
+                    {activeView === 'terminal' && <Terminal />}
+                </Box>
+                {/* ---------------------------------- */}
 
-                <OutputStatus errorLine={{ line: 11, row: 2 }} />
-            </div>
+                <OutputStatus stats={status} />
+        </Box>
 
             <Modal isOpen={isModalOpen} onClose={closeModal}>
                 <ModalOverlay />
@@ -145,8 +261,6 @@ const Embedded = () => {
                     </ModalFooter>
                 </ModalContent>
             </Modal>
-
-            {/* <Footer /> */}
         </>
     );
 };

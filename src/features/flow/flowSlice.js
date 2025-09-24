@@ -1,11 +1,13 @@
 import { createSlice, current } from '@reduxjs/toolkit';
 
 const initialState = {
+  history: [],
   nodes: [],
   edges: [],
   editingEdgeId: null,
   viewport: { zoom: 1 },
   connectorType: 'single',
+  activeCategory: 'flowchart', // Default category
 };
 
 const flowSlice = createSlice({
@@ -13,12 +15,15 @@ const flowSlice = createSlice({
   initialState,
   reducers: {
     setNodes(state, action) {
+      state.history.push('Set Nodes');
       state.nodes = action.payload;
     },
     setEdges(state, action) {
+      state.history.push('Set Edges');
       state.edges = action.payload;
     },
     addNode(state, action) {
+      state.history.push(`Add Node (${action.payload.data.shape.name})`);
       const { data, ...restOfNode } = action.payload;
       if (data && data.shape && typeof data.shape.getHandles === 'function') {
         const { getHandles, ...serializableShape } = data.shape;
@@ -28,6 +33,7 @@ const flowSlice = createSlice({
       }
     },
     addEdge(state, action) {
+      state.history.push('Add Edge');
       state.edges.push(action.payload);
     },
     updateNode(state, action) {
@@ -117,6 +123,8 @@ const flowSlice = createSlice({
       state.viewport.zoom = Math.max(0.2, state.viewport.zoom - 0.2);
     },
     deleteNode(state, action) {
+      const node = state.nodes.find(n => n.id === action.payload);
+      state.history.push(`Delete Node (${node?.data.shape.name || 'Unknown'})`);
       const nodeId = action.payload;
       state.nodes = state.nodes.filter(node => node.id !== nodeId);
       // Also remove any edges connected to this node
@@ -125,6 +133,7 @@ const flowSlice = createSlice({
       );
     },
     deleteEdge(state, action) {
+      state.history.push('Delete Edge');
       const edgeId = action.payload;
       state.edges = state.edges.filter(edge => edge.id !== edgeId);
     },
@@ -160,6 +169,9 @@ const flowSlice = createSlice({
     setConnectorType(state, action) {
       state.connectorType = action.payload;
     },
+    setActiveCategory(state, action) {
+      state.activeCategory = action.payload;
+    },
   },
 });
 
@@ -187,6 +199,7 @@ export const {
   updateNodePosition,
   updateNodeSize,
   setConnectorType,
+  setActiveCategory,
 } = flowSlice.actions;
 
 // Selectors
@@ -194,6 +207,7 @@ export const selectNodes = (state) => state.flow.present.nodes;
 export const selectEdges = (state) => state.flow.present.edges;
 export const selectEditingEdgeId = (state) => state.flow.present.editingEdgeId;
 export const selectConnectorType = (state) => state.flow.present.connectorType;
+export const selectActiveCategory = (state) => state.flow.present.activeCategory;
 export const selectCanUndo = (state) => state.flow.past.length > 0;
 export const selectCanRedo = (state) => state.flow.future.length > 0;
 

@@ -119,7 +119,8 @@ const Navbar = () => {
               fontWeight="bold" 
               fontSize="sm" 
               ml={2}
-              color={textColor}
+
+              style={{color:"white"}}
             >
               InnoIDE
             </Text>
@@ -250,6 +251,7 @@ const Navbar = () => {
       </Box>
 
       {/* Modal for creating a new project */}
+{/*       
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
@@ -312,7 +314,7 @@ const Navbar = () => {
             </Button>
           </ModalFooter>
         </ModalContent>
-      </Modal>
+      </Modal> */}
 
       {/* Profile Modal */}
       {/*
