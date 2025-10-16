@@ -198,6 +198,54 @@ export const shapeData = {
         { id: 'left', position: Position.Left, style: { top: '50%', left: '0%', transform: 'translate(-50%, -50%)' } },
         { id: 'right', position: Position.Right, style: { top: '50%', left: '100%', transform: 'translate(-50%, -50%)' } },
       ]
+    },
+    { 
+      id: 'block-actor', 
+      name: 'Actor', 
+      icon: { viewBox: '0 0 100 140', path: 'M50 20 m -20 0 a 20 20 0 1 0 40 0 a 20 20 0 1 0 -40 0 M50 40 V90 M20 60 H80 M50 90 L20 130 M50 90 L80 130', stroke: '#000', strokeWidth: 4, fill: 'none' }, 
+      anchors: [ {x:50,y:0},{x:50,y:40},{x:20,y:60},{x:80,y:60},{x:50,y:90},{x:20,y:130},{x:80,y:130} ],
+      getHandles: () => [
+        { id: 'top', position: Position.Top, style: { top: '0%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'bottom', position: Position.Bottom, style: { top: '100%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'left', position: Position.Left, style: { top: '50%', left: '0%', transform: 'translate(-50%, -50%)' } },
+        { id: 'right', position: Position.Right, style: { top: '50%', left: '100%', transform: 'translate(-50%, -50%)' } },
+      ]
+    },
+    { 
+      id: 'block-mic', 
+      name: 'Mic', 
+      icon: { viewBox: '0 0 16 16', path: 'M5 3a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0z M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5' }, 
+      anchors: [ {x:8,y:0},{x:13,y:8},{x:8,y:16},{x:3,y:8} ],
+      getHandles: () => [
+        { id: 'top', position: Position.Top, style: { top: '0%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'bottom', position: Position.Bottom, style: { top: '100%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'left', position: Position.Left, style: { top: '50%', left: '0%', transform: 'translate(-50%, -50%)' } },
+        { id: 'right', position: Position.Right, style: { top: '50%', left: '100%', transform: 'translate(-50%, -50%)' } },
+      ]
+    },
+    { 
+      id: 'block-antenna', 
+      name: 'Antenna', 
+      icon: { viewBox: '0 0 24 24', path: 'M12 5c-3.87 0-7 3.13-7 7h2c0-2.76 2.24-5 5-5s5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4C5.93 1 1 5.93 1 12h2c0-4.97 4.03-9 9-9s9 4.03 9 9h2c0-6.07-4.93-11-11-11zm0 8c-1.66 0-3 1.34-3 3h2c0-.55.45-1 1-1s1 .45 1 1h2c0-1.66-1.34-3-3-3z' }, 
+      anchors: [ {x:12,y:1},{x:23,y:12},{x:12,y:23},{x:1,y:12} ],
+      getHandles: () => [
+        { id: 'top', position: Position.Top, style: { top: '0%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'bottom', position: Position.Bottom, style: { top: '100%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'left', position: Position.Left, style: { top: '50%', left: '0%', transform: 'translate(-50%, -50%)' } },
+        { id: 'right', position: Position.Right, style: { top: '50%', left: '100%', transform: 'translate(-50%, -50%)' } },
+      ]
+    },
+    { 
+      id: 'block-bluetooth', 
+      name: 'Bluetooth', 
+      icon: { viewBox: '0 0 16 16', path: 'm8.543 3.948 1.316 1.316L8.543 6.58zm0 8.104 1.316-1.316L8.543 9.42l-1.316 1.316L8.543 12.052zM7.227 3.948 5.91 5.264l1.316 1.316zm0 8.104L5.91 10.736l1.316-1.316zM6.543 2.832l4.33 4.33-2.33 2.33 2.33 2.33-4.33 4.33V2.832z' }, 
+      anchors: [ {x:8,y:2},{x:13,y:8},{x:8,y:14},{x:3,y:8} ],
+      getHandles: () => [
+        { id: 'top', position: Position.Top, style: { top: '0%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'bottom', position: Position.Bottom, style: { top: '100%', left: '50%', transform: 'translate(-50%, -50%)' } },
+        { id: 'left', position: Position.Left, style: { top: '50%', left: '0%', transform: 'translate(-50%, -50%)' } },
+        { id: 'right', position: Position.Right, style: { top: '50%', left: '100%', transform: 'translate(-50%, -50%)' } },
+      ]
     }
   ],
   
