@@ -1,0 +1,329 @@
+.file-explorer {
+  background-color: #27374D;
+  color: #DDE6ED;
+  padding: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  width: 250px; /* Fixed width */
+}
+
+.diagram-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: #DDE6ED;
+  background: #27374D;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+.diagram-explorer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(221, 230, 237, 0.18);
+}
+
+.diagram-explorer-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: rgba(221, 230, 237, 0.85);
+}
+
+.diagram-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(221, 230, 237, 0.08);
+  border: 1px solid rgba(221, 230, 237, 0.24);
+  color: #DDE6ED;
+  transition: all 0.15s ease;
+}
+
+.diagram-header-btn:hover {
+  background: rgba(221, 230, 237, 0.18);
+  color: #27374D;
+}
+
+.diagram-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 10px 16px;
+  scrollbar-width: thin;
+  background: rgba(39, 55, 77, 0.35);
+  border-radius: 12px;
+}
+
+.diagram-tree::-webkit-scrollbar {
+  width: 6px;
+}
+
+.diagram-tree::-webkit-scrollbar-thumb {
+  background: rgba(221, 230, 237, 0.25);
+  border-radius: 999px;
+}
+
+.diagram-explorer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(221, 230, 237, 0.08);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  margin-bottom: 4px;
+}
+
+.diagram-explorer-row:hover {
+  border-color: rgba(221, 230, 237, 0.45);
+  background: rgba(221, 230, 237, 0.18);
+  box-shadow: 0 6px 14px rgba(39, 55, 77, 0.35);
+}
+
+.diagram-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-start;
+  width: 100%;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.diagram-chevron {
+  display: inline-flex;
+  width: 16px;
+  color: rgba(221, 230, 237, 0.7);
+}
+
+.diagram-node-icon {
+  width: 16px;
+  height: 16px;
+  color: #DDE6ED;
+}
+
+.diagram-node-icon.open {
+  color: #F4F6FF;
+}
+
+.diagram-node-icon.file {
+  color: rgba(221, 230, 237, 0.9);
+}
+
+.diagram-node-icon.edit {
+  margin-right: 6px;
+}
+
+.diagram-node-label {
+  flex: 1;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding-right: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(221, 230, 237, 0.96);
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  text-shadow: none;
+}
+
+.diagram-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.diagram-row-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(221, 230, 237, 0.1);
+  border: 1px solid rgba(221, 230, 237, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.diagram-row-btn:hover {
+  border-color: rgba(221, 230, 237, 0.45);
+  color: #27374D;
+}
+
+.diagram-row-btn.danger:hover {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: #fecaca;
+}
+
+.diagram-action-icon {
+  color: rgba(221, 230, 237, 0.8);
+}
+
+.diagram-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.diagram-children {
+  margin-top: 4px;
+  border-left: 1px solid rgba(221, 230, 237, 0.12);
+}
+
+.diagram-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.diagram-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(221, 230, 237, 0.25);
+  background: rgba(39, 55, 77, 0.5);
+  color: #DDE6ED;
+}
+
+.diagram-input:focus {
+  outline: none;
+  border-color: rgba(221, 230, 237, 0.6);
+  box-shadow: 0 0 0 2px rgba(221, 230, 237, 0.25);
+}
+
+.diagram-primary-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1f7ae0 0%, #38bdf8 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.diagram-secondary-btn {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 8px;
+  background: rgba(39, 55, 77, 0.45);
+  border: 1px solid rgba(221, 230, 237, 0.2);
+  color: #DDE6ED;
+  cursor: pointer;
+}
+
+.diagram-secondary-btn:hover {
+  border-color: rgba(221, 230, 237, 0.4);
+}
+
+.create-project-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.project-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.project-item.selected {
+  background-color: rgba(221, 230, 237, 0.18);
+}
+
+.project-item:hover {
+  background-color: rgba(221, 230, 237, 0.25);
+}
+
+.project-item .chevron {
+  margin-right: 8px;
+  transition: transform 0.2s;
+}
+
+.project-item .folder-icon {
+  margin-right: 8px;
+  color: #facc15;
+}
+
+.project-item .project-name {
+  flex-grow: 1;
+}
+
+.project-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  visibility: hidden;
+}
+
+.project-item:hover .project-actions,
+.project-item.selected .project-actions {
+  visibility: visible;
+}
+
+.project-actions button {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 2px;
+}
+
+.project-actions button:hover {
+  color: #e2e8f0;
+}
+
+.sidebar-toggle-btn {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  background-color: #1e293b;
+  color: white;
+  border: 1px solid #334155;
+  border-left: none;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  padding: 8px 4px;
+  cursor: pointer;
+  z-index: 1001;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
