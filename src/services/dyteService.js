@@ -1,146 +1,278 @@
-const EUREKA_BASE_URL = import.meta.env.VITE_EUREKA_API_BASE || 'https://eureka.innotrat.in/api/v1';
+// const EUREKA_BASE_URL = 'https://eureka.innotrat.in/api/v1';
+// const DYTE_BASE_URL = 'https://api.dyte.io/v2';
 
+// // Your Dyte organization credentials
+// const DYTE_ORG_ID = '515405af-09c7-4735-87f8-33598a6768ca';
+// const DYTE_API_KEY = '9013fe7c3787ae5e06a9';
+
+// // Base64 encode the org_id:api_key
+// const DYTE_AUTH_TOKEN = btoa(`${DYTE_ORG_ID}:${DYTE_API_KEY}`);
+
+// const handleResponse = async (response) => {
+//   if (!response.ok) {
+//     const error = await response.json().catch(() => ({}));
+//     throw new Error(error.message || 'API request failed');
+//   }
+//   return response.json();
+// };
+
+// export const requestDyteSession = async ({
+//   title,
+//   participantName,
+//   meetingPreset = 'group_call_participant',
+//   clientId = `user_${Date.now()}`,
+// }) => {
+//   try {
+//     // Step 1: Create a meeting
+//     const createMeetingResponse = await fetch(`${EUREKA_BASE_URL}/create-meeting`, {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ title: title || `Meeting_${Date.now()}` }),
+//     }).then(handleResponse);
+
+//     if (!createMeetingResponse?.meeting_id) {
+//       throw new Error('Failed to get meeting ID from response');
+//     }
+
+//     const meetingId = createMeetingResponse.meeting_id;
+
+//     // Step 2: Get participant token with corrected payload structure
+//     const participantResponse = await fetch(`${EUREKA_BASE_URL}/get-participant-token`, {
+//       method: 'POST',
+//       headers: { 
+//         'Content-Type': 'application/json',
+//         'Accept': 'application/json'
+//       },
+//       body: JSON.stringify({
+//         meetingId: meetingId,
+//         name: participantName || 'Anonymous',
+//         preset_name: meetingPreset,
+//         client_specific_id: clientId
+//       }),
+//     });
+
+//     // Specific error handling for participant token
+//     if (!participantResponse.ok) {
+//       const errorData = await participantResponse.json().catch(() => ({}));
+//       throw new Error(errorData.message || `Participant token request failed: ${participantResponse.status}`);
+//     }
+
+//     const tokenData = await participantResponse.json();
+
+//     if (!tokenData?.token) {
+//       throw new Error('No token received from participant token endpoint');
+//     }
+
+//     return {
+//       meetingId,
+//       meetingTitle: title,
+//       authToken: tokenData.token,
+//     };
+//   } catch (error) {
+//     console.error('Dyte session request failed:', error);
+//     throw new Error(`Failed to setup Dyte session: ${error.message}`);
+//   }
+// };
+
+// export const createDytePreset = async (presetName, config) => {
+//   const response = await fetch(`${DYTE_BASE_URL}/presets`, {
+//     method: 'POST',
+//     headers: {
+//       'Content-Type': 'application/json',
+//       'Authorization': `Basic ${DYTE_AUTH_TOKEN}`,
+//     },
+//     body: JSON.stringify({
+//       name: presetName,
+//       ...config,
+//     }),
+//   }).then(handleResponse);
+
+//   return response;
+// };
+
+// // Default preset configuration
+// export const DEFAULT_PRESET_CONFIG = {
+//   view_type: 'GROUP_CALL',
+//   max_video_streams: {
+//     mobile: 4,
+//     desktop: 9,
+//   },
+//   media: {
+//     video: { quality: 'hd', frame_rate: 30 },
+//     audio: { enable_stereo: false },
+//   },
+//   permissions: {
+//     // Add your permissions configuration here
+//     chat: { public: { can_send: true }, private: { can_send: true } },
+//     media: {
+//       video: { can_produce: 'ALLOWED' },
+//       audio: { can_produce: 'ALLOWED' },
+//     },
+//   },
+// };
+
+
+// ===============================
+// Dyte Service Integration
+// ===============================
+
+// ---- API BASE URLs ----
+const EUREKA_BASE_URL = 'https://eureka.innotrat.in/api/v1';
+const DYTE_BASE_URL = 'https://api.dyte.io/v2';
+
+// ---- Dyte Organization Credentials ----
+const DYTE_ORG_ID = '515405af-09c7-4735-87f8-33598a6768ca';
+const DYTE_API_KEY = '9013fe7c3787ae5e06a9';
+
+// ---- Generate Dyte Auth Token ----
+const DYTE_AUTH_TOKEN = btoa(`${DYTE_ORG_ID}:${DYTE_API_KEY}`);
+
+// ---- Common Response Handler ----
 const handleResponse = async (response) => {
-  const text = await response.text();
-  let payload;
-
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch (error) {
-    payload = {};
-  }
-
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail =
-      payload?.message ||
-      payload?.error ||
-      payload?.detail ||
-      payload?.errors?.[0] ||
-      text ||
-      'Unknown error';
-    throw new Error(`Dyte API error (${response.status}): ${detail}`);
+    throw new Error(
+      data.message || `API request failed with status ${response.status}`
+    );
   }
-
-  return payload;
+  return data;
 };
 
-const withBase = (path) => {
-  if (!path) return EUREKA_BASE_URL;
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
-  }
-  if (path.startsWith('/')) {
-    return `${EUREKA_BASE_URL}${path}`;
-  }
-  return `${EUREKA_BASE_URL}/${path}`;
-};
-
-const request = async (path, options = {}) => {
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(options.headers || {}),
-  };
-
-  const response = await fetch(withBase(path), {
-    ...options,
-    headers,
-  });
-
-  return handleResponse(response);
-};
-
-const createMeeting = async ({ title, endpoint }) => {
-  return request(endpoint || '/create-meeting', {
-    method: 'POST',
-    body: JSON.stringify({ title }),
-  });
-};
-
-const fetchParticipantToken = async ({
-  meetingId,
-  name,
-  presetName,
-  clientSpecificId,
-  endpoint,
-}) => {
-  return request(endpoint || '/get-participant-token', {
-    method: 'POST',
-    body: JSON.stringify({
-      meetingId,
-      name,
-      preset_name: presetName,
-      client_specific_id: clientSpecificId,
-    }),
-  });
-};
-
-const toMeetingId = (payload) => {
-  if (payload?.meeting_id) return payload.meeting_id;
-  if (payload?.meetingId) return payload.meetingId;
-  if (payload?.data?.meeting_id) return payload.data.meeting_id;
-  if (payload?.data?.meetingId) return payload.data.meetingId;
-  if (payload?.data?.meeting?.meeting_id) return payload.data.meeting.meeting_id;
-  if (payload?.data?.meeting?.id) return payload.data.meeting.id;
-  if (payload?.data?.data?.meeting_id) return payload.data.data.meeting_id;
-  if (payload?.data?.data?.meetingId) return payload.data.data.meetingId;
-  return payload?.id || payload?._id;
-};
-
-const toAuthToken = (payload) => {
-  if (payload?.authToken) return payload.authToken;
-  if (payload?.auth_token) return payload.auth_token;
-  if (payload?.token) return payload.token;
-  if (payload?.data?.authToken) return payload.data.authToken;
-  if (payload?.data?.auth_token) return payload.data.auth_token;
-  if (payload?.authResponse?.authToken) return payload.authResponse.authToken;
-  if (payload?.data?.authResponse?.authToken) return payload.data.authResponse.authToken;
-  return null;
-};
-
+// ===============================
+// Create Dyte Session
+// ===============================
 export const requestDyteSession = async ({
-  title,
-  participantName,
-  participantPreset = 'group_call_host',
-  meetingPreset,
-  createMeetingEndpoint,
-  participantTokenEndpoint,
-} = {}) => {
-  const meetingTitle = title || `InnoIDE Session • ${new Date().toLocaleString()}`;
+  title = `Meeting_${Date.now()}`,
+  participantName = 'John Doe',
+  meetingPreset = 'group_call_participant',
+  clientId = `user_${Date.now()}`,
+}) => {
+  try {
+    // --- Step 1: Create a Meeting ---
+    const meetingPayload = { title };
+    const createMeetingResponse = await fetch(`${EUREKA_BASE_URL}/create-meeting`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(meetingPayload),
+    }).then(handleResponse);
 
-  const meetingPayload = await createMeeting({
-    title: meetingTitle,
-    presetName: meetingPreset,
-    endpoint: createMeetingEndpoint,
-  });
-  const meetingId = toMeetingId(meetingPayload);
+    console.log('🧾 Create meeting API response:', createMeetingResponse);
 
-  if (!meetingId) {
-    throw new Error('Meeting created but no meetingId returned from backend.');
+    // ✅ Extract meetingId correctly (from your actual response)
+    const meetingId = createMeetingResponse?.data?.id;
+
+    if (!meetingId) {
+      throw new Error('No meeting_id returned from create-meeting API');
+    }
+
+    console.log('✅ Meeting created successfully:', meetingId);
+
+    // --- Step 2: Get Participant Token ---
+    const tokenPayload = {
+      meetingId,
+      name: participantName,
+      preset_name: meetingPreset,
+      client_specific_id: clientId,
+    };
+
+    const participantResponse = await fetch(`${EUREKA_BASE_URL}/get-participant-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(tokenPayload),
+    }).then(handleResponse);
+
+    const token = participantResponse?.data?.token;
+    if (!token) throw new Error('No token received from get-participant-token API');
+
+    console.log('✅ Participant token received successfully');
+
+    return {
+      meetingId,
+      meetingTitle: title,
+      participantName,
+      authToken: token,
+      presetUsed: meetingPreset,
+    };
+  } catch (error) {
+    if (error.message.includes('Failed to fetch')) {
+      console.error('🌐 Network Error: Backend unreachable.');
+      throw new Error(
+        'Failed to create Dyte session: Unable to reach backend server. Please check your internet or VPN connection.'
+      );
+    }
+
+    console.error('❌ Dyte session setup failed:', error);
+    throw new Error(`Failed to create Dyte session: ${error.message}`);
   }
-
-  const participantPayload = await fetchParticipantToken({
-    meetingId,
-    name: participantName,
-    presetName: participantPreset,
-    clientSpecificId:
-      (typeof crypto !== 'undefined' && crypto.randomUUID && crypto.randomUUID()) ||
-      `innoide-${Date.now()}`,
-    endpoint: participantTokenEndpoint,
-  });
-
-  const authToken = toAuthToken(participantPayload);
-
-  if (!authToken) {
-    throw new Error('Participant token response missing auth token.');
-  }
-
-  return {
-    meetingId,
-    meetingTitle,
-    authToken,
-  };
 };
 
-export default {
-  requestDyteSession,
+
+// ===============================
+// Create Dyte Preset (optional)
+// ===============================
+export const createDytePreset = async (presetName, config = {}) => {
+  try {
+    const response = await fetch(`${DYTE_BASE_URL}/presets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${DYTE_AUTH_TOKEN}`,
+      },
+      body: JSON.stringify({
+        name: presetName,
+        ...config,
+      }),
+    }).then(handleResponse);
+
+    console.log('✅ Preset created successfully:', response);
+    return response;
+  } catch (error) {
+    console.error('❌ Failed to create Dyte preset:', error);
+    throw new Error(`Failed to create Dyte preset: ${error.message}`);
+  }
+};
+
+// ===============================
+// Default Preset Config
+// ===============================
+export const DEFAULT_PRESET_CONFIG = {
+  view_type: 'GROUP_CALL',
+  max_video_streams: {
+    mobile: 4,
+    desktop: 9,
+  },
+  media: {
+    video: { quality: 'hd', frame_rate: 30 },
+    audio: { enable_stereo: false },
+  },
+  permissions: {
+    chat: {
+      public: { can_send: true },
+      private: { can_send: true },
+    },
+    media: {
+      video: { can_produce: 'ALLOWED' },
+      audio: { can_produce: 'ALLOWED' },
+    },
+  },
+};
+
+// ===============================
+// Example Usage (Test Function)
+// ===============================
+// You can remove this before production
+export const testDyteSession = async () => {
+  try {
+    const session = await requestDyteSession({
+      title: 'MeetingTesting2509',
+      participantName: 'John Doe',
+      meetingPreset: 'group_call_participant',
+    });
+    console.log('🎥 Dyte Session Ready:', session);
+  } catch (err) {
+    console.error('⚠️ Test session failed:', err.message);
+  }
 };

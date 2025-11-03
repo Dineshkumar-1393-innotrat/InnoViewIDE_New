@@ -15,8 +15,14 @@ import {
   Text,
   useDisclosure,
   useToast,
+  VStack,
+  HStack,
+  Avatar,
+  AvatarGroup,
+  IconButton,
+  Tooltip,
 } from '@chakra-ui/react';
-import { AlertCircle, Video } from 'lucide-react';
+import { AlertCircle, Video, Users, Mic, Camera, Share2, PhoneOff } from 'lucide-react';
 import { DyteMeeting } from '@dytesdk/react-ui-kit';
 import { DyteProvider, useDyteClient } from '@dytesdk/react-web-core';
 import { requestDyteSession } from '../services/dyteService';
@@ -25,8 +31,7 @@ const DyteMeetingLauncher = ({
   buttonClassName = 'editor-navbar__icon-btn',
   participantName,
   meetingTitle,
-  meetingPreset,
-  participantPreset,
+  meetingPreset = 'group_call_participant',
 }) => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -36,87 +41,90 @@ const DyteMeetingLauncher = ({
   const [error, setError] = useState(null);
   const [meeting, initMeeting] = useDyteClient();
 
+  // ✅ Reset state only when leaving manually
   const resetState = useCallback(() => {
     setAuthToken(null);
     setMeetingInfo(null);
     setError(null);
   }, []);
 
+  // ✅ Resolve participant name safely
   const safeParticipantName = useMemo(() => {
-    if (participantName && typeof participantName === 'string' && participantName.trim()) {
-      return participantName.trim();
-    }
-    if (typeof window !== 'undefined') {
-      const raw = window.localStorage.getItem('currentUserIdentity');
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (parsed?.name) return parsed.name;
-        } catch (error) {
-          // ignore parse errors
-        }
+    if (participantName && participantName.trim()) return participantName.trim();
+    try {
+      const stored = localStorage.getItem('currentUserIdentity');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.name) return parsed.name;
       }
-    }
+    } catch {}
     return 'InnoIDE User';
   }, [participantName]);
 
+  // ✅ Initialize Dyte meeting when token is ready and modal is open
   useEffect(() => {
     if (!authToken || !isOpen) return;
 
-    let cancelled = false;
-
+    let mounted = true;
     const loadMeeting = async () => {
       try {
-        await initMeeting({
+        console.log('🔹 Initializing Dyte meeting...');
+        const instance = await initMeeting({
           authToken,
-          defaults: {
-            audio: true,
-            video: true,
-          },
+          defaults: { audio: true, video: true },
         });
-      } catch (loadError) {
-        if (!cancelled) {
-          setError(loadError?.message || 'Failed to initialize Dyte meeting.');
+
+        if (mounted) {
+          console.log('✅ Dyte meeting initialized:', instance);
         }
+      } catch (err) {
+        console.error('❌ Dyte Init Error:', err);
+        if (mounted) setError(err.message || 'Failed to initialize Dyte meeting.');
       }
     };
 
     loadMeeting();
-
     return () => {
-      cancelled = true;
-      if (meeting?.leaveRoom) {
-        meeting.leaveRoom();
-      }
+      // ❌ Do NOT auto-leave here — handled manually
+      mounted = false;
     };
-  }, [authToken, initMeeting, isOpen, meeting]);
+  }, [authToken, initMeeting, isOpen]);
 
+  // ✅ Handle creating or joining meeting
   const handleLaunch = useCallback(async () => {
     setError(null);
-
-    if (!isOpen) {
-      onOpen();
-    }
-
-    if (authToken) {
-      return;
-    }
+    if (!isOpen) onOpen();
+    if (authToken) return;
 
     try {
       setIsLoading(true);
+
       const session = await requestDyteSession({
         title: meetingTitle,
         participantName: safeParticipantName,
-        meetingPreset,
-        participantPreset,
+        meetingPreset: meetingPreset || 'group_call_participant',
+        clientId: `user_${Date.now()}`,
       });
 
-      setAuthToken(session?.authToken);
-      setMeetingInfo({
-        id: session?.meetingId,
-        title: session?.meetingTitle,
-      });
-      setError(null);
+      console.log('✅ Dyte session created:', session);
+
+      if (session?.authToken) {
+        setAuthToken(session.authToken);
+        setMeetingInfo({
+          id: session.meetingId || session.data?.id,
+          title: meetingTitle || session.meetingTitle,
+        });
+
+        toast({
+          title: 'Meeting Ready',
+          description: `Joining ${meetingTitle || 'session'}...`,
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        throw new Error('No authToken returned from Dyte API');
+      }
     } catch (apiError) {
       const message = apiError?.message || 'Failed to start Dyte meeting.';
       setError(message);
@@ -130,11 +138,17 @@ const DyteMeetingLauncher = ({
     } finally {
       setIsLoading(false);
     }
-  }, [authToken, meetingPreset, meetingTitle, onOpen, participantPreset, safeParticipantName, toast, isOpen]);
+  }, [authToken, meetingPreset, meetingTitle, safeParticipantName, toast, isOpen, onOpen]);
 
+  // ✅ Leave meeting only when user clicks "Leave"
   const handleClose = useCallback(() => {
-    if (meeting?.leaveRoom) {
-      meeting.leaveRoom();
+    try {
+      if (meeting && typeof meeting.leaveRoom === 'function') {
+        meeting.leaveRoom();
+        console.log('👋 Left Dyte meeting');
+      }
+    } catch (e) {
+      console.warn('LeaveRoom error:', e);
     }
     resetState();
     onClose();
@@ -142,60 +156,119 @@ const DyteMeetingLauncher = ({
 
   return (
     <>
-      <button
-        type="button"
-        className={buttonClassName}
-        title="Start Dyte meeting"
-        onClick={handleLaunch}
-        disabled={isLoading}
+      <Tooltip label="Start video meeting" hasArrow placement="bottom">
+        <IconButton
+          aria-label="Start meeting"
+          icon={isLoading ? <Spinner size="sm" /> : <Video size={20} />}
+          onClick={handleLaunch}
+          isDisabled={isLoading}
+          colorScheme="blue"
+          variant="ghost"
+          rounded="full"
+          size="lg"
+        />
+      </Tooltip>
+
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        size="full"
+        isCentered
+        motionPreset="slideInBottom"
+        closeOnOverlayClick={false}
       >
-        {isLoading ? <Spinner size="xs" /> : <Video size={18} />}
-      </button>
-
-      <Modal isOpen={isOpen} onClose={handleClose} size="6xl" isCentered motionPreset="scale">
-        <ModalOverlay backdropFilter="blur(6px)" />
-        <ModalContent bg="#0b1220" color="white" borderRadius="2xl" border="1px solid rgba(148,163,184,0.24)">
-          <ModalHeader borderBottom="1px solid rgba(148,163,184,0.18)">
-            {meetingInfo?.title || meetingTitle || 'Live Collaboration'}
+        <ModalOverlay backdropFilter="blur(8px)" />
+        <ModalContent bg="#0a0f1c" m={0} rounded={0}>
+          <ModalHeader
+            p={4}
+            borderBottom="1px solid rgba(255,255,255,0.1)"
+            bg="#111827"
+            display="flex"
+            alignItems="center"
+            justifyContent="space-between"
+          >
+            <Text fontSize="lg" fontWeight="500">
+              {meetingInfo?.title || meetingTitle || 'New Meeting'}
+            </Text>
+            <HStack spacing={4}>
+              <Text fontSize="sm" color="gray.400">
+                {meetingInfo?.id && `Meeting ID: ${meetingInfo.id.slice(0, 8)}...`}
+              </Text>
+              <AvatarGroup size="sm" max={3}>
+                <Avatar name={safeParticipantName} bg="blue.500" color="white" />
+              </AvatarGroup>
+            </HStack>
           </ModalHeader>
-          <ModalCloseButton />
 
-          <ModalBody minH="520px" p={0} overflow="hidden">
-            {error && (
-              <Center flexDirection="column" gap={4} h="100%" p={8} textAlign="center">
-                <AlertCircle size={48} color="#f87171" />
-                <Box>
-                  <Text fontWeight="bold">Unable to join the Dyte meeting</Text>
-                  <Text opacity={0.8}>{error}</Text>
-                </Box>
-                <Button onClick={handleLaunch} colorScheme="blue">
-                  Retry
-                </Button>
+          <ModalBody p={0} h="calc(100vh - 120px)" bg="black">
+            {error ? (
+              <Center flexDir="column" h="100%">
+                <VStack spacing={6}>
+                  <AlertCircle size={48} color="#f87171" />
+                  <Box>
+                    <Text fontSize="xl" fontWeight="500">
+                      Unable to join meeting
+                    </Text>
+                    <Text mt={2} color="gray.400">
+                      {error}
+                    </Text>
+                  </Box>
+                  <Button leftIcon={<Video size={16} />} onClick={handleLaunch} colorScheme="blue" size="lg">
+                    Try Again
+                  </Button>
+                </VStack>
               </Center>
-            )}
-
-            {!error && !authToken && (
-              <Center h="100%" flexDirection="column" gap={4} p={8}>
-                <Spinner size="xl" thickness="4px" color="blue.300" />
-                <Text opacity={0.72}>Creating a Dyte meeting…</Text>
+            ) : !authToken ? (
+              <Center h="100%">
+                <VStack spacing={6}>
+                  <Spinner size="xl" color="blue.400" />
+                  <Text fontSize="lg" color="white">
+                    Setting up your meeting...
+                  </Text>
+                  <Text fontSize="sm" color="gray.400">
+                    Please wait a moment
+                  </Text>
+                </VStack>
               </Center>
-            )}
-
-            {!error && authToken && meeting && (
+            ) : meeting ? (
               <DyteProvider value={meeting}>
-                <DyteMeeting mode="fill" />
+                <DyteMeeting mode="fill" meeting={meeting} showSetupScreen />
               </DyteProvider>
+            ) : (
+              <Center h="100%">
+                <Spinner size="lg" color="blue.400" />
+              </Center>
             )}
           </ModalBody>
 
-          <ModalFooter borderTop="1px solid rgba(148,163,184,0.18)">
+          <ModalFooter
+            position="fixed"
+            bottom={0}
+            w="100%"
+            py={6}
+            bg="rgba(17,24,39,0.95)"
+            borderTop="1px solid rgba(255,255,255,0.1)"
+            backdropFilter="blur(12px)"
+          >
             <Flex w="100%" justify="space-between" align="center">
-              <Box fontSize="sm" opacity={0.7}>
-                {meetingInfo?.id ? `Meeting ID: ${meetingInfo.id}` : null}
-              </Box>
-              <Button onClick={handleClose} variant="outline" colorScheme="gray">
-                Leave
+              <HStack spacing={2}>
+                <IconButton aria-label="Toggle mic" icon={<Mic size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
+                <IconButton aria-label="Toggle camera" icon={<Camera size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
+                <IconButton aria-label="Share screen" icon={<Share2 size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
+              </HStack>
+
+              <Button
+                leftIcon={<PhoneOff size={16} />}
+                onClick={handleClose}
+                colorScheme="red"
+                size="lg"
+                rounded="full"
+                px={8}
+              >
+                Leave Meeting
               </Button>
+
+              <IconButton aria-label="Show participants" icon={<Users size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
             </Flex>
           </ModalFooter>
         </ModalContent>
