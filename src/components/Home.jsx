@@ -521,7 +521,7 @@ const Home = () => {
                 </Flex>
 
                 <Text fontSize="xs" textAlign="center" color="red.500" mt={2}>
-                  Version: InnoIDE_V1_Rev0.5_24_09_2025, time: 06:45pm
+                  Version: InnoIDE_V1_Rev0.6_04_11_2025, time: 07:00pm
                 </Text>
               </VStack>
             </Box>
