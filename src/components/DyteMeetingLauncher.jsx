@@ -21,8 +21,13 @@ import {
   AvatarGroup,
   IconButton,
   Tooltip,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  useClipboard,
 } from '@chakra-ui/react';
-import { AlertCircle, Video, Users, Mic, Camera, Share2, PhoneOff } from 'lucide-react';
+import { AlertCircle, Video, Users, Mic, Camera, Share2, PhoneOff, Copy, ExternalLink } from 'lucide-react';
 import { DyteMeeting } from '@dytesdk/react-ui-kit';
 import { DyteProvider, useDyteClient } from '@dytesdk/react-web-core';
 import { requestDyteSession } from '../services/dyteService';
@@ -40,6 +45,8 @@ const DyteMeetingLauncher = ({
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [error, setError] = useState(null);
   const [meeting, initMeeting] = useDyteClient();
+  const { onCopy, hasCopied } = useClipboard('');
+  const [meetingLink, setMeetingLink] = useState('');
 
   // ✅ Reset state only when leaving manually
   const resetState = useCallback(() => {
@@ -154,6 +161,36 @@ const DyteMeetingLauncher = ({
     onClose();
   }, [meeting, onClose, resetState]);
 
+  // Add this after meeting initialization
+  useEffect(() => {
+    if (meetingInfo?.id) {
+      const link = `${window.location.origin}/join/${meetingInfo.id}`;
+      setMeetingLink(link);
+    }
+  }, [meetingInfo]);
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join my InnoIDE Meeting',
+          text: `Join my meeting: ${meetingInfo?.title || 'Video Call'}`,
+          url: meetingLink
+        });
+      } catch (err) {
+        console.log('Share failed:', err);
+      }
+    } else {
+      onCopy(meetingLink);
+      toast({
+        title: 'Link copied!',
+        description: 'Meeting link copied to clipboard',
+        status: 'success',
+        duration: 2000
+      });
+    }
+  };
+
   return (
     <>
       <Tooltip label="Start video meeting" hasArrow placement="bottom">
@@ -254,7 +291,35 @@ const DyteMeetingLauncher = ({
               <HStack spacing={2}>
                 <IconButton aria-label="Toggle mic" icon={<Mic size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
                 <IconButton aria-label="Toggle camera" icon={<Camera size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
-                <IconButton aria-label="Share screen" icon={<Share2 size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
+                
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    aria-label="Share meeting"
+                    icon={<Share2 size={20} />}
+                    variant="ghost"
+                    colorScheme="whiteAlpha"
+                    rounded="full"
+                  />
+                  <MenuList bg="#1f2937" borderColor="gray.700">
+                    <MenuItem
+                      icon={<Copy size={16} />}
+                      onClick={handleShare}
+                      _hover={{ bg: 'gray.700' }}
+                    >
+                      Copy invite link
+                    </MenuItem>
+                    {meetingLink && (
+                      <MenuItem
+                        icon={<ExternalLink size={16} />}
+                        onClick={() => window.open(meetingLink, '_blank')}
+                        _hover={{ bg: 'gray.700' }}
+                      >
+                        Open in new tab
+                      </MenuItem>
+                    )}
+                  </MenuList>
+                </Menu>
               </HStack>
 
               <Button

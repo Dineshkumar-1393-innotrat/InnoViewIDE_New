@@ -18,6 +18,7 @@ import {
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
+import { signup } from '../services/authService';
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
@@ -25,10 +26,10 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 const CreateAccount = () => {
   const [formData, setFormData] = useState({
     name: '',
+    countryCode: '+91',
     mobileNumber: '',
     password: '',
-    confirmPassword: '',
-    countryCode: '+91'
+    confirmPassword: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -73,48 +74,31 @@ const CreateAccount = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
     setLoading(true);
+
     try {
-      const response = await fetch('https://eureka.innotrat.in/api/v1/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      if (formData.password !== formData.confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
 
-      const data = await response.json();
-
-      if (response.ok) {
+      const response = await signup(formData);
+      
+      if (response.status === 'success') {
         toast({
-          title: 'Account Created!',
-          description: 'Your account has been created successfully.',
+          title: 'Account created successfully',
           status: 'success',
-          duration: 3000,
-          isClosable: true,
-          position: 'top',
+          duration: 3000
         });
-        
-        // Redirect after a short delay to ensure the toast is visible
-        setTimeout(() => {
-          navigate('/');
-        }, 2000);
+        navigate('/');
       } else {
-        throw new Error(data.message || 'Failed to create account');
+        throw new Error(response.message || 'Failed to create account');
       }
     } catch (error) {
       toast({
         title: 'Error',
         description: error.message,
         status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top',
+        duration: 3000
       });
     } finally {
       setLoading(false);
@@ -124,10 +108,10 @@ const CreateAccount = () => {
   const resetForm = () => {
     setFormData({
       name: '',
+      countryCode: '+91',
       mobileNumber: '',
       password: '',
-      confirmPassword: '',
-      countryCode: '+91'
+      confirmPassword: ''
     });
     setErrors({});
   };

@@ -8,6 +8,12 @@
   --toolbar-height: 40px; /* .header toolbar height */
 }
 .diagram-builder {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+.diagram-builder {
   width: 100%;
   height: calc(100vh - var(--navbar-height));
   min-height: calc(100vh - var(--navbar-height));
@@ -41,6 +47,8 @@
   background: #27374D;
   color: #DDE6ED;
   border-right: 1px solid rgba(221, 230, 237, 0.18);
+  border-right: 1px solid #e5e7eb;
+  overflow: hidden;
 }
 
 .sidebar-toggle-bar {
@@ -124,6 +132,7 @@
     0 18px 40px rgba(15, 23, 42, 0.18);
   overflow: visible;
   display: flex;
+  background: #f8fafc;
 }
 .canvas-frame::after {
   content: '';
@@ -140,6 +149,7 @@
   padding: 16px;
   overflow: auto; /* scroll independently */
   border-left: 1px solid #e5e7eb;
+  display: none;
 }
 .properties-panel h3 {
   font-size: 14px;

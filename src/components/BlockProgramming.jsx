@@ -14,6 +14,8 @@ import ReactFlow, {
   useReactFlow,
   ConnectionMode,
   ConnectionLineType,
+  Panel,
+  useKeyPress,
 } from 'reactflow';
 import { NodeResizer } from '@reactflow/node-resizer';
 import 'reactflow/dist/style.css';
@@ -45,14 +47,30 @@ const DEFAULT_NODE_DATA = {
   rotation: 0,
 };
 
+// Update grid config for full screen
+const GRID_CONFIG = {
+  ROWS: 12,
+  COLUMNS: 9,
+  SPACING_X: 100,  // Reduced spacing
+  SPACING_Y: 60,   // Reduced spacing
+  START_X: 20,     // Adjusted start position
+  START_Y: 20
+};
+
+// Update default node dimensions
+const DEFAULT_NODE_DIMENSIONS = {
+  width: 120,  // Reduced from 180
+  height: 50   // Reduced from 80
+};
+
 const LOGIC_GROUPS = [
   {
     id: 'logic',
     title: 'Logic Blocks',
     items: [
-      { type: 'logic', label: 'IF', variant: 'diamond' },
-      { type: 'logic', label: 'ELSE IF', variant: 'diamond' },
-      { type: 'logic', label: 'ELIF', variant: 'diamond' },
+      { type: 'logic', label: 'IF', variant: 'rectangle' },
+      { type: 'logic', label: 'ELSE IF', variant: 'rectangle' },
+      { type: 'logic', label: 'ELIF', variant: 'rectangle' },
       { type: 'logic', label: 'SWITCH', variant: 'rectangle' },
       { type: 'logic', label: 'CASE', variant: 'rectangle' },
       { type: 'logic', label: 'ELSE', variant: 'rectangle' },
@@ -73,9 +91,9 @@ const LOGIC_GROUPS = [
     id: 'flow',
     title: 'Flow Helpers',
     items: [
-      { type: 'logic', label: 'START', variant: 'pill' },
-      { type: 'logic', label: 'STOP', variant: 'pill' },
-      { type: 'logic', label: 'LOOP', variant: 'pill' },
+      { type: 'logic', label: 'START', variant: 'rectangle' },
+      { type: 'logic', label: 'STOP', variant: 'rectangle' },
+      { type: 'logic', label: 'LOOP', variant: 'rectangle' },
     ],
   },
 ];
@@ -91,75 +109,97 @@ const handleStyle = {
   borderRadius: '50%',
 };
 
-function LogicBlockNode({ id, data, selected }) {
-  const rf = useReactFlow();
-  const {
-    label = 'BLOCK',
-    variant = 'rectangle',
-    fill = '#ffffff',
-    stroke = '#111827',
-    text = '#111827',
-    strokeWidth = 3,
-    fontSize = 16,
-    rotation = 0,
-  } = data || {};
-
-  const editLabel = useCallback(() => {
-    const next = window.prompt('Edit block label', label);
-    if (next != null) {
-      rf.setNodes((nodes) =>
-        nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, label: next } } : node))
-      );
+// Generate initial grid nodes
+const generateGridNodes = () => {
+  const nodes = [];
+  for (let row = 0; row < GRID_CONFIG.ROWS; row++) {
+    for (let col = 0; col < GRID_CONFIG.COLUMNS; col++) {
+      const id = `grid_${row}_${col}`;
+      nodes.push({
+        id,
+        type: 'logic',
+        position: {
+          x: GRID_CONFIG.START_X + (col * GRID_CONFIG.SPACING_X),
+          y: GRID_CONFIG.START_Y + (row * GRID_CONFIG.SPACING_Y)
+        },
+        data: {
+          ...DEFAULT_NODE_DATA,
+          label: `Block ${row}-${col}`,
+        },
+        style: { 
+          width: DEFAULT_NODE_DIMENSIONS.width, 
+          height: DEFAULT_NODE_DIMENSIONS.height 
+        }
+      });
     }
-  }, [rf, id, label]);
-
-  const commonHandles = (
-    <>
-      <Handle id="top" type="target" position={Position.Top} style={handleStyle} />
-      <Handle id="right" type="source" position={Position.Right} style={handleStyle} />
-      <Handle id="bottom" type="source" position={Position.Bottom} style={handleStyle} />
-      <Handle id="left" type="target" position={Position.Left} style={handleStyle} />
-    </>
-  );
-
-  if (variant === 'diamond') {
-    return (
-      <div className="logic-node" onDoubleClick={editLabel}>
-        <NodeResizer isVisible={selected} minWidth={120} minHeight={120} color={stroke} />
-        <div className="logic-node__content" style={{ transform: `rotate(${rotation}deg)` }}>
-          <svg viewBox="0 0 160 160" preserveAspectRatio="none">
-            <polygon points="80,0 160,80 80,160 0,80" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
-          </svg>
-          <div className="logic-node__label" style={{ color: text, fontSize }}>
-            {label}
-          </div>
-        </div>
-        {commonHandles}
-      </div>
-    );
   }
+  return nodes;
+};
 
-  const borderRadius = variant === 'pill' ? 999 : 12;
+function LogicBlockNode({ id, data, selected }) {
+  const rf = useReactFlow();
+  const {
+    label = 'BLOCK',
+    fill = '#ffffff',
+    stroke = '#111827',
+    text = '#111827',
+    strokeWidth = 3,
+    fontSize = 16,
+    rotation = 0,
+  } = data || {};
 
-  return (
-    <div className="logic-node" onDoubleClick={editLabel}>
-      <NodeResizer isVisible={selected} minWidth={120} minHeight={60} color={stroke} />
-      <div className="logic-node__content" style={{ transform: `rotate(${rotation}deg)` }}>
-        <div
-          style={{
-            background: fill,
-            borderRadius,
-            border: `${strokeWidth}px solid ${stroke}`,
-          }}
-        />
-        <div className="logic-node__label" style={{ color: text, fontSize }}>
-          {label}
-        </div>
-      </div>
-      {commonHandles}
-    </div>
-  );
+  const editLabel = useCallback(() => {
+    const next = window.prompt('Edit block label', label);
+    if (next != null) {
+      rf.setNodes((nodes) =>
+        nodes.map((node) =>
+          node.id === id ? { ...node, data: { ...node.data, label: next } } : node,
+        ),
+      );
+    }
+  }, [rf, id, label]);
+
+  // Rectangle handles on all sides
+  const handles = (
+    <>
+      <Handle id="top" type="target" position={Position.Top} style={handleStyle} />
+      <Handle id="right" type="source" position={Position.Right} style={handleStyle} />
+      <Handle id="bottom" type="source" position={Position.Bottom} style={handleStyle} />
+      <Handle id="left" type="target" position={Position.Left} style={handleStyle} />
+    </>
+  );
+
+  // Always render a rectangle SVG
+  return (
+    <div className="logic-node" onDoubleClick={editLabel}>
+      <NodeResizer isVisible={selected} minWidth={80} minHeight={40} color={stroke} />
+      <div className="logic-node__content" style={{ transform: `rotate(${rotation}deg)` }}>
+        <svg viewBox="0 0 120 50" width="100%" height="100%">
+          <rect
+            x="0"
+            y="0"
+            width="120"
+            height="50"
+            fill={fill}
+            stroke={stroke}
+            strokeWidth={strokeWidth}
+            rx="8"
+            ry="8"
+          />
+        </svg>
+        <div className="logic-node__label" style={{ 
+          color: text, 
+          fontSize: `${fontSize * 0.8}px`,
+          padding: '4px'
+        }}>
+          {label}
+        </div>
+      </div>
+      {handles}
+    </div>
+  );
 }
+
 
 const nodeTypes = { logic: LogicBlockNode };
 
@@ -171,6 +211,8 @@ function BlockProgrammingCanvas() {
   const [paletteSearch, setPaletteSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [isExplorerVisible, setIsExplorerVisible] = useState('blocks');
+  const deletePressed = useKeyPress('Delete');
+  const backspacePressed = useKeyPress('Backspace');
   const rf = useReactFlow();
   const { activeTab, tabs, loading: tabsLoading, createTab, updateActiveTabState, activeTabId, selectTab } = useWorkspaceTabs();
   const hydratingRef = useRef(false);
@@ -213,7 +255,8 @@ function BlockProgrammingCanvas() {
   // Project management integration
   useEffect(() => {
     const checkProjects = async () => {
-      const allProjects = projectFileManager.getAllProjects();
+      // Fix: Get all projects using projectFileManager
+      const allProjects = projectFileManager.getAllProjects() || {};
       const projects = Object.values(allProjects);
       setHasProjects(projects.length > 0);
       
@@ -467,8 +510,8 @@ function BlockProgrammingCanvas() {
       const id = getId();
       logicId += 1;
 
-      const baseWidth = item.variant === 'diamond' ? 180 : 160;
-      const baseHeight = item.variant === 'diamond' ? 160 : 80;
+      const baseWidth = item.variant === 'rectangle' ? 180 : 160;
+      const baseHeight = item.variant === 'rectangle' ? 160 : 80;
 
       setNodes((nds) =>
         nds.concat({
@@ -480,7 +523,10 @@ function BlockProgrammingCanvas() {
             label: item.label,
             variant: item.variant,
           },
-          style: { width: baseWidth, height: baseHeight },
+          style: { 
+            width: DEFAULT_NODE_DIMENSIONS.width, 
+            height: DEFAULT_NODE_DIMENSIONS.height 
+          },
         }),
       );
       setSelected({ kind: 'node', id });
@@ -819,6 +865,19 @@ function BlockProgrammingCanvas() {
     }
   }, [canvasIntegration, activeProjectName, reactFlowWrapper, showExportPreview]);
 
+  // Add keyboard deletion handler
+  useEffect(() => {
+    if ((deletePressed || backspacePressed) && selected) {
+      if (selected.kind === 'node') {
+        setNodes(nodes => nodes.filter(n => n.id !== selected.id));
+      } else if (selected.kind === 'edge') {
+        setEdges(edges => edges.filter(e => e.id !== selected.id));
+      }
+      setSelected(null);
+    }
+  }, [deletePressed, backspacePressed, selected, setNodes, setEdges]);
+
+  // Update ReactFlow render with new controls
   return (
     <div className="diagram-builder">
       <EditorNavbar
@@ -964,10 +1023,10 @@ function BlockProgrammingCanvas() {
                 <MiniMap className="export-ignore" />
                 <Controls className="export-ignore">
                   <ControlButton onClick={undo} title="Undo">
-                    <RotateCcw />
+                    <RotateCcw size={20} />
                   </ControlButton>
                   <ControlButton onClick={redo} title="Redo">
-                    <RotateCw />
+                    <RotateCw size={20} />
                   </ControlButton>
                 </Controls>
                 <Background className="export-ignore" gap={16} size={1} />
