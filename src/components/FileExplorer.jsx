@@ -379,4 +379,26 @@ const FileExplorer = ({ onFileSystemUpdate, refreshFileSystem, variant = 'defaul
   );
 };
 
+const FileItem = ({ file, onFileClick }) => {
+  return (
+    <div 
+      className="file-explorer__item"
+      onClick={() => onFileClick?.(file)}
+      title={file.name}
+    >
+      <Box 
+        as="span" 
+        className="file-explorer__item-name"
+        flex="1"
+        minW="0"
+        whiteSpace="nowrap"
+        overflow="hidden"
+        textOverflow="ellipsis"
+      >
+        {file.name}
+      </Box>
+    </div>
+  );
+};
+
 export default FileExplorer;

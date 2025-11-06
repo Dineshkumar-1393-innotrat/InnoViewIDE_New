@@ -21,7 +21,7 @@ const LanguageSelector = ({ language, onSelect }) => {
   const inactiveTextColor = useColorModeValue("black", "gray.300");
 
   return (
-    <Box ml={2} mb={4}>
+    <Box >
       <Menu isLazy>
         <MenuButton as={Button} fontSize="sm" px={2} py={2} height="auto">
           {language}

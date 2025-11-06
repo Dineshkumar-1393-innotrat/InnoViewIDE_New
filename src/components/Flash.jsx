@@ -513,7 +513,6 @@ const Flash = ({ onFlashComplete, onFlashStart }) => {
       bg={bgColor}
       borderRadius="md"
       boxShadow="md"
-      mt={20}
     >
       <Box w="100%" bg={panelBgColor} borderRadius="md" p={4} border="1px solid" borderColor="rgba(148,163,184,0.35)">
         <Text fontSize="md" fontWeight="bold" color={textColor} mb={2}>
@@ -607,7 +606,7 @@ const Flash = ({ onFlashComplete, onFlashStart }) => {
           </Text>
         )}
       </Box>
-
+{/* 
       <Box w="100%" bg={panelBgColor} borderRadius="md" p={4} border="1px solid" borderColor="rgba(148,163,184,0.35)">
         <Text fontSize="md" fontWeight="bold" color={textColor} mb={2}>
           Flashing Time
@@ -622,7 +621,7 @@ const Flash = ({ onFlashComplete, onFlashStart }) => {
             <Text fontSize="sm" color={textColor}>{flashEstimate.toFixed(1)}s</Text>
           </HStack>
         </VStack>
-      </Box>
+      </Box> */}
 
       <Box w="100%" bg={panelBgColor} borderRadius="md" p={4} border="1px solid" borderColor="rgba(148,163,184,0.35)">
         <Text fontSize="md" fontWeight="bold" color={textColor} mb={3}>
@@ -686,7 +685,7 @@ const Flash = ({ onFlashComplete, onFlashStart }) => {
       <Accordion allowToggle w="100%">
 
         {/* Flashing Time Section */}
-        <AccordionItem>
+        {/* <AccordionItem>
           <h2>
             <AccordionButton>
               <Text flex="1" textAlign="left" fontSize="md" fontWeight="bold">
@@ -704,7 +703,7 @@ const Flash = ({ onFlashComplete, onFlashStart }) => {
               </VStack>
             </Box>
           </AccordionPanel>
-        </AccordionItem>
+        </AccordionItem> */}
 
         {/* Erase & Flash Section */}
         <AccordionItem>

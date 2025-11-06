@@ -115,7 +115,7 @@
 // ===============================
 // Dyte Service Integration
 // ===============================
-
+//https://eureka.innotrat.in/api/v1//
 // ---- API BASE URLs ----
 const EUREKA_BASE_URL = 'https://eureka.innotrat.in/api/v1';
 const DYTE_BASE_URL = 'https://api.dyte.io/v2';
@@ -144,7 +144,7 @@ const handleResponse = async (response) => {
 export const requestDyteSession = async ({
   title = `Meeting_${Date.now()}`,
   participantName = 'John Doe',
-  meetingPreset = 'group_call_participant',
+  meetingPreset = 'group_call_host',
   clientId = `user_${Date.now()}`,
 }) => {
   try {

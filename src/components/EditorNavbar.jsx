@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Blocks,
   Braces,
@@ -27,6 +28,7 @@ import {
   Workflow,
   Cpu,
   Boxes,
+  Calculator,
 } from 'lucide-react';
 import './EditorNavbar.css';
 import hexLogo from '../assets/hex_bg.png';
@@ -109,7 +111,7 @@ const loadIdentityFromStorage = () => {
 
   return null;
 };
-const DEFAULT_TABS = ['Block Diagram', 'Flowchart', 'Simulation', 'Code Editor', 'Block Programming'];
+const DEFAULT_TABS = ['Block Diagram', 'Flowchart', 'Simulation', 'Code Editor', 'Block Programming','MathCodeEditor'];
 
 const TAB_ICON_MAP = {
   'Block Diagram': Blocks,
@@ -117,6 +119,7 @@ const TAB_ICON_MAP = {
   Simulation: Cpu,
   'Code Editor': Braces,
   'Block Programming': Boxes,
+  'MathCodeEditor': Calculator,
 };
 
 const EditorNavbar = ({
@@ -135,6 +138,7 @@ const EditorNavbar = ({
   loginPath = '/',
   isDeviceConnected = true,
 }) => {
+  const navigate = useNavigate();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef(null);
   const downloadRef = useRef(null);
@@ -452,7 +456,13 @@ const EditorNavbar = ({
               role="tab"
               aria-selected={isActive}
               className={`editor-navbar__tab ${isActive ? 'is-active' : ''}`}
-              onClick={() => onTabChange?.(tabId)}
+              onClick={() => {
+                if (tabId === 'MathCodeEditor') {
+                  navigate('/mathcodeeditor');
+                } else {
+                  onTabChange?.(tabId);
+                }
+              }}
             >
               {TabIcon && <TabIcon size={16} className="editor-navbar__tab-icon" aria-hidden="true" />}
               {tabId}
@@ -463,7 +473,7 @@ const EditorNavbar = ({
 
       {/* ✅ Right-side Icons */}
       <div className="editor-navbar__right">
-        {(onExportPNG || onSaveJSON) && (
+        {(onExportPNG || onSaveJSON || onLoadJSON) && (
           <div
             className={`editor-navbar__download ${isDownloadMenuOpen ? 'is-open' : ''}`}
             ref={downloadRef}
@@ -487,18 +497,18 @@ const EditorNavbar = ({
             </button>
             {isDownloadMenuOpen && (
               <div className="editor-navbar__menu-dropdown editor-navbar__menu-dropdown--right" role="menu">
-                {onExportPNG && (
+                {onLoadJSON && (
                   <button
                     type="button"
                     className="editor-navbar__menu-action"
                     onClick={() => {
-                      onExportPNG?.();
+                      onLoadJSON?.();
                       setDownloadMenuOpen(false);
                     }}
                     role="menuitem"
                   >
-                    <ImageDown size={14} />
-                    <span>Export PNG</span>
+                    <Upload size={14} />
+                    <span>Load JSON</span>
                   </button>
                 )}
                 {onSaveJSON && (
@@ -513,6 +523,20 @@ const EditorNavbar = ({
                   >
                     <Save size={14} />
                     <span>Save JSON</span>
+                  </button>
+                )}
+                {onExportPNG && (
+                  <button
+                    type="button"
+                    className="editor-navbar__menu-action"
+                    onClick={() => {
+                      onExportPNG?.();
+                      setDownloadMenuOpen(false);
+                    }}
+                    role="menuitem"
+                  >
+                    <ImageDown size={14} />
+                    <span>Export PNG</span>
                   </button>
                 )}
               </div>

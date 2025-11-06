@@ -25,6 +25,7 @@ import loginImage from '../images/image.jpg';
 import Ellipse521 from '../images/Ellipse 521.svg';
 import { useAuth } from '../contexts/AuthContext';
 import { signin } from '../services/authService';
+import { useGoogleLogin } from '@react-oauth/google';
 
 const Home = () => {
   const [show, setShow] = useState(false);
@@ -95,24 +96,112 @@ const Home = () => {
     navigate('/createaccount');
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await login({
-        connection: 'google-oauth2',
-        appState: { returnTo: '/editor' },
-        authorizationParams: {
-          prompt: 'select_account',
-        },
-      });
-    } catch (error) {
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${tokenResponse.access_token}`,
+            'Accept': 'application/json',
+          }
+        });
+
+        const userInfo = await userInfoResponse.json();
+
+        // First try to sign in
+        const signInResponse = await fetch('https://eureka.innotrat.in/api/v1/auth/google-signin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          },
+          body: JSON.stringify({
+            email: userInfo.email,
+            name: userInfo.name,
+            googleId: userInfo.sub,
+            picture: userInfo.picture,
+            accessToken: tokenResponse.access_token
+          })
+        });
+
+        if (signInResponse.ok) {
+          const data = await signInResponse.json();
+          handleAuthSuccess(data, userInfo);
+        } else if (signInResponse.status === 404) {
+          // If user not found, try to sign up
+          const signUpResponse = await fetch('https://eureka.innotrat.in/api/v1/auth/google-signup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            },
+            body: JSON.stringify({
+              email: userInfo.email,
+              name: userInfo.name,
+              googleId: userInfo.sub,
+              picture: userInfo.picture,
+              accessToken: tokenResponse.access_token
+            })
+          });
+
+          if (signUpResponse.ok) {
+            const data = await signUpResponse.json();
+            handleAuthSuccess(data, userInfo);
+          } else {
+            throw new Error('Failed to create account');
+          }
+        } else {
+          throw new Error('Authentication failed');
+        }
+      } catch (error) {
+        console.error('Google signin error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to authenticate with Google',
+          status: 'error',
+          duration: 3000
+        });
+      }
+    },
+    onError: (error) => {
+      console.error('Google OAuth error:', error);
       toast({
-        title: 'Google sign-in failed',
-        description: error?.message || 'Please try again later.',
+        title: 'Error',
+        description: 'Failed to connect with Google',
         status: 'error',
-        duration: 3000,
-        isClosable: true,
+        duration: 3000
       });
-    }
+    },
+    flow: 'implicit',
+    scope: 'email profile',
+    ux_mode: 'popup',
+  });
+
+  const handleAuthSuccess = (data, userInfo) => {
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('userData', JSON.stringify(data.userData));
+
+    const identity = {
+      name: userInfo.name,
+      email: userInfo.email,
+      picture: userInfo.picture,
+      userId: data.userData?.userId
+    };
+
+    localStorage.setItem('currentUserIdentity', JSON.stringify(identity));
+    sessionStorage.setItem('currentUserIdentity', JSON.stringify(identity));
+
+    toast({
+      title: 'Success',
+      description: 'Successfully signed in with Google',
+      status: 'success',
+      duration: 3000
+    });
+
+    navigate('/editor');
   };
 
   return (
@@ -230,11 +319,15 @@ const Home = () => {
                 </Flex>
 
                 <Button
-                  variant="outline"
                   leftIcon={<FaGoogle />}
+                  onClick={() => handleGoogleLogin()}
+                  isLoading={isLoading}
+                  loadingText="Connecting..."
                   size="lg"
-                  borderRadius="full"
-                  onClick={handleGoogleSignIn}
+                  w="full"
+                  colorScheme="red"
+                  variant="outline"
+                  mb={4}
                 >
                   Continue with Google
                 </Button>

@@ -31,12 +31,13 @@ import { AlertCircle, Video, Users, Mic, Camera, Share2, PhoneOff, Copy, Externa
 import { DyteMeeting } from '@dytesdk/react-ui-kit';
 import { DyteProvider, useDyteClient } from '@dytesdk/react-web-core';
 import { requestDyteSession } from '../services/dyteService';
+import { toPng } from 'html-to-image';
 
 const DyteMeetingLauncher = ({
   buttonClassName = 'editor-navbar__icon-btn',
   participantName,
   meetingTitle,
-  meetingPreset = 'group_call_participant',
+  meetingPreset = 'group_call_host',
 }) => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -45,8 +46,9 @@ const DyteMeetingLauncher = ({
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [error, setError] = useState(null);
   const [meeting, initMeeting] = useDyteClient();
+  const [meetingUrl, setMeetingUrl] = useState('');
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const { onCopy, hasCopied } = useClipboard('');
-  const [meetingLink, setMeetingLink] = useState('');
 
   // ✅ Reset state only when leaving manually
   const resetState = useCallback(() => {
@@ -79,6 +81,10 @@ const DyteMeetingLauncher = ({
         const instance = await initMeeting({
           authToken,
           defaults: { audio: true, video: true },
+          videoEnabled: true,
+          audioEnabled: true,
+          setupScreen: true, // Add setup screen
+          showSetupScreen: true,
         });
 
         if (mounted) {
@@ -109,7 +115,7 @@ const DyteMeetingLauncher = ({
       const session = await requestDyteSession({
         title: meetingTitle,
         participantName: safeParticipantName,
-        meetingPreset: meetingPreset || 'group_call_participant',
+        meetingPreset: meetingPreset || 'group_call_host',
         clientId: `user_${Date.now()}`,
       });
 
@@ -165,31 +171,45 @@ const DyteMeetingLauncher = ({
   useEffect(() => {
     if (meetingInfo?.id) {
       const link = `${window.location.origin}/join/${meetingInfo.id}`;
-      setMeetingLink(link);
+      setMeetingUrl(link);
     }
   }, [meetingInfo]);
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join my InnoIDE Meeting',
-          text: `Join my meeting: ${meetingInfo?.title || 'Video Call'}`,
-          url: meetingLink
-        });
-      } catch (err) {
-        console.log('Share failed:', err);
+  // Handle screen sharing
+  const handleScreenShare = useCallback(async () => {
+    if (!meeting) return;
+
+    try {
+      if (isScreenSharing) {
+        await meeting.self.disableScreenShare();
+        setIsScreenSharing(false);
+      } else {
+        await meeting.self.enableScreenShare();
+        setIsScreenSharing(true);
       }
-    } else {
-      onCopy(meetingLink);
+    } catch (error) {
       toast({
-        title: 'Link copied!',
-        description: 'Meeting link copied to clipboard',
-        status: 'success',
-        duration: 2000
+        title: 'Screen sharing error',
+        description: error.message || 'Failed to toggle screen sharing',
+        status: 'error',
+        duration: 3000,
       });
     }
-  };
+  }, [meeting, isScreenSharing]);
+
+  // Generate and copy invite link
+  const handleCopyInvite = useCallback(() => {
+    const baseUrl = window.location.origin;
+    const inviteUrl = `${baseUrl}/join/${meetingInfo?.id}`;
+    setMeetingUrl(inviteUrl);
+    onCopy(inviteUrl);
+    toast({
+      title: 'Invite link copied',
+      description: 'Meeting link copied to clipboard',
+      status: 'success',
+      duration: 2000,
+    });
+  }, [meetingInfo?.id, onCopy]);
 
   return (
     <>
@@ -215,7 +235,7 @@ const DyteMeetingLauncher = ({
         closeOnOverlayClick={false}
       >
         <ModalOverlay backdropFilter="blur(8px)" />
-        <ModalContent bg="#0a0f1c" m={0} rounded={0}>
+        <ModalContent bg="#0a0f1c" maxW="100vw" maxH="100vh" m={0}>
           <ModalHeader
             p={4}
             borderBottom="1px solid rgba(255,255,255,0.1)"
@@ -237,7 +257,7 @@ const DyteMeetingLauncher = ({
             </HStack>
           </ModalHeader>
 
-          <ModalBody p={0} h="calc(100vh - 120px)" bg="black">
+          <ModalBody p={0} position="relative" h="calc(100vh - 140px)">
             {error ? (
               <Center flexDir="column" h="100%">
                 <VStack spacing={6}>
@@ -267,59 +287,64 @@ const DyteMeetingLauncher = ({
                   </Text>
                 </VStack>
               </Center>
-            ) : meeting ? (
-              <DyteProvider value={meeting}>
-                <DyteMeeting mode="fill" meeting={meeting} showSetupScreen />
-              </DyteProvider>
-            ) : (
-              <Center h="100%">
-                <Spinner size="lg" color="blue.400" />
-              </Center>
+            ) : meeting && (
+              <Box position="relative" h="full" bg="#000">
+                <DyteProvider value={meeting}>
+                  <DyteMeeting
+                    mode="fill"
+                    meeting={meeting}
+                    showSetupScreen
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      // Fix video display
+                      '& video': {
+                        objectFit: 'contain',
+                        background: '#000',
+                      },
+                      // Fix screen share
+                      '& .dyte-screen-share': {
+                        objectFit: 'contain',
+                        maxHeight: '100%',
+                      }
+                    }}
+                  />
+                </DyteProvider>
+              </Box>
             )}
           </ModalBody>
 
           <ModalFooter
             position="fixed"
             bottom={0}
-            w="100%"
+            width="100%"
             py={6}
             bg="rgba(17,24,39,0.95)"
-            borderTop="1px solid rgba(255,255,255,0.1)"
             backdropFilter="blur(12px)"
+            borderTop="1px solid rgba(255,255,255,0.1)"
+            zIndex={10}
           >
             <Flex w="100%" justify="space-between" align="center">
               <HStack spacing={2}>
                 <IconButton aria-label="Toggle mic" icon={<Mic size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
                 <IconButton aria-label="Toggle camera" icon={<Camera size={20} />} variant="ghost" colorScheme="whiteAlpha" rounded="full" />
-                
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    aria-label="Share meeting"
-                    icon={<Share2 size={20} />}
-                    variant="ghost"
-                    colorScheme="whiteAlpha"
-                    rounded="full"
-                  />
-                  <MenuList bg="#1f2937" borderColor="gray.700">
-                    <MenuItem
-                      icon={<Copy size={16} />}
-                      onClick={handleShare}
-                      _hover={{ bg: 'gray.700' }}
-                    >
-                      Copy invite link
-                    </MenuItem>
-                    {meetingLink && (
-                      <MenuItem
-                        icon={<ExternalLink size={16} />}
-                        onClick={() => window.open(meetingLink, '_blank')}
-                        _hover={{ bg: 'gray.700' }}
-                      >
-                        Open in new tab
-                      </MenuItem>
-                    )}
-                  </MenuList>
-                </Menu>
+                <IconButton
+                  aria-label="Share screen"
+                  icon={<Share2 size={20} />}
+                  onClick={handleScreenShare}
+                  variant="ghost"
+                  colorScheme={isScreenSharing ? "blue" : "whiteAlpha"}
+                  rounded="full"
+                />
+                <Button
+                  leftIcon={<Share2 size={16} />}
+                  onClick={handleCopyInvite}
+                  variant="outline"
+                  size="sm"
+                  colorScheme="whiteAlpha"
+                >
+                  {hasCopied ? 'Copied!' : 'Copy invite link'}
+                </Button>
               </HStack>
 
               <Button

@@ -32,3 +32,32 @@ export const signin = async (credentials) => {
 
   return response.json();
 };
+
+export const handleGoogleAuth = async (userInfo, accessToken) => {
+  try {
+    const response = await fetch('https://eureka.innotrat.in/api/v1/auth/google-signin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        email: userInfo.email,
+        googleId: userInfo.sub,
+        name: userInfo.name,
+        picture: userInfo.picture,
+        token: accessToken
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Authentication failed');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Auth service error:', error);
+    throw error;
+  }
+};

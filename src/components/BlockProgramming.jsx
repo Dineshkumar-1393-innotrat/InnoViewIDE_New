@@ -1035,7 +1035,7 @@ function BlockProgrammingCanvas() {
           </div>
         </div>
 
-        <div className="properties-panel">
+        <div className="properties-panel" style={{ display: 'none' }}>
           <h3>Properties</h3>
           <div style={{ fontSize: 12, marginBottom: 8 }}>
             Selected: {isNodeSelected ? 'Block' : 'None'}

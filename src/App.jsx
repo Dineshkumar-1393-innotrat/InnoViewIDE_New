@@ -145,7 +145,8 @@ import EmbeddedFileManagement from "./components/EmbeddedFileManagement/Embedded
 import Toggle from "./components/Toggle/Toggle";
 import FlowchartTest from "./components/FlowchartTest";
 import BlockProgramming from "./components/BlockProgramming";
-
+import ScientificCalculator from "./components/ScientificCalculator";
+import MathCodeEditor from "./components/MathCodeEditor";
 const App = () => {
   const [currentPanel, setCurrentPanel] = useState("fileExplorer");
 
@@ -180,6 +181,7 @@ const App = () => {
                   />
                 }
               />
+              <Route path="/mathcodeeditor" element={<MathCodeEditor />} />
               <Route path="/FlowchartTest" element={<FlowchartTest />} />
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/defineproduct" element={<DefineProduct />} />
@@ -194,6 +196,7 @@ const App = () => {
               <Route path="/BlockDiagram" element={<BlockDiagramTest />} />
               <Route path="/flowcharttest" element={<Flowchart />} />
               <Route path="/blockprogramming" element={<BlockProgramming />} />
+              <Route path="/calculator" element={<ScientificCalculator />} />
               <Route path="/fileexplorerone" element={<FileExplorerOne />} />
               <Route
                 path="/createproductdefination"

@@ -26,6 +26,7 @@ import FileExplorer from "./FileExplorer";
 import Debug from "./Debug";
 import Flash from "./Flash";
 import DefineProductButton from "./shared/DefineProductButton";
+import MathWidgetButton from "./shared/MathWidgetButton";
 
 // Component to handle FileExplorer and Flash panel layout  
 const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colorMode }) => {
@@ -190,7 +191,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     defaultContent: CODE_SNIPPETS["C"] || ""
   });
   
-  const [language, setLanguage] = useState("Select Language");
+  const [language, setLanguage] = useState("Select Languages");
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarMode, setSidebarMode] = useState("explorer");
   const [activeToolPanel, setActiveToolPanel] = useState(null);
@@ -663,13 +664,14 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         w="100%"
         pt={6}
         pb={8}
+        mt={10}
         px={{ base: 4, lg: 8 }}
         bg={colorMode === "dark" ? "#0b1220" : "#f5f7fb"}
         gap={6}
       >
         <Flex flex="1" gap={6} overflow="hidden" align="stretch">
           <Box
-            w={{ base: "280px", lg: "320px" }}
+            // w={{ base: "280px", lg: "320px" }}
             bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
             border="1px solid"
             borderColor={colorMode === "dark" ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.08)"}
@@ -687,17 +689,25 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                 onClick={() => setSidebarMode("explorer")}
                 flex="1"
                 py={2.5}
+                px={4}  // Add horizontal padding
                 borderRadius="lg"
-                fontWeight="700"
+                fontWeight="500"
                 fontSize="sm"
-                letterSpacing="0.05em"
-                textTransform="uppercase"
-                color="#0f172a"
-                bg="linear-gradient(135deg,#38bdf8,#0ea5e9)"
-                border="1px solid rgba(148,163,184,0.25)"
-                transition="all 0.25s ease"
-                boxShadow="0 12px 30px rgba(14,197,240,0.35)"
-                _hover={{ bg: "linear-gradient(135deg,#0ea5e9,#0284c7)" }}
+                color={colorMode === "dark" ? "gray.200" : "gray.800"}
+                bg={colorMode === "dark" ? "rgba(30, 41, 59, 0.5)" : "white"}
+                border="1px solid"
+                borderColor={colorMode === "dark" ? "rgba(148,163,184,0.2)" : "gray.200"}
+                transition="all 0.2s ease"
+                _hover={{
+                  bg: colorMode === "dark" ? "rgba(51, 65, 85, 0.5)" : "gray.50",
+                  borderColor: colorMode === "dark" ? "rgba(148,163,184,0.3)" : "gray.300"
+                }}
+                whiteSpace="nowrap"  // Prevent text wrapping
+                overflow="hidden"    // Hide overflow
+                textOverflow="ellipsis" // Add ellipsis for overflow
+                // minW="120px"        // Ensure minimum width
+                // maxW="100%"         // Allow full width
+                textAlign="center"  // Center text
               >
                 Explorer
               </chakra.button>
@@ -709,7 +719,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               flexDirection="column"
               gap={3}
               borderRadius="xl"
-              bg={colorMode === "dark" ? "rgba(11,20,36,0.85)" : "rgba(15,23,42,0.02)"}
+              bg={colorMode === "dark" ? "rgba(11,18,32,0.85)" : "rgba(15,23,42,0.02)"}
               border="1px solid"
               borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
               overflow="hidden"
@@ -795,6 +805,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                   />
                 </HStack>
                 <Flex align="center" gap={3}>
+                  <MathWidgetButton />
                   <DefineProductButton position="inline" />
                   <LanguageSelector language={language} onSelect={onSelect} />
                   <IconBar

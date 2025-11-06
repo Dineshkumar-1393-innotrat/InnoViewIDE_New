@@ -91,6 +91,9 @@ const Navbar = () => {
     } else if (features.writeCode) {
       redirectTarget = 'Code Editor';
       navigate("/editor");
+    } else if (features.mathCodeEditor) {
+      redirectTarget = 'Math Code Editor';
+      navigate("/mathcodeeditor");
     }
 
     if (redirectTarget) {
@@ -131,7 +134,9 @@ const Navbar = () => {
   const handleBlockProgrammingClick = () => {
     navigate("/blockprogramming");
   };
-
+  const handleMathCodeEditorClick = () => {
+    navigate("/mathcodeeditor");
+  };
   return (
     <Box>
       {/* First Navbar */}
@@ -374,6 +379,14 @@ const Navbar = () => {
                   }
                 >
                   Block Programming
+                </Checkbox>
+                <Checkbox
+                  isChecked={features.mathCodeEditor}
+                  onChange={(e) =>
+                    setFeatures({ ...features, mathCodeEditor: e.target.checked })
+                  }
+                >
+                  Math Code Editor
                 </Checkbox>
               </VStack>
             </FormControl>

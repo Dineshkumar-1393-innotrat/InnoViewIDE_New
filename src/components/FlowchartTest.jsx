@@ -31,6 +31,7 @@ import DiagramTabs from './DiagramTabs';
 import { Settings, ArrowLeftRight, RotateCcw, RotateCw } from 'lucide-react';
 import hexBg from '../assets/hex_bg.png';
 import { useProject } from '../ProjectContext';
+import PropertiesPanel from './PropertiesPanel';
 import { saveProjectFile, sanitizeSegment, ensureProjectFolder } from '../utils/workspaceStorage';
 import { saveAssetToScreenFolder } from '../utils/screenFileManager';
 import { WorkspaceTabsProvider, useWorkspaceTabs } from '../hooks/useWorkspaceTabs';
@@ -3051,134 +3052,15 @@ function DiagramEditor() {
         </div>
 
         {/* Right properties panel */}
-        <div className="properties-panel">
-          <h3>Properties</h3>
-          <div style={{ fontSize: 12, marginBottom: 8 }}>
-            Selected: {selected ? (isEdge ? 'Connector' : 'Node') : 'None'}
-          </div>
-
-          {/* Fill color (nodes only) */}
-          <div className="prop-row">
-            <label>Fill</label>
-            <input
-              type="color"
-              disabled={!selected || isEdge}
-              value={(!isEdge && selectedEntity?.data?.fill) || '#ffffff'}
-              onChange={(e) =>
-                updateSelectedNode((n) => ({ ...n, data: { ...n.data, fill: e.target.value } }))
-              }
-            />
-          </div>
-
-          {/* Border color */}
-          <div className="prop-row">
-            <label>Border</label>
-            <input
-              type="color"
-              disabled={!selected}
-              value={(isEdge ? selectedEntity?.style?.stroke : selectedEntity?.data?.stroke) || '#000000'}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (isEdge) {
-                  updateSelectedEdge((edge) => ({ ...edge, style: { ...(edge.style || {}), stroke: v } }));
-                } else {
-                  updateSelectedNode((n) => ({ ...n, data: { ...n.data, stroke: v } }));
-                }
-              }}
-            />
-          </div>
-
-          {/* Text color */}
-          <div className="prop-row">
-            <label>Text</label>
-            <input
-              type="color"
-              disabled={!selected}
-              value={(isEdge ? selectedEntity?.labelStyle?.fill : selectedEntity?.data?.text) || '#000000'}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (isEdge) {
-                  updateSelectedEdge((edge) => ({ ...edge, labelStyle: { ...(edge.labelStyle || {}), fill: v } }));
-                } else {
-                  updateSelectedNode((n) => ({ ...n, data: { ...n.data, text: v } }));
-                }
-              }}
-            />
-          </div>
-
-          {/* Border width */}
-          <div className="prop-row">
-            <label>Border W</label>
-            <input
-              type="range"
-              min={1}
-              max={10}
-              step={1}
-              disabled={!selected}
-              value={(isEdge ? selectedEntity?.style?.strokeWidth : selectedEntity?.data?.strokeWidth) || 2}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (isEdge) {
-                  updateSelectedEdge((edge) => ({ ...edge, style: { ...(edge.style || {}), strokeWidth: v } }));
-                } else {
-                  updateSelectedNode((n) => ({ ...n, data: { ...n.data, strokeWidth: v } }));
-                }
-              }}
-            />
-          </div>
-
-          {/* Text Size (nodes only) */}
-          <div className="prop-row">
-            <label>Text Size</label>
-            <input
-              type="range"
-              min={8}
-              max={48}
-              step={1}
-              disabled={!selected || isEdge}
-              value={(!isEdge && (selectedEntity?.data?.fontSize ?? 12))}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                updateSelectedNode((n) => ({ ...n, data: { ...n.data, fontSize: v } }));
-              }}
-            />
-          </div>
-
-          {/* Rotate (nodes only) */}
-          <div className="prop-row">
-            <label>Rotate</label>
-            <input
-              type="range"
-              min={0}
-              max={359}
-              step={1}
-              disabled={!selected || isEdge}
-              value={(!isEdge && (selectedEntity?.data?.rotation ?? 0))}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                updateSelectedNode((n) => ({ ...n, data: { ...n.data, rotation: v } }));
-              }}
-            />
-          </div>
-
-          {/* Edit text */}
-          <button
-            className="edit-text-btn"
-            disabled={!selected}
-            onClick={() => {
-              if (!selected) return;
-              if (isEdge) {
-                const current = selectedEntity?.label ?? '';
-                const next = window.prompt('Edge label', current);
-                if (next != null) updateSelectedEdge((e) => ({ ...e, label: next }));
-              } else {
-                updateSelectedNode((n) => ({ ...n, data: { ...n.data, editing: true } }));
-              }
-            }}
-          >
-            Edit Text
-          </button>
-        </div>
+        <PropertiesPanel 
+          selectedNode={selected?.kind === 'node' ? selectedEntity : null}
+          onNodeUpdate={(nodeId, property, value) => {
+            updateSelectedNode((n) => ({ 
+              ...n, 
+              data: { ...n.data, [property]: value } 
+            }));
+          }}
+        />
       </div>
     </div>
   );
