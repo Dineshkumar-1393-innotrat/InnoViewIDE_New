@@ -318,7 +318,7 @@ const Home = () => {
                   <Divider />
                 </Flex>
 
-                <Button
+                {/* <Button
                   leftIcon={<FaGoogle />}
                   onClick={() => handleGoogleLogin()}
                   isLoading={isLoading}
@@ -330,7 +330,7 @@ const Home = () => {
                   mb={4}
                 >
                   Continue with Google
-                </Button>
+                </Button> */}
 
                 <Flex justify="space-between" fontSize="sm" color={subheadingColor}>
                   <ChakraLink color="blue.500" onClick={handleForgotPassword}>
@@ -342,7 +342,7 @@ const Home = () => {
                 </Flex>
 
                 <Text fontSize="xs" textAlign="center" color="red.500" mt={2}>
-                  Version: InnoIDE_V1_Rev0.6_04_11_2025, time: 07:00pm
+                  Version: InnoIDE_V1_Rev0.6_10_11_2025, time: 07:00pm
                 </Text>
               </VStack>
             </Box>

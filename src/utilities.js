@@ -8,8 +8,8 @@ const getUserInfo = () => {
   }
 };
 
-const baseURL = "https://eureka.innotrat.in";
+//const baseURL = "https://eureka.innotrat.in";
 
-// const baseURL = "http://localhost:5004";
+ const baseURL = "http://localhost:5004";
 
 export { getUserInfo, baseURL };
