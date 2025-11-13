@@ -77,22 +77,22 @@ const Navbar = () => {
     // Priority order: Block Programming > Block Diagram > Flow Chart > Simulation > Write Code
     let redirectTarget = '';
     if (features.blockProgramming) {
-      redirectTarget = 'Block Programming';
+      redirectTarget = 'BlockProgramming';
       navigate("/blockprogramming");
     } else if (features.blockDiagram) {
-      redirectTarget = 'Block Diagram';
+      redirectTarget = 'BlockDiagram';
       navigate("/blockdiagram");
     } else if (features.flowChart) {
-      redirectTarget = 'Flow Chart';
-      navigate("/flowcharttest");
+      redirectTarget = 'FlowChart';
+      navigate("/FlowchartTTest");
     } else if (features.simulation) {
       redirectTarget = 'Simulation';
       navigate("/simulation");
     } else if (features.writeCode) {
-      redirectTarget = 'Code Editor';
+      redirectTarget = 'CodeEditor';
       navigate("/editor");
     } else if (features.mathCodeEditor) {
-      redirectTarget = 'Math Code Editor';
+      redirectTarget = 'MathCodeEditor';
       navigate("/mathcodeeditor");
     }
 

@@ -12,7 +12,7 @@ import { FiTrash } from 'react-icons/fi';
 
 import Navbar from './Navbar';
 import Footer from './Footer';
-import './Flowchart.css';
+import '../components/FlowchartTest.css';
 import DefineProductButton from './shared/DefineProductButton';
 
 // Import the SVG file

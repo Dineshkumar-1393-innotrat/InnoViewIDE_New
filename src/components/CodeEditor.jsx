@@ -26,7 +26,7 @@ import FileExplorer from "./FileExplorer";
 import Debug from "./Debug";
 import Flash from "./Flash";
 import DefineProductButton from "./shared/DefineProductButton";
-import MathWidgetButton from "./shared/MathWidgetButton";
+// import MathWidgetButton from "./shared/MathWidgetButton";
 
 // Component to handle FileExplorer and Flash panel layout  
 const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colorMode }) => {
@@ -805,7 +805,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                   />
                 </HStack>
                 <Flex align="center" gap={3}>
-                  <MathWidgetButton />
+                  {/* <MathWidgetButton /> */}
                   <DefineProductButton position="inline" />
                   <LanguageSelector language={language} onSelect={onSelect} />
                   <IconBar

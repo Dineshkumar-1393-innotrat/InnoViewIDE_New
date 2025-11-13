@@ -366,42 +366,262 @@
 // };
 
 
-const EUREKA_BASE_URL = 'http://192.168.68.112:5004/api/v1';
-// const EUREKA_BASE_URL = 'https://eureka.innotrat.in/api/v1';
+// //12-11-25
+
+//13-11-25
+const EUREKA_BASE_URL = 'https://eureka.innotrat.in/api/v1';
+const DYTE_BASE_URL = 'https://api.dyte.io/v2';
+
+// Dyte API Credentials
+const DYTE_ORG_ID = '515405af-09c7-4735-87f8-33598a6768ca';
+const DYTE_API_KEY = '9013fe7c3787ae5e06a9';
+
+// Generate Base64 encoded authorization header for Dyte
+const getDyteAuthHeader = () => {
+  const credentials = `${DYTE_ORG_ID}:${DYTE_API_KEY}`;
+  const base64Credentials = btoa(credentials);
+  return `Basic ${base64Credentials}`;
+};
 
 // Response handler
 const handleResponse = async (response) => {
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(
-      data.message || `API request failed with status ${response.status}`
-    );
+  const contentType = response.headers.get('content-type');
+  let data = {};
+  
+  if (contentType && contentType.includes('application/json')) {
+    data = await response.json().catch(() => ({}));
   }
+  
+  if (!response.ok) {
+    const errorMessage = data.message || data.error || `API request failed with status ${response.status}`;
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+  
   return data;
 };
 
 /**
- * Create Dyte Session (FOR HOST)
- * This creates a meeting and returns a HOST token
+ * Get preset configuration based on type
+ */
+const getPresetConfig = (presetType = 'participant') => {
+  const isHost = presetType === 'host';
+  
+  return {
+    name: isHost ? 'group_call_host' : 'group_call_participant',
+    config: {
+      view_type: 'GROUP_CALL',
+      max_video_streams: {
+        mobile: 0,
+        desktop: 0
+      },
+      max_screenshare_count: 2, // Allow both host and participants to view up to 2 screen shares
+      media: {
+        audio: {
+          enable_stereo: false,
+          enable_high_bitrate: false
+        },
+        video: {
+          quality: 'hd',
+          frame_rate: 30
+        },
+        screenshare: {
+          quality: 'hd',
+          frame_rate: 30 // Allow participants to view screen shares at 30fps
+        }
+      }
+    },
+    permissions: {
+      accept_waiting_requests: isHost,
+      can_accept_production_requests: isHost,
+      can_edit_display_name: true,
+      can_spotlight: isHost,
+      is_recorder: false,
+      recorder_type: 'NONE',
+      disable_participant_audio: isHost,
+      disable_participant_screensharing: isHost,
+      disable_participant_video: isHost,
+      kick_participant: isHost,
+      pin_participant: isHost,
+      can_record: isHost,
+      can_livestream: isHost,
+      waiting_room_type: isHost ? 'SKIP' : 'ON_ACCEPT',
+      plugins: {
+        can_close: isHost,
+        can_start: isHost,
+        can_edit_config: isHost,
+        config: {}
+      },
+      connected_meetings: {
+        can_alter_connected_meetings: isHost,
+        can_switch_connected_meetings: isHost,
+        can_switch_to_parent_meeting: true
+      },
+      polls: {
+        can_create: isHost,
+        can_vote: true,
+        can_view: true
+      },
+      media: {
+        video: {
+          can_produce: 'ALLOWED'
+        },
+        audio: {
+          can_produce: 'ALLOWED'
+        },
+        screenshare: {
+          can_produce: isHost ? 'ALLOWED' : 'NOT_ALLOWED',
+          can_consume: 'ALLOWED' // Allow all participants to view screen shares
+        }
+      },
+      chat: {
+        public: {
+          can_send: true,
+          text: true,
+          files: true
+        },
+        private: {
+          can_send: true,
+          can_receive: true,
+          text: true,
+          files: true
+        }
+      },
+      hidden_participant: false,
+      show_participant_list: true,
+      can_change_participant_permissions: isHost
+    },
+    ui: {
+      design_tokens: {
+        border_radius: 'rounded',
+        border_width: 'thin',
+        spacing_base: 4,
+        theme: 'dark',
+        colors: {
+          brand: {
+            300: '#844d1c',
+            400: '#9d5b22',
+            500: '#b56927',
+            600: '#d37c30',
+            700: '#d9904f'
+          },
+          background: {
+            600: '#222222',
+            700: '#1f1f1f',
+            800: '#1b1b1b',
+            900: '#181818',
+            1000: '#141414'
+          },
+          danger: '#FF2D2D',
+          text: '#EEEEEE',
+          text_on_brand: '#EEEEEE',
+          success: '#62A504',
+          video_bg: '#191919',
+          warning: '#FFCD07'
+        },
+        logo: 'https://innotrat.in.logo'
+      },
+      config_diff: {}
+    }
+  };
+};
+
+/**
+ * Create Dyte preset
+ */
+export const createDytePreset = async (presetType = 'participant') => {
+  try {
+    const presetConfig = getPresetConfig(presetType);
+    const presetName = presetConfig.name;
+    
+    console.log('🎨 Creating/checking Dyte preset:', presetName);
+
+    const response = await fetch(`${DYTE_BASE_URL}/presets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': getDyteAuthHeader()
+      },
+      body: JSON.stringify(presetConfig)
+    }).then(handleResponse);
+
+    console.log('✅ Preset created successfully:', response);
+    return response;
+  } catch (error) {
+    const presetName = presetType === 'host' ? 'group_call_host' : 'group_call_participant';
+    
+    if (error.status === 409 || 
+        error.message.includes('already exists') || 
+        error.message.includes('duplicate')) {
+      console.log('ℹ️ Preset already exists:', presetName);
+      return { name: presetName, status: 'existing' };
+    }
+    
+    console.error('❌ Preset creation failed:', error);
+    throw new Error(`Failed to create preset "${presetName}": ${error.message}`);
+  }
+};
+
+/**
+ * Initialize presets (call once on app startup)
+ */
+export const initializePresets = async () => {
+  const presetTypes = ['host', 'participant'];
+  const results = { success: [], failed: [] };
+  
+  console.log('🔧 Initializing Dyte presets...');
+  
+  for (const presetType of presetTypes) {
+    try {
+      const result = await createDytePreset(presetType);
+      results.success.push(result.name);
+      console.log(`✅ Preset ready: ${result.name}`);
+    } catch (error) {
+      const presetName = presetType === 'host' ? 'group_call_host' : 'group_call_participant';
+      results.failed.push({ preset: presetName, error: error.message });
+      console.error(`❌ Failed to initialize preset ${presetName}:`, error.message);
+    }
+  }
+  
+  console.log('🎉 Preset initialization complete:', results);
+  return results;
+};
+
+/**
+ * Create Dyte Session
  * @param {Object} params
  * @param {string} params.title - Meeting title
- * @param {string} params.participantName - Host display name
- * @param {string} params.meetingPreset - Preset type (default: group_call_host)
+ * @param {string} params.participantName - Participant display name
+ * @param {string} params.presetName - 'group_call_host' or 'group_call_participant'
  * @param {string} params.clientId - Unique client identifier
+ * @param {boolean} params.isHost - Whether joining as host (default: false)
  */
 export const requestDyteSession = async ({
   title = `Meeting_${Date.now()}`,
-  participantName = 'Host',
-  meetingPreset = 'group_call_host', // ✅ HOST preset by default
+  participantName = 'John Doe',
+  presetName = 'group_call_participant',
   clientId = `user_${Date.now()}`,
+  isHost = false
 }) => {
   try {
-    // Step 1: Create a Meeting
+    // Override presetName if isHost is specified
+    if (isHost) {
+      presetName = 'group_call_host';
+      clientId = `host_${Date.now()}`;
+    }
+
+    // Step 1: Create Meeting
     console.log('📝 Creating meeting:', title);
     const createMeetingResponse = await fetch(`${EUREKA_BASE_URL}/create-meeting`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title }),
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ title })
     }).then(handleResponse);
 
     const meetingId = createMeetingResponse?.data?.id;
@@ -410,48 +630,154 @@ export const requestDyteSession = async ({
       throw new Error('No meeting_id returned from create-meeting API');
     }
 
-    console.log('✅ Meeting created:', meetingId);
+    console.log('✅ Meeting created with ID:', meetingId);
 
-    // Step 2: Get HOST Token
-    console.log('🎫 Requesting HOST token...');
+    // Step 2: Get Participant Token
+    console.log(`🎫 Requesting ${isHost ? 'HOST' : 'participant'} token...`);
     const participantResponse = await fetch(`${EUREKA_BASE_URL}/get-participant-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Accept: 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
-        meetingId,
+        meetingId: meetingId,
         name: participantName,
-        preset_name: meetingPreset, // ✅ Will be 'group_call_host'
-      }),
+        preset_name: presetName,
+        client_specific_id: clientId
+      })
     }).then(handleResponse);
 
     const token = participantResponse?.data?.token;
-    if (!token) throw new Error('No token received from get-participant-token API');
+    if (!token) {
+      throw new Error('No token received from get-participant-token API');
+    }
 
-    console.log('✅ HOST token received successfully');
+    console.log(`✅ ${isHost ? 'HOST' : 'Participant'} token received successfully`);
 
     return {
+      success: true,
       meetingId,
       meetingTitle: title,
       participantName,
       authToken: token,
-      presetUsed: meetingPreset,
+      presetUsed: presetName,
+      clientSpecificId: clientId,
+      isHost: isHost
     };
   } catch (error) {
-    if (error.message.includes('Failed to fetch')) {
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       console.error('🌐 Network Error: Backend unreachable');
-      throw new Error(
-        'Failed to create Dyte session: Unable to reach backend server. Please check your network connection.'
-      );
+      throw new Error('Unable to reach backend server. Please check your network connection.');
+    }
+
+    if (error.status === 401 || error.status === 403) {
+      console.error('🔒 Authorization Error');
+      throw new Error('Authentication failed. Please check your API credentials.');
+    }
+
+    if (error.status === 404) {
+      console.error('🔍 Resource Not Found');
+      throw new Error('API endpoint not found. Please verify the API URL.');
+    }
+
+    if (error.status >= 500) {
+      console.error('⚠️ Server Error');
+      throw new Error('Server error occurred. Please try again later.');
     }
 
     console.error('❌ Dyte session setup failed:', error);
     throw new Error(`Failed to create Dyte session: ${error.message}`);
   }
+};
 
-
+/**
+ * Create meeting as HOST - USE THIS FOR HOSTING
+ */
+export const createMeetingAsHost = async (meetingTitle, hostName) => {
+  // Ensure presets are initialized with latest config
+  console.log('🔧 Ensuring presets are up to date...');
+  await initializePresets();
   
+  return await requestDyteSession({
+    title: meetingTitle,
+    participantName: hostName,
+    presetName: 'group_call_host',
+    clientId: `host_${Date.now()}`,
+    isHost: true  // ⭐ THIS IS THE KEY FLAG
+  });
+};
+
+/**
+ * Join meeting as participant
+ */
+export const joinMeetingAsParticipant = async (meetingTitle, participantName) => {
+  return await requestDyteSession({
+    title: meetingTitle,
+    participantName: participantName,
+    presetName: 'group_call_participant',
+    clientId: `participant_${Date.now()}`,
+    isHost: false
+  });
+};
+
+/**
+ * Join existing meeting by ID
+ */
+export const joinExistingMeeting = async (existingMeetingId, participantName, asHost = false) => {
+  try {
+    // Ensure presets are initialized with latest config
+    console.log('🔧 Ensuring presets are up to date for participant...');
+    await initializePresets();
+    
+    const presetName = asHost ? 'group_call_host' : 'group_call_participant';
+    const clientId = asHost ? `host_${Date.now()}` : `participant_${Date.now()}`;
+    
+    console.log(`🎫 Joining existing meeting as ${asHost ? 'HOST' : 'participant'}:`, existingMeetingId);
+    
+    const participantResponse = await fetch(`${EUREKA_BASE_URL}/get-participant-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        meetingId: existingMeetingId,
+        name: participantName,
+        preset_name: presetName,
+        client_specific_id: clientId
+      })
+    }).then(handleResponse);
+
+    const token = participantResponse?.data?.token;
+    if (!token) {
+      throw new Error('No token received from get-participant-token API');
+    }
+
+    console.log(`✅ ${asHost ? 'HOST' : 'Participant'} token received for existing meeting`);
+
+    return {
+      success: true,
+      meetingId: existingMeetingId,
+      participantName,
+      authToken: token,
+      presetUsed: presetName,
+      isHost: asHost
+    };
+  } catch (error) {
+    console.error('❌ Failed to join existing meeting:', error);
+    throw new Error(`Failed to join meeting: ${error.message}`);
+  }
+};
+
+// Export
+export default {
+  initializePresets,
+  createDytePreset,
+  requestDyteSession,
+  createMeetingAsHost,
+  joinMeetingAsParticipant,
+  joinExistingMeeting,
+  getDyteAuthHeader
 };
 
