@@ -1042,6 +1042,262 @@ function ActorNode({ id, data, selected }) {
   );
 }
 
+// Custom editable edge with inline label + options menu
+function EditableEdge(edgeProps) {
+  const {
+    id,
+    source, target,
+    sourceHandle, targetHandle,
+    sourceX, sourceY, targetX, targetY,
+    sourcePosition, targetPosition,
+    style,
+    markerStart, markerEnd,
+    label,
+    labelStyle,
+    selected,
+    data,
+  } = edgeProps;
+  const rf = useReactFlow();
+  const [edgePath, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition });
+  const [editing, setEditing] = useState(false);
+  const initialLabel = label ?? data?.label ?? '';
+  const [text, setText] = useState(initialLabel);
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const menuRef = useRef(null);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    setText(label ?? data?.label ?? '');
+  }, [label, data?.label]);
+
+  // close options popover on outside click or Escape
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e) => {
+      // clicks anywhere inside the label+button+menu container should NOT close
+      if (containerRef.current && containerRef.current.contains(e.target)) return;
+      setOpen(false);
+      setEditing(false);
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        setEditing(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const updateEdge = (mapper) => {
+    rf.setEdges((eds) =>
+      eds.map((e) => (e.id === id ? mapper(e) : e))
+    );
+  };
+
+  const commit = () => {
+    const next = text.trim();
+    updateEdge((e) => ({
+      ...e,
+      label: next,
+      data: { ...(e.data || {}), label: next, showLabel: next !== '' },
+    }));
+    setText(next);
+    setEditing(false);
+  };
+
+  const setArrowMode = (mode) => {
+    if (mode === 'none') {
+      updateEdge((e) => ({ ...e, markerStart: undefined, markerEnd: undefined }));
+    } else if (mode === 'single') {
+      updateEdge((e) => ({ ...e, markerStart: undefined, markerEnd: { type: MarkerType.ArrowClosed } }));
+    } else if (mode === 'double') {
+      updateEdge((e) => ({ ...e, markerStart: { type: MarkerType.ArrowClosed }, markerEnd: { type: MarkerType.ArrowClosed } }));
+    }
+  };
+
+  const flip = () => {
+    try {
+      rf.updateEdge(
+        { id, source, target, sourceHandle, targetHandle },
+        { id, source: target, target: source, sourceHandle: targetHandle, targetHandle: sourceHandle }
+      );
+    } catch (_) {
+      updateEdge((e) => ({
+        ...e,
+        source: e.target,
+        target: e.source,
+        sourceHandle: e.targetHandle,
+        targetHandle: e.sourceHandle,
+      }));
+    }
+    // swap arrowheads
+    updateEdge((e) => ({ ...e, markerStart: e.markerEnd, markerEnd: e.markerStart }));
+  };
+
+  const stroke = (style && style.stroke) || '#000000';
+  const textColor = (labelStyle && labelStyle.fill) || '#000000';
+  const currentArrow = (markerStart && markerEnd) ? 'double' : (markerEnd ? 'single' : 'none');
+  const hasStoredLabel = initialLabel.trim().length > 0;
+  const showLabelFlag = data?.showLabel;
+  const showLabel = (typeof showLabelFlag === 'boolean' ? showLabelFlag : hasStoredLabel) && hasStoredLabel;
+  const shouldRenderLabel = editing || showLabel;
+
+  // draw style with round caps to remove tiny visual gaps
+  const drawStyle = { ...(style || {}), strokeLinecap: 'round', strokeLinejoin: 'round' };
+
+  // shift label/gear to the side of the edge so they don't sit on top of the stroke
+  const dx = targetX - sourceX;
+  const dy = targetY - sourceY;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len; // perpendicular (normalized)
+  const ny = dx / len;
+  const SIDE_OFFSET = 14; // px
+  const labelOffsetX = nx * SIDE_OFFSET;
+  const labelOffsetY = ny * SIDE_OFFSET;
+
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} style={drawStyle} markerStart={markerStart} markerEnd={markerEnd} />
+      <path
+        d={edgePath}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={16}
+        style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+        onClick={(e) => {
+          e.stopPropagation();
+          rf.setEdges((eds) =>
+            eds.map((ed) =>
+              ed.id === id ? { ...ed, selected: true } : { ...ed, selected: false }
+            )
+          );
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          setEditing(true);
+          // double-click: reveal label and select (atomic update)
+          rf.setEdges((eds) =>
+            eds.map((ed) =>
+              ed.id === id
+                ? { ...ed, selected: true, data: { ...(ed.data || {}), showLabel: true } }
+                : { ...ed, selected: false }
+            )
+          );
+        }}
+      />
+      <EdgeLabelRenderer>
+        {open && <div className="edge-backdrop" />}
+        <div
+          ref={containerRef}
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX + labelOffsetX}px, ${labelY + labelOffsetY}px)`,
+            pointerEvents: 'all',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            zIndex: open ? 30 : 10,
+          }}
+        >
+          {shouldRenderLabel && (
+            editing ? (
+              <input
+                autoFocus
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onBlur={commit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commit();
+                  if (e.key === 'Escape') setEditing(false);
+                }}
+                style={{
+                  border: '1px solid #ccc',
+                  borderRadius: 4,
+                  padding: '2px 4px',
+                  fontSize: 12,
+                  position: 'relative',
+                  zIndex: 5,
+                  background: '#fff',
+                  pointerEvents: 'all',
+                }}
+              />
+            ) : (
+              <div
+                onDoubleClick={(e) => {
+                  e.stopPropagation();
+                  setEditing(true);
+                }}
+                style={{
+                  background: '#fff',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: 8,
+                  padding: '2px 6px',
+                  fontSize: 12,
+                  color: textColor,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                }}
+                title="Double-click to edit label"
+              >
+                {initialLabel || 'Label'}
+              </div>
+            )
+          )}
+          {(selected || open) && (
+            <button
+              ref={btnRef}
+              title={open ? 'Close options' : 'Edge options'}
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+              className="edge-icon-btn"
+            >
+              <Settings size={12} />
+            </button>
+          )}
+          {open && (
+            <div
+              ref={menuRef}
+              className="edge-popover"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="segmented">
+                <button className={currentArrow === 'none' ? 'active' : ''} onClick={() => setArrowMode('none')}>None</button>
+                <button className={currentArrow === 'single' ? 'active' : ''} onClick={() => setArrowMode('single')}>Single</button>
+                <button className={currentArrow === 'double' ? 'active' : ''} onClick={() => setArrowMode('double')}>Double</button>
+                <button className="icon" onClick={flip} title="Flip direction">
+                  <ArrowLeftRight size={14} />
+                </button>
+              </div>
+              <div className="row">
+                <span>Border</span>
+                <input type="color" value={stroke}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateEdge((edge) => ({ ...edge, style: { ...(edge.style || {}), stroke: v } }));
+                  }} />
+              </div>
+              <div className="row">
+                <span>Text</span>
+                <input type="color" value={textColor}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateEdge((edge) => ({ ...edge, labelStyle: { ...(edge.labelStyle || {}), fill: v } }));
+                  }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
 const nodeTypes = {
   process: ProcessNode,
   decision: DecisionNode,
@@ -1057,6 +1313,10 @@ const nodeTypes = {
   bluetooth: BluetoothNode,
   antenna: AntennaNode,
   actor: ActorNode,
+};
+
+const edgeTypes = { 
+  editable: EditableEdge 
 };
 
 // Enhanced palette with more shapes
@@ -1217,6 +1477,7 @@ function DiagramEditor() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selected, setSelected] = useState(null);
   const [hasProjects, setHasProjects] = useState(false);
+  const [clipboard, setClipboard] = useState({ nodes: [], edges: [] });
   const rf = useReactFlow();
   const canvasIntegration = useCanvasFileIntegration('Block Diagram');
   const historyRef = useRef({ entries: [], index: -1 });
@@ -1398,9 +1659,12 @@ function DiagramEditor() {
         addEdge(
           {
             ...params,
-            type: 'smoothstep',
+            type: 'editable',
             markerEnd: { type: MarkerType.ArrowClosed },
             style: { strokeWidth: 2, stroke: '#000000' },
+            label: '',
+            labelStyle: { fill: '#000000', fontSize: 12 },
+            data: { showLabel: false },
           },
           eds
         )
@@ -1551,6 +1815,81 @@ function DiagramEditor() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
   }, []);
 
+  // Get selected nodes and edges
+  const getSelectedItems = useCallback(() => {
+    const selectedNodes = nodes.filter(node => node.selected);
+    const selectedEdges = edges.filter(edge => edge.selected);
+    return { selectedNodes, selectedEdges };
+  }, [nodes, edges]);
+
+  // Copy functionality
+  const copySelected = useCallback(() => {
+    const { selectedNodes, selectedEdges } = getSelectedItems();
+    if (selectedNodes.length > 0 || selectedEdges.length > 0) {
+      setClipboard({ nodes: selectedNodes, edges: selectedEdges });
+      console.log(`Copied ${selectedNodes.length} nodes and ${selectedEdges.length} edges`);
+    }
+  }, [getSelectedItems]);
+
+  // Paste functionality
+  const pasteFromClipboard = useCallback(() => {
+    if (clipboard.nodes.length === 0 && clipboard.edges.length === 0) return;
+
+    const nodeIdMap = new Map();
+    const newNodes = clipboard.nodes.map(node => {
+      const newId = getId();
+      nodeIdMap.set(node.id, newId);
+      return {
+        ...node,
+        id: newId,
+        position: {
+          x: node.position.x + 50, // Offset pasted items
+          y: node.position.y + 50
+        },
+        selected: true // Select pasted items
+      };
+    });
+
+    const newEdges = clipboard.edges.map(edge => {
+      const sourceId = nodeIdMap.get(edge.source);
+      const targetId = nodeIdMap.get(edge.target);
+      
+      // Only paste edges if both source and target nodes are being pasted
+      if (sourceId && targetId) {
+        return {
+          ...edge,
+          id: getId(),
+          source: sourceId,
+          target: targetId,
+          selected: true
+        };
+      }
+      return null;
+    }).filter(Boolean);
+
+    // Deselect all existing items and add new ones
+    setNodes(nds => nds.map(n => ({ ...n, selected: false })).concat(newNodes));
+    setEdges(eds => eds.map(e => ({ ...e, selected: false })).concat(newEdges));
+    
+    console.log(`Pasted ${newNodes.length} nodes and ${newEdges.length} edges`);
+  }, [clipboard, setNodes, setEdges]);
+
+  // Select all functionality
+  const selectAll = useCallback(() => {
+    setNodes(nds => nds.map(n => ({ ...n, selected: true })));
+    setEdges(eds => eds.map(e => ({ ...e, selected: true })));
+  }, [setNodes, setEdges]);
+
+  // Delete selected items
+  const deleteSelected = useCallback(() => {
+    const { selectedNodes, selectedEdges } = getSelectedItems();
+    if (selectedNodes.length > 0 || selectedEdges.length > 0) {
+      setNodes(nds => nds.filter(n => !n.selected));
+      setEdges(eds => eds.filter(e => !e.selected));
+      console.log(`Deleted ${selectedNodes.length} nodes and ${selectedEdges.length} edges`);
+    }
+  }, [getSelectedItems, setNodes, setEdges]);
+
   const undo = useCallback(() => {
     const history = historyRef.current;
     if (history.index <= 0) return;
@@ -1587,30 +1926,74 @@ function DiagramEditor() {
 
   useEffect(() => {
     const onKey = (e) => {
-      const target = e.target;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
+      // Check if we're in an input field
+      const isInputActive = document.activeElement?.tagName === 'INPUT' || 
+                           document.activeElement?.tagName === 'TEXTAREA' ||
+                           document.activeElement?.contentEditable === 'true';
 
-      const mod = e.ctrlKey || e.metaKey;
-      const key = e.key.toLowerCase();
+      // Skip keyboard shortcuts if user is typing in an input
+      if (isInputActive) return;
 
-      if (mod && key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-        return;
-      }
-
-      if ((mod && key === 'y') || (mod && e.shiftKey && key === 'z')) {
-        e.preventDefault();
-        redo();
-        return;
+      // Keyboard shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'z':
+            if (e.shiftKey) {
+              // Ctrl+Shift+Z for redo
+              e.preventDefault();
+              redo();
+            } else {
+              // Ctrl+Z for undo
+              e.preventDefault();
+              undo();
+            }
+            break;
+          case 'y':
+            // Ctrl+Y for redo
+            e.preventDefault();
+            redo();
+            break;
+          case 'c':
+            // Ctrl+C for copy
+            e.preventDefault();
+            copySelected();
+            break;
+          case 'v':
+            // Ctrl+V for paste
+            e.preventDefault();
+            pasteFromClipboard();
+            break;
+          case 'a':
+            // Ctrl+A for select all
+            e.preventDefault();
+            selectAll();
+            break;
+          default:
+            break;
+        }
+      } else {
+        // Non-Ctrl shortcuts
+        switch (e.key) {
+          case 'Delete':
+          case 'Backspace':
+            e.preventDefault();
+            deleteSelected();
+            break;
+          case 'Escape':
+            // Deselect all
+            setNodes(nds => nds.map(n => ({ ...n, selected: false })));
+            setEdges(eds => eds.map(e => ({ ...e, selected: false })));
+            setSelected(null);
+            break;
+          default:
+            break;
+        }
       }
     };
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo]);
+  }, [undo, redo, copySelected, pasteFromClipboard, selectAll, deleteSelected, setNodes, setEdges, setSelected]);
 
   const filteredGroups = useMemo(() => {
     const query = paletteSearch.trim().toLowerCase();
@@ -2028,11 +2411,15 @@ function DiagramEditor() {
                 onSelectionChange={onSelectionChange}
                 onPaneClick={exitEditing}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 defaultEdgeOptions={{ 
-                  type: 'smoothstep',
+                  type: 'editable',
                   markerEnd: { type: MarkerType.ArrowClosed },
-                  style: { strokeWidth: 2, stroke: '#000000' }
+                  style: { strokeWidth: 2, stroke: '#000000' },
+                  label: '',
+                  labelStyle: { fill: '#000000', fontSize: 12 },
+                  data: { showLabel: false }
                 }}
                 connectOnClick={false}
                 connectionMode={ConnectionMode.Strict}

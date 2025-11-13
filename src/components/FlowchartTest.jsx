@@ -5608,16 +5608,163 @@ function DiagramEditor() {
     setNodes((nds) => nds.map((n) => (n.data?.editing ? { ...n, data: { ...n.data, editing: false } } : n)));
   }, [setNodes]);
 
+  // Clipboard state
+  const [clipboard, setClipboard] = useState({ nodes: [], edges: [] });
+
+  // Get selected nodes and edges
+  const getSelectedItems = useCallback(() => {
+    const selectedNodes = nodes.filter(node => node.selected);
+    const selectedEdges = edges.filter(edge => edge.selected);
+    return { selectedNodes, selectedEdges };
+  }, [nodes, edges]);
+
+  // Copy functionality
+  const copySelected = useCallback(() => {
+    const { selectedNodes, selectedEdges } = getSelectedItems();
+    if (selectedNodes.length > 0 || selectedEdges.length > 0) {
+      setClipboard({ nodes: selectedNodes, edges: selectedEdges });
+      console.log(`Copied ${selectedNodes.length} nodes and ${selectedEdges.length} edges`);
+    }
+  }, [getSelectedItems]);
+
+  // Paste functionality
+  const pasteFromClipboard = useCallback(() => {
+    if (clipboard.nodes.length === 0 && clipboard.edges.length === 0) return;
+
+    const nodeIdMap = new Map();
+    const newNodes = clipboard.nodes.map(node => {
+      const newId = getId();
+      nodeIdMap.set(node.id, newId);
+      return {
+        ...node,
+        id: newId,
+        position: {
+          x: node.position.x + 50, // Offset pasted items
+          y: node.position.y + 50
+        },
+        selected: true // Select pasted items
+      };
+    });
+
+    const newEdges = clipboard.edges.map(edge => {
+      const sourceId = nodeIdMap.get(edge.source);
+      const targetId = nodeIdMap.get(edge.target);
+      
+      // Only paste edges if both source and target nodes are being pasted
+      if (sourceId && targetId) {
+        return {
+          ...edge,
+          id: getId(),
+          source: sourceId,
+          target: targetId,
+          selected: true
+        };
+      }
+      return null;
+    }).filter(Boolean);
+
+    // Deselect all existing items
+    setNodes(nds => nds.map(n => ({ ...n, selected: false })).concat(newNodes));
+    setEdges(eds => eds.map(e => ({ ...e, selected: false })).concat(newEdges));
+    
+    scheduleSnapshot();
+    console.log(`Pasted ${newNodes.length} nodes and ${newEdges.length} edges`);
+  }, [clipboard, setNodes, setEdges, scheduleSnapshot]);
+
+  // Select all functionality
+  const selectAll = useCallback(() => {
+    setNodes(nds => nds.map(n => ({ ...n, selected: true })));
+    setEdges(eds => eds.map(e => ({ ...e, selected: true })));
+  }, [setNodes, setEdges]);
+
+  // Delete selected items
+  const deleteSelected = useCallback(() => {
+    const { selectedNodes, selectedEdges } = getSelectedItems();
+    if (selectedNodes.length > 0 || selectedEdges.length > 0) {
+      setNodes(nds => nds.filter(n => !n.selected));
+      setEdges(eds => eds.filter(e => !e.selected));
+      scheduleSnapshot();
+      console.log(`Deleted ${selectedNodes.length} nodes and ${selectedEdges.length} edges`);
+    }
+  }, [getSelectedItems, setNodes, setEdges, scheduleSnapshot]);
+
   useEffect(() => {
     const onKeyDown = (e) => {
+      // Check if we're in an input field
+      const isInputActive = document.activeElement?.tagName === 'INPUT' || 
+                           document.activeElement?.tagName === 'TEXTAREA' ||
+                           document.activeElement?.contentEditable === 'true';
+
+      // F2 for editing node labels
       if (e.key === 'F2' && selected?.kind === 'node') {
         e.preventDefault();
         setNodes((nds) => nds.map((n) => (n.id === selected.id ? { ...n, data: { ...n.data, editing: true } } : n)));
+        return;
+      }
+
+      // Skip keyboard shortcuts if user is typing in an input
+      if (isInputActive) return;
+
+      // Keyboard shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'z':
+            if (e.shiftKey) {
+              // Ctrl+Shift+Z or Ctrl+Y for redo
+              e.preventDefault();
+              redo();
+            } else {
+              // Ctrl+Z for undo
+              e.preventDefault();
+              undo();
+            }
+            break;
+          case 'y':
+            // Ctrl+Y for redo
+            e.preventDefault();
+            redo();
+            break;
+          case 'c':
+            // Ctrl+C for copy
+            e.preventDefault();
+            copySelected();
+            break;
+          case 'v':
+            // Ctrl+V for paste
+            e.preventDefault();
+            pasteFromClipboard();
+            break;
+          case 'a':
+            // Ctrl+A for select all
+            e.preventDefault();
+            selectAll();
+            break;
+          default:
+            break;
+        }
+      } else {
+        // Non-Ctrl shortcuts
+        switch (e.key) {
+          case 'Delete':
+          case 'Backspace':
+            e.preventDefault();
+            deleteSelected();
+            break;
+          case 'Escape':
+            // Deselect all
+            setNodes(nds => nds.map(n => ({ ...n, selected: false })));
+            setEdges(eds => eds.map(e => ({ ...e, selected: false })));
+            setSelected(null);
+            break;
+          default:
+            break;
+        }
       }
     };
+
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [selected, setNodes]);
+  }, [selected, setNodes, setEdges, undo, redo, copySelected, pasteFromClipboard, selectAll, deleteSelected, setSelected]);
 
   // Save / Load as JSON
   const saveDiagram = () => {
@@ -6142,10 +6289,10 @@ function DiagramEditor() {
               >
                 <MiniMap className="export-ignore" />
                 <Controls className="export-ignore">
-                  <ControlButton onClick={undo} title="undo">
+                  <ControlButton onClick={undo} title="Undo (Ctrl+Z)">
                     <RotateCcw />
                   </ControlButton>
-                  <ControlButton onClick={redo} title="redo">
+                  <ControlButton onClick={redo} title="Redo (Ctrl+Y)">
                     <RotateCw />
                   </ControlButton>
                 </Controls>
