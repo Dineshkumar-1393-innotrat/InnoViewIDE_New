@@ -5809,6 +5809,7 @@ function DiagramEditor() {
   const updateSelectedNode = (mapper) => {
     if (!selected || selected.kind !== 'node') return;
     setNodes((nds) => nds.map((n) => (n.id === selected.id ? mapper(n) : n)));
+    scheduleSnapshot();
   };
 
   const getSelectedEntity = () => {
