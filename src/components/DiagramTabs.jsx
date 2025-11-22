@@ -13,7 +13,6 @@ const DiagramTabs = ({ title = 'Tabs' }) => {
     renameTab,
     savingTabIds,
     saveActiveTabNow,
-    loading,
   } = useWorkspaceTabs();
 
   const savingIds = useMemo(() => new Set(savingTabIds), [savingTabIds]);
@@ -62,12 +61,6 @@ const DiagramTabs = ({ title = 'Tabs' }) => {
             </div>
           );
         })}
-        {loading && (
-          <div className="diagram-tabs__loading">
-            <Loader2 className="diagram-tabs__spinner" size={16} />
-            <span>Loading…</span>
-          </div>
-        )}
       </div>
       <div className="diagram-tabs__actions">
         <button type="button" className="diagram-tabs__action" onClick={createTab} title="Add tab">

@@ -222,7 +222,7 @@
 
 //   // Canvas file integration for Block Programming
 //   const canvasIntegration = useCanvasFileIntegration('Block Programming');
-  
+
 //   // Project management state
 //   const [hasProjects, setHasProjects] = useState(false);
 
@@ -259,7 +259,7 @@
 //       const allProjects = projectFileManager.getAllProjects() || {};
 //       const projects = Object.values(allProjects);
 //       setHasProjects(projects.length > 0);
-      
+
 //       // Set active project if available
 //       if (projects.length > 0 && !activeProjectId && setActiveProjectId) {
 //         const activeProject = projectFileManager.getActiveProject();
@@ -288,7 +288,7 @@
 //     window.addEventListener('project:change', handleProjectChange);
 //     window.addEventListener('project-created', handleProjectCreated);
 //     window.addEventListener('file-system-refresh', checkProjects);
-    
+
 //     return () => {
 //       window.removeEventListener('project:change', handleProjectChange);
 //       window.removeEventListener('project-created', handleProjectCreated);
@@ -300,10 +300,10 @@
 //   const handleFileClick = useCallback(async (filePath, fileName, parsedContent, fileData) => {
 //     try {
 //       console.log('File clicked in Block Programming:', fileName, filePath);
-      
+
 //       // Load file using canvas integration
 //       const result = await canvasIntegration.loadFileToCanvas(filePath, fileName, parsedContent, fileData);
-      
+
 //       if (result.success) {
 //         // Apply content to canvas if it's JSON block programming data
 //         if (fileName.endsWith('.json') && parsedContent && typeof parsedContent === 'object') {
@@ -311,10 +311,10 @@
 //             // Convert blocks to nodes and connections to edges
 //             const nodes = parsedContent.blocks || [];
 //             const edges = parsedContent.connections || [];
-            
+
 //             setNodes(nodes);
 //             setEdges(edges);
-            
+
 //             // Apply canvas settings if available
 //             if (parsedContent.canvas?.position && parsedContent.canvas?.zoom && rf) {
 //               setTimeout(() => {
@@ -329,7 +329,7 @@
 //             // Fallback to standard ReactFlow format
 //             setNodes(parsedContent.nodes || []);
 //             setEdges(parsedContent.edges || []);
-            
+
 //             if (parsedContent.viewport && rf) {
 //               setTimeout(() => {
 //                 rf.setViewport(parsedContent.viewport);
@@ -337,7 +337,7 @@
 //             }
 //           }
 //         }
-        
+
 //         console.log(`Loaded ${fileName} into Block Programming canvas`);
 //       } else {
 //         console.error('Failed to load file:', result.error);
@@ -1429,7 +1429,7 @@
 
 //   // Canvas file integration for Block Programming
 //   const canvasIntegration = useCanvasFileIntegration('Block Programming');
-  
+
 //   // Project management state
 //   const [hasProjects, setHasProjects] = useState(false);
 
@@ -1471,7 +1471,7 @@
 //       const allProjects = projectFileManager.getAllProjects() || {};
 //       const projects = Object.values(allProjects);
 //       setHasProjects(projects.length > 0);
-      
+
 //       if (projects.length > 0 && !activeProjectId && setActiveProjectId) {
 //         const activeProject = projectFileManager.getActiveProject();
 //         if (activeProject) {
@@ -1502,7 +1502,7 @@
 //     window.addEventListener('project:change', handleProjectChange);
 //     window.addEventListener('project-created', handleProjectCreated);
 //     window.addEventListener('file-system-refresh', checkProjects);
-    
+
 //     return () => {
 //       window.removeEventListener('project:change', handleProjectChange);
 //       window.removeEventListener('project-created', handleProjectCreated);
@@ -1514,18 +1514,18 @@
 //   const handleFileClick = useCallback(async (filePath, fileName, parsedContent, fileData) => {
 //     try {
 //       console.log('File clicked in Block Programming:', fileName, filePath);
-      
+
 //       const result = await canvasIntegration.loadFileToCanvas(filePath, fileName, parsedContent, fileData);
-      
+
 //       if (result.success) {
 //         if (fileName.endsWith('.json') && parsedContent && typeof parsedContent === 'object') {
 //           if (parsedContent.blocks && parsedContent.connections) {
 //             const nodes = parsedContent.blocks || [];
 //             const edges = parsedContent.connections || [];
-            
+
 //             setNodes(nodes);
 //             setEdges(edges);
-            
+
 //             if (parsedContent.canvas?.position && parsedContent.canvas?.zoom && rf) {
 //               setTimeout(() => {
 //                 rf.setViewport({
@@ -1538,7 +1538,7 @@
 //           } else if (parsedContent.nodes && parsedContent.edges) {
 //             setNodes(parsedContent.nodes || []);
 //             setEdges(parsedContent.edges || []);
-            
+
 //             if (parsedContent.viewport && rf) {
 //               setTimeout(() => {
 //                 rf.setViewport(parsedContent.viewport);
@@ -1546,7 +1546,7 @@
 //             }
 //           }
 //         }
-        
+
 //         console.log(`Loaded ${fileName} into Block Programming canvas`);
 //       } else {
 //         console.error('Failed to load file:', result.error);
@@ -2211,7 +2211,7 @@
 //                         }));
 //                       };
 //                       const colors = BLOCK_COLORS[group.category] || BLOCK_COLORS.default;
-                      
+
 //                       return (
 //                         <div className="palette-group" key={group.id}>
 //                           <div
@@ -2233,7 +2233,7 @@
 //                                 const [primary, ...rest] = item.label.split(' ');
 //                                 const secondary = rest.join(' ');
 //                                 const itemColors = BLOCK_COLORS[item.category] || BLOCK_COLORS.default;
-                                
+
 //                                 return (
 //                                   <div
 //                                     key={`${group.id}-${item.label}`}
@@ -2636,8 +2636,8 @@ function LogicBlockNode({ id, data, selected }) {
             ry="8"
           />
         </svg>
-        <div className="logic-node__label" style={{ 
-          color: text, 
+        <div className="logic-node__label" style={{
+          color: text,
           fontSize: `${fontSize * 0.8}px`,
           padding: '4px'
         }}>
@@ -2670,7 +2670,7 @@ function BlockProgrammingCanvas() {
 
   // Canvas file integration for Block Programming
   const canvasIntegration = useCanvasFileIntegration('Block Programming');
-  
+
   // Project management state
   const [hasProjects, setHasProjects] = useState(false);
 
@@ -2706,7 +2706,7 @@ function BlockProgrammingCanvas() {
       const allProjects = projectFileManager.getAllProjects() || {};
       const projects = Object.values(allProjects);
       setHasProjects(projects.length > 0);
-      
+
       if (projects.length > 0 && !activeProjectId && setActiveProjectId) {
         const activeProject = projectFileManager.getActiveProject();
         if (activeProject) {
@@ -2733,7 +2733,7 @@ function BlockProgrammingCanvas() {
     window.addEventListener('project:change', handleProjectChange);
     window.addEventListener('project-created', handleProjectCreated);
     window.addEventListener('file-system-refresh', checkProjects);
-    
+
     return () => {
       window.removeEventListener('project:change', handleProjectChange);
       window.removeEventListener('project-created', handleProjectCreated);
@@ -2745,18 +2745,18 @@ function BlockProgrammingCanvas() {
   const handleFileClick = useCallback(async (filePath, fileName, parsedContent, fileData) => {
     try {
       console.log('File clicked in Block Programming:', fileName, filePath);
-      
+
       const result = await canvasIntegration.loadFileToCanvas(filePath, fileName, parsedContent, fileData);
-      
+
       if (result.success) {
         if (fileName.endsWith('.json') && parsedContent && typeof parsedContent === 'object') {
           if (parsedContent.blocks && parsedContent.connections) {
             const nodes = parsedContent.blocks || [];
             const edges = parsedContent.connections || [];
-            
+
             setNodes(nodes);
             setEdges(edges);
-            
+
             if (parsedContent.canvas?.position && parsedContent.canvas?.zoom && rf) {
               setTimeout(() => {
                 rf.setViewport({
@@ -2769,7 +2769,7 @@ function BlockProgrammingCanvas() {
           } else if (parsedContent.nodes && parsedContent.edges) {
             setNodes(parsedContent.nodes || []);
             setEdges(parsedContent.edges || []);
-            
+
             if (parsedContent.viewport && rf) {
               setTimeout(() => {
                 rf.setViewport(parsedContent.viewport);
@@ -2777,7 +2777,7 @@ function BlockProgrammingCanvas() {
             }
           }
         }
-        
+
         console.log(`Loaded ${fileName} into Block Programming canvas`);
       } else {
         console.error('Failed to load file:', result.error);
@@ -2971,9 +2971,9 @@ function BlockProgrammingCanvas() {
             stroke: colors.stroke,
             text: colors.text,
           },
-          style: { 
-            width: DEFAULT_NODE_DIMENSIONS.width, 
-            height: DEFAULT_NODE_DIMENSIONS.height 
+          style: {
+            width: DEFAULT_NODE_DIMENSIONS.width,
+            height: DEFAULT_NODE_DIMENSIONS.height
           },
         }),
       );
@@ -3332,16 +3332,7 @@ function BlockProgrammingCanvas() {
           </div>
           <div className="sidebar-body">
             {isExplorerVisible === 'explorer' ? (
-              hasProjects ? (
-                <ProjectFileExplorer 
-                  variant="diagram" 
-                  onFileClick={handleFileClick}
-                  currentScreenFiles={[]}
-                  activeProjectId={activeProjectId}
-                />
-              ) : (
-                <FileExplorer variant="diagram" />
-              )
+              <FileExplorer variant="diagram" />
             ) : (
               <div className="palette-frame">
                 <div className="palette-header">
@@ -3402,14 +3393,14 @@ function BlockProgrammingCanvas() {
                                     }}
                                   >
                                     <div className="shape-svg logic-shape-preview">
-                                      <span 
+                                      <span
                                         className="logic-shape-preview__primary"
                                         style={{ color: colors.text || '#111827' }}
                                       >
                                         {primary}
                                       </span>
                                       {secondary ? (
-                                        <span 
+                                        <span
                                           className="logic-shape-preview__secondary"
                                           style={{ color: colors.text || '#111827' }}
                                         >
@@ -3417,7 +3408,7 @@ function BlockProgrammingCanvas() {
                                         </span>
                                       ) : null}
                                     </div>
-                                    <div 
+                                    <div
                                       className="shape-label"
                                       style={{ color: colors.text || '#111827' }}
                                     >

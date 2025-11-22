@@ -32,6 +32,7 @@ import BlockDiagramOne from "./BlockDiagramOne";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import "./Flowchart.css";
+import "./FileExplorer.css";
 import Navbarone from "./Navbarone";
 import ProjectChangePopup from "./ProjectSelectionPopup/ProjectSelectionPopup";
 import ProjectSelectionModal from "./ProjectSelectionModal/ProjectSelectionModal";
@@ -76,6 +77,7 @@ import DefineProductButton from "./shared/DefineProductButton";
 import axios from "axios";
 import { IoIosRefresh } from "react-icons/io";
 import { baseURL } from "../utilities";
+import FileExplorer from "./FileExplorer";
 
 const symbols = [
   {
@@ -200,7 +202,7 @@ const BlockDiagram = () => {
       if (
         err.response &&
         err.response.data?.message ===
-          "No diagrams found for the given productId and projectId"
+        "No diagrams found for the given productId and projectId"
       ) {
         // ✅ No diagrams exist, so create the default and store it
         console.warn("No diagrams exist yet. Storing default locally.");
@@ -251,7 +253,7 @@ const BlockDiagram = () => {
           error.response &&
           error.response.status === 404 &&
           error.response.data?.message ===
-            "No diagrams found for the given productId and projectId"
+          "No diagrams found for the given productId and projectId"
         ) {
           console.warn("No diagrams exist. Proceeding with new save.");
           existingDiagramId = null; // Explicitly set to null
@@ -337,6 +339,7 @@ const BlockDiagram = () => {
   // }, [tabs]);
 
   const [openCategories, setOpenCategories] = useState({}); // Moved here
+  const [isExplorerVisible, setIsExplorerVisible] = useState('blocks');
   const MAX_TABS = 5;
   const navigate = useNavigate();
 
@@ -493,11 +496,11 @@ const BlockDiagram = () => {
           prevTabs.map((tab) =>
             tab.id === activeTab
               ? {
-                  ...tab,
-                  symbols: tab.symbols.filter(
-                    (_, index) => index !== contextMenu.symbolIndex
-                  ),
-                }
+                ...tab,
+                symbols: tab.symbols.filter(
+                  (_, index) => index !== contextMenu.symbolIndex
+                ),
+              }
               : tab
           )
         );
@@ -548,11 +551,11 @@ const BlockDiagram = () => {
                 prevTabs.map((tab) =>
                   tab.id === activeTab
                     ? {
-                        ...tab,
-                        symbols: tab.symbols.map((symbol, i) =>
-                          i === index ? { ...symbol, x: d.x, y: d.y } : symbol
-                        ),
-                      }
+                      ...tab,
+                      symbols: tab.symbols.map((symbol, i) =>
+                        i === index ? { ...symbol, x: d.x, y: d.y } : symbol
+                      ),
+                    }
                     : tab
                 )
               );
@@ -562,18 +565,18 @@ const BlockDiagram = () => {
                 prevTabs.map((tab) =>
                   tab.id === activeTab
                     ? {
-                        ...tab,
-                        symbols: tab.symbols.map((symbol, i) =>
-                          i === index
-                            ? {
-                                ...symbol,
-                                width: ref.offsetWidth,
-                                height: ref.offsetHeight,
-                                ...position,
-                              }
-                            : symbol
-                        ),
-                      }
+                      ...tab,
+                      symbols: tab.symbols.map((symbol, i) =>
+                        i === index
+                          ? {
+                            ...symbol,
+                            width: ref.offsetWidth,
+                            height: ref.offsetHeight,
+                            ...position,
+                          }
+                          : symbol
+                      ),
+                    }
                     : tab
                 )
               );
@@ -670,52 +673,90 @@ const BlockDiagram = () => {
         </div>
         <div className="main-content">
           {/* <div className="sidebar"style={{ background: 'linear-gradient(to bottom right, rgb(226, 232, 240),rgb(226, 232, 240))'}}> */}
-          <div className="sidebar">
-            <div className="symbol-grid">
-              {/* start  */}
-              <div
-                className="top-buttons"
+          <div className="sidebarr">
+            <div className="sidebar-toggle-bar" style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '10px' }}>
+              <button
+                type="button"
+                className={`sidebar-tab ${isExplorerVisible === 'explorer' ? 'active' : ''}`}
+                onClick={() => setIsExplorerVisible('explorer')}
                 style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  gap: "10px",
-                  alignItems: "center",
-                  marginBottom: "20px",
+                  flex: 1,
+                  padding: '8px',
+                  background: isExplorerVisible === 'explorer' ? '#fff' : 'transparent',
+                  border: 'none',
+                  borderBottom: isExplorerVisible === 'explorer' ? '2px solid #3182ce' : 'none',
+                  cursor: 'pointer',
+                  fontWeight: isExplorerVisible === 'explorer' ? '600' : '400',
                 }}
               >
-                <button
-                  onClick={() => navigate("/blockdiagramtest")}
-                  style={{
-                    padding: "8px 15px",
-                    backgroundColor: "#1A202C",
-                    color: "#fff",
-                    borderRadius: "5px",
-                    border: "none",
-                    cursor: "pointer",
-                    fontWeight: "sm",
-                    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                  }}
-                >
-                  Block Diagram
-                </button>
-                <button
-                  onClick={() => navigate("/flowchart")}
-                  style={{
-                    padding: "8px 15px",
-                    backgroundColor: "#1A202C",
-                    color: "#fff",
-                    borderRadius: "5px",
-                    border: "none",
-                    cursor: "pointer",
-                    fontWeight: "sm",
-                    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-                  }}
-                >
-                  Flow Diagram
-                </button>
-              </div>
+                Explorer
+              </button>
+              <button
+                type="button"
+                className={`sidebar-tab ${isExplorerVisible === 'blocks' ? 'active' : ''}`}
+                onClick={() => setIsExplorerVisible('blocks')}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: isExplorerVisible === 'blocks' ? '#fff' : 'transparent',
+                  border: 'none',
+                  borderBottom: isExplorerVisible === 'blocks' ? '2px solid #3182ce' : 'none',
+                  cursor: 'pointer',
+                  fontWeight: isExplorerVisible === 'blocks' ? '600' : '400',
+                }}
+              >
+                Blocks
+              </button>
+            </div>
+            <div className="sidebar-body">
+              {isExplorerVisible === 'explorer' ? (
+                <FileExplorer variant="diagram" />
+              ) : (
+                <div className="symbol-grid">
+                  {/* start  */}
+                  <div
+                    className="top-buttons"
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      gap: "10px",
+                      alignItems: "center",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    <button
+                      onClick={() => navigate("/blockdiagramtest")}
+                      style={{
+                        padding: "8px 15px",
+                        backgroundColor: "#1A202C",
+                        color: "#fff",
+                        borderRadius: "5px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontWeight: "sm",
+                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                      }}
+                    >
+                      Block Diagram
+                    </button>
+                    <button
+                      onClick={() => navigate("/flowchart")}
+                      style={{
+                        padding: "8px 15px",
+                        backgroundColor: "#1A202C",
+                        color: "#fff",
+                        borderRadius: "5px",
+                        border: "none",
+                        cursor: "pointer",
+                        fontWeight: "sm",
+                        boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+                      }}
+                    >
+                      Flow Diagram
+                    </button>
+                  </div>
 
-              {/* <div>  
+                  {/* <div>  
                 <button
                   onClick={(e) => {
                     const button = e.currentTarget;
@@ -759,50 +800,52 @@ const BlockDiagram = () => {
                 </button>
               </div> */}
 
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "10px 14px", // Increased padding for better spacing
-                }}
-              >
-                {/* SEARCH BOX OPEN  */}
-                <InputGroup size="sm">
-                  <InputLeftElement
-                    pointerEvents="none"
-                    children={<FaSearch color="gray.400" />}
-                  />
-                  <Input
-                    type="text"
-                    placeholder="Search..."
-                    borderRadius="md"
-                    borderColor="gray.300"
-                  />
-                </InputGroup>
-                {/* SEARCH BOX CLOSE  */}
-              </div>
-
-              {/* end  */}
-              {symbols.map((section, sectionIndex) => (
-                <div key={sectionIndex} className="symbol-section">
-                  <h3
-                    onClick={() => toggleCategory(section.category)}
-                    style={{ cursor: "pointer" }}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "10px 14px", // Increased padding for better spacing
+                    }}
                   >
-                    {section.category}
-                  </h3>
-                  {openCategories[section.category] && (
-                    <div
-                      className="symbol-items"
-                      style={{ borderLeft: "1px solid white" }}
-                    >
-                      {section.items.map((symbol, symbolIndex) => (
-                        <SymbolItem key={symbolIndex} symbol={symbol} />
-                      ))}
+                    {/* SEARCH BOX OPEN  */}
+                    <InputGroup size="sm">
+                      <InputLeftElement
+                        pointerEvents="none"
+                        children={<FaSearch color="gray.400" />}
+                      />
+                      <Input
+                        type="text"
+                        placeholder="Search..."
+                        borderRadius="md"
+                        borderColor="gray.300"
+                      />
+                    </InputGroup>
+                    {/* SEARCH BOX CLOSE  */}
+                  </div>
+
+                  {/* end  */}
+                  {symbols.map((section, sectionIndex) => (
+                    <div key={sectionIndex} className="symbol-section">
+                      <h3
+                        onClick={() => toggleCategory(section.category)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {section.category}
+                      </h3>
+                      {openCategories[section.category] && (
+                        <div
+                          className="symbol-items"
+                          style={{ borderLeft: "1px solid white" }}
+                        >
+                          {section.items.map((symbol, symbolIndex) => (
+                            <SymbolItem key={symbolIndex} symbol={symbol} />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
           <div className="main-area">
@@ -859,14 +902,14 @@ const BlockDiagram = () => {
                   size="sm"
                   colorScheme="blue"
                   variant="outline"
-                  // style={{
-                  //   padding: "4px 8px",
-                  //   backgroundColor: "black",
-                  //   border: "none",
-                  //   borderRadius: "4px",
-                  //   cursor: "pointer",
-                  //   marginLeft: "4px",
-                  // }}
+                // style={{
+                //   padding: "4px 8px",
+                //   backgroundColor: "black",
+                //   border: "none",
+                //   borderRadius: "4px",
+                //   cursor: "pointer",
+                //   marginLeft: "4px",
+                // }}
                 >
                   <FaPlus />
                 </IconButton>

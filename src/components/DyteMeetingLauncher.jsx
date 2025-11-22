@@ -1010,7 +1010,7 @@
 //       try {
 //         console.log('🎥 Initializing Dyte meeting...');
 //         initTokenRef.current = authToken;
-        
+
 //         await initMeeting({
 //           authToken,
 //           defaults: {
@@ -1439,7 +1439,7 @@ const DyteMeetingLauncher = ({
         const parsed = JSON.parse(stored);
         if (parsed?.name) return parsed.name;
       }
-    } catch {}
+    } catch { }
     return 'Host User';
   }, [participantName]);
 
@@ -1507,48 +1507,8 @@ const DyteMeetingLauncher = ({
           }
         }
 
-        // After joining, explicitly request audio & video
-        try {
-          if (!meetingInstance.self.videoEnabled) {
-            await meetingInstance.self.enableVideo();
-            console.log('[Dyte] enableVideo() OK');
-          }
-        } catch (vErr) {
-          console.warn('[Dyte] enableVideo failed (permissions?):', vErr);
-          // Show user visible guidance
-          toast({
-            title: 'Camera permission required',
-            description: 'Allow camera access in browser settings and refresh. (Check site lock icon)',
-            status: 'warning',
-            duration: 7000,
-            isClosable: true,
-          });
-        }
-
-        try {
-          if (!meetingInstance.self.audioEnabled) {
-            await meetingInstance.self.enableAudio();
-            console.log('[Dyte] enableAudio() OK');
-          }
-        } catch (aErr) {
-          console.warn('[Dyte] enableAudio failed (permissions?):', aErr);
-          toast({
-            title: 'Microphone permission required',
-            description: 'Allow microphone access in browser settings and refresh.',
-            status: 'warning',
-            duration: 7000,
-            isClosable: true,
-          });
-        }
-
-        // Track participants snapshot so we can debug participant names & counts
-        try {
-          const snapshot = Array.from(meetingInstance?.participants?.values?.() || []) // if Map-like
-            .map((p) => ({ id: p.id || p.client_specific_id || p.clientId, name: p.display_name || p.name || p.displayName || p.name || '(unknown)' }));
-          setParticipantsSnapshot(snapshot);
-        } catch (snapErr) {
-          // ignore snapshot errors
-        }
+        // Let the setup screen handle camera/mic permissions
+        // Don't manually enable them - causes conflicts
 
         hasInitializedRef.current = true;
         if (mounted) {
@@ -1628,7 +1588,7 @@ const DyteMeetingLauncher = ({
           name: x.display_name || x.name || x.displayName || '(unknown)',
         }));
         setParticipantsSnapshot(snapshot);
-      } catch {}
+      } catch { }
     };
 
     // Attach listeners defensively
@@ -1654,10 +1614,10 @@ const DyteMeetingLauncher = ({
     (async () => {
       try {
         if (meeting.self.roomJoined) {
-          if (!meeting.self.videoEnabled) await meeting.self.enableVideo().catch(() => {});
-          if (!meeting.self.audioEnabled) await meeting.self.enableAudio().catch(() => {});
+          if (!meeting.self.videoEnabled) await meeting.self.enableVideo().catch(() => { });
+          if (!meeting.self.audioEnabled) await meeting.self.enableAudio().catch(() => { });
         }
-      } catch {}
+      } catch { }
     })();
 
     return () => {
@@ -1667,12 +1627,12 @@ const DyteMeetingLauncher = ({
         meeting.self.removeListener && meeting.self.removeListener('videoUpdate', handleVideo);
         meeting.self.removeListener && meeting.self.removeListener('screenShareUpdate', handleScreen);
         meeting.self.removeListener && meeting.self.removeListener('roomJoined', handleRoomJoined);
-      } catch {}
+      } catch { }
       try {
         meeting.removeListener && meeting.removeListener('participantJoined', handleParticipant);
         meeting.removeListener && meeting.removeListener('participantLeft', handleParticipant);
         meeting.removeListener && meeting.removeListener('participantsUpdated', handleParticipant);
-      } catch {}
+      } catch { }
     };
   }, [meeting, toast]);
 
@@ -1810,7 +1770,7 @@ const DyteMeetingLauncher = ({
                 <DyteProvider value={meeting}>
                   <DyteMeeting
                     mode="fill"
-                    showSetupScreen={false}
+                    showSetupScreen={true}
                     style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
                     onError={(err) => {
                       console.error('Dyte UI Error:', err);

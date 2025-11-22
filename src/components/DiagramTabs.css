@@ -91,6 +91,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -137,4 +138,95 @@
 .diagram-tabs__action:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* ===== RESPONSIVE STYLES ===== */
+
+/* Tablet and below (< 1024px) */
+@media (max-width: 1023px) {
+  .diagram-tabs {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .diagram-tabs__tab {
+    padding: 6px 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .diagram-tabs__actions {
+    margin-left: 6px;
+    padding-left: 6px;
+  }
+
+  .diagram-tabs__action {
+    width: 30px;
+    height: 30px;
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 767px) {
+  .diagram-tabs {
+    padding: 5px 8px;
+    gap: 4px;
+  }
+
+  .diagram-tabs__list {
+    gap: 4px;
+  }
+
+  .diagram-tabs__tab {
+    padding: 5px 10px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .diagram-tabs__close {
+    padding: 1px;
+  }
+
+  .diagram-tabs__close svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .diagram-tabs__actions {
+    gap: 3px;
+    margin-left: 4px;
+    padding-left: 4px;
+  }
+
+  .diagram-tabs__action {
+    width: 28px;
+    height: 28px;
+  }
+
+  .diagram-tabs__action svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Small mobile (< 480px) */
+@media (max-width: 479px) {
+  .diagram-tabs {
+    padding: 4px 6px;
+  }
+
+  .diagram-tabs__tab {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .diagram-tabs__action {
+    width: 26px;
+    height: 26px;
+  }
+
+  .diagram-tabs__action svg {
+    width: 12px;
+    height: 12px;
+  }
 }

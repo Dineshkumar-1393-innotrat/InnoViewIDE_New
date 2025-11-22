@@ -111,7 +111,7 @@ import React, { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { ChakraProvider } from "@chakra-ui/react";
-import { AuthProvider } from "./contexts/AuthContext"; 
+import { AuthProvider } from "./contexts/AuthContext";
 import { ProjectProvider } from "./ProjectContext";
 
 import MeetLanding from "./components/MeetLanding";
@@ -168,60 +168,60 @@ const App = () => {
 
   return (
     <ChakraProvider>
-        <ProjectProvider>
-          <AuthProvider>
-            {/* <Navbar /> */}
+      <ProjectProvider>
+        <AuthProvider>
+          {/* <Navbar /> */}
 
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/template" element={<Template />} />
-              <Route path="/meet" element={<MeetLanding />} />
-              <Route
-                path="/editor"
-                element={
-                  <CodeEditor
-                    currentPanel={currentPanel}
-                    onDebugClick={handleToggleDebug}
-                    onFlashClick={handleToggleFlash}
-                  />
-                }
-              />
-              {/* <Route path="/Flowchartone" element={<Flowchartone />} /> */}
-              <Route path="/FlowchartTest" element={<FlowchartTest />} />
-              <Route path="/feedback" element={<Feedback />} />
-              <Route path="/defineproduct" element={<DefineProduct />} />
-              <Route path="/textbox" element={<TextBox />} />
-              <Route path="/fileupload" element={<FileUpload />} />
-              <Route path="/simulation" element={<Simulation />} />
-              <Route path="/createaccount" element={<CreateAccount />} />
-              <Route path="/forgotpassword" element={<ForgotPassword />} />
-              <Route path="/simulationpopup" element={<SimulationPopup />} />
-              <Route path="/defineproductone" element={<DefineProductOne />} />
-              <Route path="/defineproducttwo" element={<DefineProductTwo />} />
-              <Route path="/BlockDiagram" element={<BlockDiagramTest />} />
-               {/* <Route path="/flowcharttest" element={<Flowchart />} />  */}
-              <Route path="/blockprogramming" element={<BlockProgramming />} />
-              <Route path="/fileexplorerone" element={<FileExplorerOne />} />
-              <Route
-                path="/createproductdefination"
-                element={<CreateProductDefination />}
-              />
-              <Route path="/view-data" element={<VisualizeData />} />
-              <Route path="/logout" element={<Logout />} />
-              <Route path="/userbutton" element={<UserButton />} />
-              <Route path="/embedded" element={<Embedded />} />
-              <Route path="/embedded/manage" element={<EmbeddedFileManagement />} />
-              <Route path="/toggle" element={<Toggle />} />
-              <Route path="/mathcodeeditor" element={<MathCodeEditor />} />
-              {/* <Route path="/join/:meetingId" element={<ParticipantJoin />} /> */}
-              {/* <Route path="/dytemeeting" element={<MeetLandingPage />} />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/template" element={<Template />} />
+            <Route path="/meet" element={<MeetLanding />} />
+            <Route
+              path="/editor"
+              element={
+                <CodeEditor
+                  currentPanel={currentPanel}
+                  onDebugClick={handleToggleDebug}
+                  onFlashClick={handleToggleFlash}
+                />
+              }
+            />
+            {/* <Route path="/Flowchartone" element={<Flowchartone />} /> */}
+            <Route path="/FlowchartTest" element={<FlowchartTest />} />
+            <Route path="/feedback" element={<Feedback />} />
+            <Route path="/defineproduct" element={<DefineProduct />} />
+            <Route path="/textbox" element={<TextBox />} />
+            <Route path="/fileupload" element={<FileUpload />} />
+            <Route path="/simulation" element={<Simulation />} />
+            <Route path="/createaccount" element={<CreateAccount />} />
+            <Route path="/forgotpassword" element={<ForgotPassword />} />
+            <Route path="/simulationpopup" element={<SimulationPopup />} />
+            <Route path="/defineproductone" element={<DefineProductOne />} />
+            <Route path="/defineproducttwo" element={<DefineProductTwo />} />
+            <Route path="/BlockDiagram" element={<BlockDiagramTest />} />
+            {/* <Route path="/flowcharttest" element={<Flowchart />} />  */}
+            <Route path="/blockprogramming" element={<BlockProgramming />} />
+            <Route path="/fileexplorerone" element={<FileExplorerOne />} />
+            <Route
+              path="/createproductdefination"
+              element={<CreateProductDefination />}
+            />
+            <Route path="/view-data" element={<VisualizeData />} />
+            <Route path="/logout" element={<Logout />} />
+            <Route path="/userbutton" element={<UserButton />} />
+            <Route path="/embedded" element={<EmbeddedFileManagement />} />
+            <Route path="/embedded/manage" element={<EmbeddedFileManagement />} />
+            <Route path="/toggle" element={<Toggle />} />
+            <Route path="/mathcodeeditor" element={<MathCodeEditor />} />
+            {/* <Route path="/join/:meetingId" element={<ParticipantJoin />} /> */}
+            {/* <Route path="/dytemeeting" element={<MeetLandingPage />} />
         <Route path="/join" element={<JoinMeeting />} /> */}
-              <Route path="/join/:meetingId" element={<JoinMeeting />} />
-            </Routes>
+            <Route path="/join/:meetingId" element={<JoinMeeting />} />
+          </Routes>
 
-            {/* <Footer /> */}
-          </AuthProvider>
-        </ProjectProvider>
+          {/* <Footer /> */}
+        </AuthProvider>
+      </ProjectProvider>
     </ChakraProvider>
   );
 };

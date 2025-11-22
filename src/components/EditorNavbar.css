@@ -384,19 +384,197 @@
   text-decoration: underline;
 }
 
-@media (max-width: 960px) {
+
+/* ===== RESPONSIVE STYLES ===== */
+
+/* Tablet and below (< 1024px) */
+@media (max-width: 1023px) {
+  .editor-navbar {
+    padding: 0 12px;
+    height: auto;
+    min-height: 56px;
+  }
+
+  .editor-navbar__left {
+    gap: 12px;
+  }
+
+  .editor-navbar__brand {
+    padding-right: 12px;
+    font-size: 14px;
+  }
+
+  .editor-navbar__logo {
+    height: 24px;
+    width: 24px;
+  }
+
+  .editor-navbar__menu {
+    gap: 6px;
+  }
+
+  .editor-navbar__menu-item {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .editor-navbar__tabs {
+    gap: 8px;
+    padding: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+  }
+
+  .editor-navbar__tabs::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
+  }
+
+  .editor-navbar__tab {
+    font-size: 12px;
+    padding: 6px 12px;
+    white-space: nowrap;
+  }
+
+  .editor-navbar__right {
+    gap: 8px;
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 767px) {
   .editor-navbar {
     flex-wrap: wrap;
-    height: auto;
-    padding: 12px;
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .editor-navbar__left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .editor-navbar__brand {
+    font-size: 13px;
+    gap: 6px;
+  }
+
+  .editor-navbar__brand-name {
+    display: none;
+    /* Hide text on very small screens */
+  }
+
+  .editor-navbar__logo {
+    height: 28px;
+    width: 28px;
+  }
+
+  /* Hide Tools and Help menus on mobile */
+  .editor-navbar__menu {
+    display: none;
   }
 
   .editor-navbar__tabs {
     order: 3;
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .editor-navbar__tab {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .editor-navbar__tab-icon {
+    display: none;
+    /* Hide icons on mobile to save space */
+  }
+
+  .editor-navbar__right {
+    gap: 6px;
+  }
+
+  .editor-navbar__icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .editor-navbar__account-btn {
+    padding: 6px 8px;
+  }
+
+  .editor-navbar__account-caret {
+    display: none;
+  }
+
+  /* Adjust dropdown positioning for mobile */
+  .editor-navbar__menu-dropdown,
+  .editor-navbar__account-menu {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .editor-navbar__reference-overlay {
+    padding: 16px;
+  }
+
+  .editor-navbar__reference-modal {
+    max-height: 85vh;
+  }
+
+  .editor-navbar__reference-header {
+    padding: 16px;
+  }
+
+  .editor-navbar__reference-header h2 {
+    font-size: 16px;
+  }
+
+  .editor-navbar__reference-body {
+    padding: 16px;
+    font-size: 13px;
   }
 }
+
+/* Small mobile (< 480px) */
+@media (max-width: 479px) {
+  .editor-navbar {
+    padding: 6px 8px;
+  }
+
+  .editor-navbar__brand {
+    padding-right: 8px;
+  }
+
+  .editor-navbar__tabs {
+    padding: 3px;
+    gap: 4px;
+  }
+
+  .editor-navbar__tab {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  .editor-navbar__icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .editor-navbar__icon-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Logo styles */
 .editor-navbar__logo {
   height: 28px;
   width: 28px;

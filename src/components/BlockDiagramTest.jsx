@@ -30,6 +30,8 @@ import CreateProjectIntegration from './CreateProjectIntegration';
 import './FileExplorer.css';
 import EditorNavbar from './EditorNavbar';
 import DiagramTabs from './DiagramTabs';
+import MobileMenuButton from './MobileMenuButton';
+import { useResponsiveSidebar } from '../hooks/useResponsiveSidebar';
 import { saveAssetToScreenFolder } from '../utils/screenFileManager';
 import { useAutoSaveTabs } from '../hooks/useAutoSaveTabs';
 import { canvasIntegration, ReactFlowCanvasHandler } from '../utils/canvasIntegration';
@@ -317,9 +319,9 @@ function TextNode({ id, data, selected }) {
           }}
         />
       ) : (
-        <span style={{ 
-          color: data?.text || '#000', 
-          fontSize: data?.fontSize || 14, 
+        <span style={{
+          color: data?.text || '#000',
+          fontSize: data?.fontSize || 14,
           fontWeight: data?.fontWeight || 'normal',
           textAlign: 'center',
           lineHeight: 1.2
@@ -347,14 +349,14 @@ function EllipseNode({ id, data, selected }) {
     >
       <NodeResizer isVisible={selected} minWidth={80} minHeight={60} color={data?.stroke || '#000'} />
       <svg viewBox="0 0 160 80" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
-        <ellipse 
-          cx="80" 
-          cy="40" 
-          rx="75" 
-          ry="35" 
-          fill={data?.fill || '#ffffff'} 
-          stroke={data?.stroke || '#000000'} 
-          strokeWidth={data?.strokeWidth ?? 2} 
+        <ellipse
+          cx="80"
+          cy="40"
+          rx="75"
+          ry="35"
+          fill={data?.fill || '#ffffff'}
+          stroke={data?.stroke || '#000000'}
+          strokeWidth={data?.strokeWidth ?? 2}
         />
       </svg>
       <div
@@ -1315,8 +1317,8 @@ const nodeTypes = {
   actor: ActorNode,
 };
 
-const edgeTypes = { 
-  editable: EditableEdge 
+const edgeTypes = {
+  editable: EditableEdge
 };
 
 // Enhanced palette with more shapes
@@ -1325,9 +1327,9 @@ const PALETTE_GROUPS = [
     id: 'blocks',
     title: 'Block Diagram',
     items: [
-      { 
-        type: 'text', 
-        label: 'Text', 
+      {
+        type: 'text',
+        label: 'Text',
         icon: <div style={{ fontSize: 24, fontWeight: 'bold' }}>T</div>
       },
       {
@@ -1481,16 +1483,17 @@ function DiagramEditor() {
   const rf = useReactFlow();
   const canvasIntegration = useCanvasFileIntegration('Block Diagram');
   const historyRef = useRef({ entries: [], index: -1 });
+  const { isSidebarOpen, isMobile, toggleSidebar, closeSidebar } = useResponsiveSidebar();
   const nodesRef = useRef([]);
   const edgesRef = useRef([]);
   const debounceRef = useRef(null);
   const hydratingRef = useRef(false);
   const lastSnapshotRef = useRef('');
-  
+
   // Add auto-save tabs functionality
   const {
     tabs: autoSaveTabs,
-    activeTab: activeAutoSaveTab, 
+    activeTab: activeAutoSaveTab,
     addNewTab: addNewAutoSaveTab,
     closeTab: closeAutoSaveTab,
     updateTabContent: updateAutoSaveTabContent,
@@ -1508,17 +1511,17 @@ function DiagramEditor() {
   const handleFileClick = useCallback(async (filePath, fileName, parsedContent, fileData) => {
     try {
       console.log('File clicked in Block Diagram:', fileName, filePath);
-      
+
       // Load file using canvas integration
       const result = await canvasIntegration.loadFileToCanvas(filePath, fileName, parsedContent, fileData);
-      
+
       if (result.success) {
         // Apply content to canvas if it's JSON diagram data
         if (fileName.endsWith('.json') && parsedContent && typeof parsedContent === 'object') {
           if (parsedContent.nodes && parsedContent.edges) {
             setNodes(parsedContent.nodes || []);
             setEdges(parsedContent.edges || []);
-            
+
             // Apply viewport if available
             if (parsedContent.viewport && rf) {
               setTimeout(() => {
@@ -1527,7 +1530,7 @@ function DiagramEditor() {
             }
           }
         }
-        
+
         // Also open as tab for editing
         await openFileAsTab(filePath, fileName, result.content);
         console.log(`Loaded ${fileName} into Block Diagram canvas and opened as tab`);
@@ -1559,7 +1562,7 @@ function DiagramEditor() {
       const allProjects = projectFileManager.getAllProjects();
       const projects = Object.values(allProjects);
       setHasProjects(projects.length > 0);
-      
+
       // Set active project if available
       if (projects.length > 0 && !activeProjectId && setActiveProjectId) {
         const activeProject = projectFileManager.getActiveProject();
@@ -1588,7 +1591,7 @@ function DiagramEditor() {
     window.addEventListener('project:change', handleProjectChange);
     window.addEventListener('project-created', handleProjectCreated);
     window.addEventListener('file-system-refresh', checkProjects);
-    
+
     return () => {
       window.removeEventListener('project:change', handleProjectChange);
       window.removeEventListener('project-created', handleProjectCreated);
@@ -1602,7 +1605,7 @@ function DiagramEditor() {
     if (!activeProject) return;
 
     const filePath = 'BlockDiagram/system_diagram.json';
-    
+
     // Function to get current canvas content
     const getCanvasContent = () => ({
       nodes,
@@ -1741,33 +1744,33 @@ function DiagramEditor() {
         antenna: 'Antenna',
         actor: 'Actor',
       };
-      const baseData = { 
-        label: defaultLabels[type] || 'Block', 
-        fill: '#ffffff', 
-        stroke: '#000000', 
-        text: '#000000', 
-        strokeWidth: 2, 
-        rotation: 0, 
-        fontSize: 12 
+      const baseData = {
+        label: defaultLabels[type] || 'Block',
+        fill: '#ffffff',
+        stroke: '#000000',
+        text: '#000000',
+        strokeWidth: 2,
+        rotation: 0,
+        fontSize: 12
       };
 
       const nodeStyle = type === 'text'
         ? { width: 100, height: 40 }
         : type === 'database'
-        ? { width: 120, height: 80 }
-        : type === 'connector'
-        ? { width: 100, height: 100 }
-        : type === 'summing'
-        ? { width: 120, height: 120 }
-        : type === 'mic'
-        ? { width: 140, height: 160 }
-        : type === 'bluetooth'
-        ? { width: 140, height: 160 }
-        : type === 'antenna'
-        ? { width: 150, height: 150 }
-        : type === 'actor'
-        ? { width: 160, height: 180 }
-        : { width: 160, height: 80 };
+          ? { width: 120, height: 80 }
+          : type === 'connector'
+            ? { width: 100, height: 100 }
+            : type === 'summing'
+              ? { width: 120, height: 120 }
+              : type === 'mic'
+                ? { width: 140, height: 160 }
+                : type === 'bluetooth'
+                  ? { width: 140, height: 160 }
+                  : type === 'antenna'
+                    ? { width: 150, height: 150 }
+                    : type === 'actor'
+                      ? { width: 160, height: 180 }
+                      : { width: 160, height: 80 };
 
       setNodes((nds) => nds.concat({ id, type, position, data: baseData, style: nodeStyle }));
       window.dispatchEvent(new Event('rf-change'));
@@ -1854,7 +1857,7 @@ function DiagramEditor() {
     const newEdges = clipboard.edges.map(edge => {
       const sourceId = nodeIdMap.get(edge.source);
       const targetId = nodeIdMap.get(edge.target);
-      
+
       // Only paste edges if both source and target nodes are being pasted
       if (sourceId && targetId) {
         return {
@@ -1871,7 +1874,7 @@ function DiagramEditor() {
     // Deselect all existing items and add new ones
     setNodes(nds => nds.map(n => ({ ...n, selected: false })).concat(newNodes));
     setEdges(eds => eds.map(e => ({ ...e, selected: false })).concat(newEdges));
-    
+
     console.log(`Pasted ${newNodes.length} nodes and ${newEdges.length} edges`);
   }, [clipboard, setNodes, setEdges]);
 
@@ -1928,9 +1931,9 @@ function DiagramEditor() {
   useEffect(() => {
     const onKey = (e) => {
       // Check if we're in an input field
-      const isInputActive = document.activeElement?.tagName === 'INPUT' || 
-                           document.activeElement?.tagName === 'TEXTAREA' ||
-                           document.activeElement?.contentEditable === 'true';
+      const isInputActive = document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        document.activeElement?.contentEditable === 'true';
 
       // Skip keyboard shortcuts if user is typing in an input
       if (isInputActive) return;
@@ -2158,7 +2161,7 @@ function DiagramEditor() {
     if (!rfContainer) return;
 
     let watermark;
-    
+
     try {
       // Create watermark
       watermark = document.createElement('div');
@@ -2180,14 +2183,14 @@ function DiagramEditor() {
         pointerEvents: 'none',
         zIndex: '9999',
       });
-      
+
       const img = new Image();
       img.src = hexBg;
       img.alt = 'InnoIDE';
       img.style.width = '24px';
       img.style.height = '24px';
       img.style.display = 'block';
-      
+
       // Wait for image to load
       await new Promise((resolve) => {
         if (img.complete) {
@@ -2198,7 +2201,7 @@ function DiagramEditor() {
           setTimeout(resolve, 500);
         }
       });
-      
+
       watermark.appendChild(img);
       const span = document.createElement('span');
       span.textContent = 'made with innotrat labs';
@@ -2274,8 +2277,12 @@ function DiagramEditor() {
   return (
     <div className="diagram-builder">
       <CreateProjectIntegration />
-      <EditorNavbar 
-        activeTab="Block Diagram" 
+      <MobileMenuButton isOpen={isSidebarOpen} onClick={toggleSidebar} />
+      {isMobile && isSidebarOpen && (
+        <div className="mobile-backdrop is-visible" onClick={closeSidebar} />
+      )}
+      <EditorNavbar
+        activeTab="Block Diagram"
         onTabChange={handleTabChange}
         onSaveJSON={saveDiagram}
         onLoadJSON={loadDiagram}
@@ -2283,7 +2290,7 @@ function DiagramEditor() {
       />
       <div className="content">
         {/* Left palette */}
-        <div className="sidebarr">
+        <div className={`sidebarr ${isMobile && isSidebarOpen ? 'is-open' : ''}`}>
           <div className="sidebar-toggle-bar">
             <button
               type="button"
@@ -2303,20 +2310,7 @@ function DiagramEditor() {
 
           <div className="sidebar-body">
             {isExplorerVisible === 'explorer' ? (
-              hasProjects ? (
-                <ProjectFileExplorer 
-                  variant="diagram" 
-                  onFileClick={handleFileClick}
-                  currentScreenFiles={currentScreenFiles}
-                  activeProjectId={activeProjectId}
-                />
-              ) : (
-                <EnhancedFileExplorer 
-                  variant="diagram" 
-                  onFileClick={handleFileClick}
-                  currentScreenFiles={currentScreenFiles}
-                />
-              )
+              <FileExplorer variant="diagram" />
             ) : (
               <div className="palette-frame">
                 <div className="palette-header">
@@ -2384,9 +2378,9 @@ function DiagramEditor() {
 
         {/* Canvas */}
         <div className="diagram-container">
-          <div style={{ 
-            padding: '8px 12px', 
-            background: '#ffffff', 
+          <div style={{
+            padding: '8px 12px',
+            background: '#ffffff',
             borderBottom: '1px solid #e5e7eb',
             display: 'flex',
             justifyContent: 'space-between',
@@ -2414,7 +2408,7 @@ function DiagramEditor() {
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 connectionLineType={ConnectionLineType.SmoothStep}
-                defaultEdgeOptions={{ 
+                defaultEdgeOptions={{
                   type: 'editable',
                   markerEnd: { type: MarkerType.ArrowClosed },
                   style: { strokeWidth: 2, stroke: '#000000' },
@@ -2443,12 +2437,12 @@ function DiagramEditor() {
         </div>
 
         {/* Right properties panel */}
-        <PropertiesPanel 
+        <PropertiesPanel
           selectedNode={selected?.kind === 'node' ? selectedEntity : null}
           onNodeUpdate={(nodeId, property, value) => {
-            updateSelectedNode((n) => ({ 
-              ...n, 
-              data: { ...n.data, [property]: value } 
+            updateSelectedNode((n) => ({
+              ...n,
+              data: { ...n.data, [property]: value }
             }));
           }}
         />

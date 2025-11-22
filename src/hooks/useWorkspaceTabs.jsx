@@ -25,8 +25,11 @@ export const WorkspaceTabsProvider = ({ kind, createInitialState, children }) =>
   const userId = user?.userId || user?._id || user?.id;
 
   const [tabs, setTabs] = useState([]);
+  const tabsRef = useRef(tabs);
+  useEffect(() => { tabsRef.current = tabs; }, [tabs]);
+
   const [activeTabId, setActiveTabId] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [savingTabIds, setSavingTabIds] = useState(new Set());
 
   const saveTimersRef = useRef({});
@@ -39,7 +42,9 @@ export const WorkspaceTabsProvider = ({ kind, createInitialState, children }) =>
         return;
       }
 
-      const tab = tabs.find((t) => t.id === tabId);
+      // Use ref to get latest tabs without adding to dependency
+      const currentTabs = tabsRef.current;
+      const tab = currentTabs.find((t) => t.id === tabId);
       if (!tab || !tab.dirty) return;
 
       setSavingTabIds((prev) => new Set(prev).add(tabId));
@@ -59,11 +64,11 @@ export const WorkspaceTabsProvider = ({ kind, createInitialState, children }) =>
             current.map((item) =>
               item.id === tabId
                 ? {
-                    ...item,
-                    fileId: result.fileId,
-                    fileName: result.fileName,
-                    dirty: false,
-                  }
+                  ...item,
+                  fileId: result.fileId,
+                  fileName: result.fileName,
+                  dirty: false,
+                }
                 : item
             )
           );
@@ -80,7 +85,7 @@ export const WorkspaceTabsProvider = ({ kind, createInitialState, children }) =>
         }
       }
     },
-    [activeProjectId, activeProjectName, kind, tabs, userId]
+    [activeProjectId, activeProjectName, kind, userId]
   );
 
   const scheduleSave = useCallback(

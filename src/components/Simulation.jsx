@@ -769,6 +769,58 @@
 //         </Rnd>
 //       ))}
 
+//         {/* Spark effects */}
+//         {sparkEffects.map((spark) => (
+//           <div
+//             key={spark.id}
+//             style={{
+//               position: "absolute",
+//               left: spark.x,
+//               top: spark.y,
+//               width: "60px",
+//               height: "60px",
+//               transform: "translate(-50%, -50%)",
+//               pointerEvents: "none",
+//               zIndex: 9999,
+//             }}
+//           >
+//             {/* Spark animation */}
+//             <div
+//               style={{
+//                 position: "absolute",
+//                 width: "100%",
+//                 height: "100%",
+//                 borderRadius: "50%",
+//                 background: "radial-gradient(circle, #FFD700 0%, #FFA500 30%, transparent 70%)",
+//                 animation: "sparkPulse 0.5s ease-out",
+//               }}
+//             />
+//             <div
+//               style={{
+//                 position: "absolute",
+//                 width: "100%",
+//                 height: "100%",
+//                 borderRadius: "50%",
+//                 background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.5) 40%, transparent 70%)",
+//                 animation: "sparkExpand 0.5s ease-out",
+//               }}
+//             />
+//             {/* Lightning bolt emoji */}
+//             <div
+//               style={{
+//                 position: "absolute",
+//                 top: "50%",
+//                 left: "50%",
+//                 transform: "translate(-50%, -50%)",
+//                 fontSize: "32px",
+//                 animation: "sparkRotate 0.5s ease-out",
+//               }}
+//             >
+//               ⚡
+//             </div>
+//           </div>
+//         ))}
+
 //       {contextMenu && (
 //         <div
 //           ref={contextMenuRef}
@@ -1027,6 +1079,8 @@ import {
   VStack,
   Stack,
   chakra,
+  Tooltip,
+  useToast,
 } from "@chakra-ui/react";
 import { ToggleSwitch } from "./Toggle/Toggle";
 import { baseURL } from "../utilities";
@@ -1129,7 +1183,7 @@ const BlockDiagram = () => {
   const [activeSymbol, setActiveSymbol] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const contextMenuRef = useRef(null);
-  
+
   // Use auto-save tabs for simulation
   const {
     tabs,
@@ -1150,11 +1204,14 @@ const BlockDiagram = () => {
     defaultTabName: "simulation",
     defaultContent: "// Simulation code\n"
   });
-  
+
   const [openCategories, setOpenCategories] = useState({}); // Moved here
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarMode, setSidebarMode] = useState("components");
   const navigate = useNavigate();
+  const toast = useToast();
+  const [connections, setConnections] = useState(new Set()); // Track connected pairs
+  const [sparkEffects, setSparkEffects] = useState([]); // Track active spark animations
 
   const [selectedProject, setSelectedProject] = useState(null);
   const [isProductDefined, setIsProductDefined] = useState(null);
@@ -1437,6 +1494,81 @@ const BlockDiagram = () => {
     }
   };
 
+  // Check if two components are close enough to be considered "connected"
+  const checkProximity = (item1, item2, threshold = 120) => {
+    const centerX1 = item1.x + item1.width / 2;
+    const centerY1 = item1.y + item1.height / 2;
+    const centerX2 = item2.x + item2.width / 2;
+    const centerY2 = item2.y + item2.height / 2;
+
+    const distance = Math.sqrt(
+      Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2)
+    );
+
+    return distance <= threshold;
+  };
+
+  // Handle connection detection and notification
+  const handleConnectionDetection = (movedIndex, newPosition) => {
+    console.log('🔍 Checking connections for component:', movedIndex);
+    console.log('Current position:', newPosition);
+    console.log('Total components:', droppedItems.length);
+
+    const movedItem = { ...droppedItems[movedIndex], ...newPosition };
+
+    droppedItems.forEach((item, index) => {
+      if (index === movedIndex) return; // Skip self
+
+      const distance = Math.sqrt(
+        Math.pow((item.x + item.width / 2) - (movedItem.x + movedItem.width / 2), 2) +
+        Math.pow((item.y + item.height / 2) - (movedItem.y + movedItem.height / 2), 2)
+      );
+
+      console.log(`Distance to component ${index}:`, distance);
+
+      if (checkProximity(movedItem, item)) {
+        const connectionKey = [movedIndex, index].sort().join("-");
+        console.log('✅ Connection detected!', connectionKey);
+
+        // Only show toast if not already connected
+        if (!connections.has(connectionKey)) {
+          console.log('🎉 New connection! Showing toast...');
+          setConnections(prev => new Set([...prev, connectionKey]));
+
+          // Calculate connection point (midpoint between components)
+          const connectionX = (movedItem.x + movedItem.width / 2 + item.x + item.width / 2) / 2;
+          const connectionY = (movedItem.y + movedItem.height / 2 + item.y + item.height / 2) / 2;
+
+          // Create spark effect
+          const sparkId = Date.now();
+          setSparkEffects(prev => [...prev, { id: sparkId, x: connectionX, y: connectionY }]);
+
+          // Remove spark after animation (500ms)
+          setTimeout(() => {
+            setSparkEffects(prev => prev.filter(s => s.id !== sparkId));
+          }, 500);
+
+          // Play connection sound
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2S57OihUQwOVqzn77BdGAg+ltv1xnMoBSh+zPLaizsKGGGy6OyrYBgINZXX9Mp5LQUohM/y3I4+CxVitOvtrGEaBkCY3PLJdysGKoLO8tuJNggTYbjs6qZTEAhMouDwumkkBSR4yPDck0MLHGW66+yjWBUIQ5zh8sNuIQUofcry2Ig0BhFYrOjuqF4YBzaU2PTJeiwGKIHN8t2LPAoVXrTq7qxgGQg4lNn0zHosBSaAy/DblUAOF2S36+yjVxUIRJ3h8sFuIAQnfsny2Yk3BxNWq+fuqF4WAzWS1vPKeS0GJ4DN8tz');
+          audio.volume = 0.3;
+          audio.play().catch(e => console.log('Could not play sound:', e));
+
+          // Show toast notification
+          toast({
+            title: "⚡ Components Connected!",
+            description: `${movedItem.symbol.name} ↔ ${item.symbol.name}`,
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+            position: "top",
+          });
+        } else {
+          console.log('Already connected:', connectionKey);
+        }
+      }
+    });
+  };
+
   const handleSaveDesign = () => {
     localStorage.setItem("savedDesign", JSON.stringify(droppedItems));
     alert("Design saved successfully!");
@@ -1568,12 +1700,12 @@ const BlockDiagram = () => {
         prev.map((item, i) =>
           i === index
             ? {
-                ...item,
-                width: parseFloat(ref.style.width), // Ensure width is updated
-                height: parseFloat(ref.style.height), // Ensure height is updated
-                x: position.x,
-                y: position.y,
-              }
+              ...item,
+              width: parseFloat(ref.style.width), // Ensure width is updated
+              height: parseFloat(ref.style.height), // Ensure height is updated
+              x: position.x,
+              y: position.y,
+            }
             : item
         )
       );
@@ -1610,6 +1742,16 @@ const BlockDiagram = () => {
               e.stopPropagation();
               handleSelect(index);
             }}
+            onResize={(e, dir, ref) => {
+              // Update dimensions during resize for live feedback
+              const newWidth = ref.offsetWidth;
+              const newHeight = ref.offsetHeight;
+              setDroppedItems((prev) =>
+                prev.map((i, idx) =>
+                  idx === index ? { ...i, width: newWidth, height: newHeight } : i
+                )
+              );
+            }}
             onResizeStop={(e, dir, ref, delta, position) =>
               handleResizeStop(index, dir, ref, delta, position)
             }
@@ -1619,6 +1761,8 @@ const BlockDiagram = () => {
                   i === index ? { ...item, x: d.x, y: d.y } : item
                 )
               );
+              // Check for connections after drag
+              handleConnectionDetection(index, { x: d.x, y: d.y });
             }}
             style={{
               transform: `rotate(${item.rotation}deg)`,
@@ -1631,16 +1775,28 @@ const BlockDiagram = () => {
             <div
               style={{ position: "relative", width: "100%", height: "100%" }}
             >
-              <img
-                src={item.symbol.src}
-                alt={item.symbol.name}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  pointerEvents: "none",
-                  transform: `rotate(${item.rotation}deg)`,
-                }}
-              />
+              <Tooltip
+                label={item.symbol.name}
+                placement="top"
+                hasArrow
+                bg="gray.700"
+                color="white"
+                fontSize="sm"
+                px={3}
+                py={2}
+                borderRadius="md"
+              >
+                <img
+                  src={item.symbol.src}
+                  alt={item.symbol.name}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    pointerEvents: "all",
+                    transform: `rotate(${item.rotation}deg)`,
+                  }}
+                />
+              </Tooltip>
               {activeSymbol === index && (
                 <div
                   className="rotate-handle"
@@ -1672,8 +1828,82 @@ const BlockDiagram = () => {
                   🔄 {/* Unicode icon for rotation visual cue */}
                 </div>
               )}
+              {/* Size display overlay */}
+              {activeSymbol === index && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "-35px",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    background: "rgba(0, 0, 0, 0.8)",
+                    color: "white",
+                    padding: "4px 12px",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                    fontWeight: "600",
+                    whiteSpace: "nowrap",
+                    pointerEvents: "none",
+                    zIndex: 1000,
+                  }}
+                >
+                  {Math.round(item.width)} × {Math.round(item.height)} px
+                </div>
+              )}
             </div>
           </Rnd>
+        ))}
+
+        {/* Spark effects */}
+        {sparkEffects.map((spark) => (
+          <div
+            key={spark.id}
+            style={{
+              position: "absolute",
+              left: spark.x,
+              top: spark.y,
+              width: "60px",
+              height: "60px",
+              transform: "translate(-50%, -50%)",
+              pointerEvents: "none",
+              zIndex: 9999,
+            }}
+          >
+            {/* Spark animation */}
+            <div
+              style={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                background: "radial-gradient(circle, #FFD700 0%, #FFA500 30%, transparent 70%)",
+                animation: "sparkPulse 0.5s ease-out",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.5) 40%, transparent 70%)",
+                animation: "sparkExpand 0.5s ease-out",
+              }}
+            />
+            {/* Lightning bolt emoji */}
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                fontSize: "32px",
+                animation: "sparkRotate 0.5s ease-out",
+              }}
+            >
+              ⚡
+            </div>
+          </div>
         ))}
 
         {contextMenu && (
@@ -1701,7 +1931,7 @@ const BlockDiagram = () => {
         <div
           className="top-controls"
 
-          // style={{ paddingTop: "1px", alignItems: "center" }}
+        // style={{ paddingTop: "1px", alignItems: "center" }}
         >
           <Box display="flex" justifyContent="flex-end" width={"100%"} gap={4}>
             {/* {selectedProject?.name && (

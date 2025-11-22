@@ -1,18 +1,18 @@
 /* Modern File Explorer Styles */
 :root {
-  --fe-bg-primary: linear-gradient(135deg, #1a1f36 0%, #0f1419 100%);
-  --fe-bg-secondary: rgba(255, 255, 255, 0.03);
+  --fe-bg-primary: transparent;
+  --fe-bg-secondary: rgba(0, 0, 0, 0.03);
   --fe-bg-hover: rgba(99, 102, 241, 0.12);
   --fe-bg-active: rgba(99, 102, 241, 0.2);
-  --fe-text-primary: #e2e8f0;
-  --fe-text-secondary: #94a3b8;
+  --fe-text-primary: #1e293b;
+  --fe-text-secondary: #475569;
   --fe-text-muted: #64748b;
-  --fe-border: rgba(148, 163, 184, 0.1);
-  --fe-border-hover: rgba(148, 163, 184, 0.3);
+  --fe-border: rgba(15, 23, 42, 0.1);
+  --fe-border-hover: rgba(15, 23, 42, 0.3);
   --fe-accent: #6366f1;
   --fe-accent-hover: #818cf8;
-  --fe-folder-color: #fbbf24;
-  --fe-file-color: #94a3b8;
+  --fe-folder-color: #f59e0b;
+  --fe-file-color: #475569;
   --fe-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --fe-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
 }
@@ -948,5 +948,86 @@
   color: var(--fe-text-muted) !important;
   text-align: center;
   padding: 20px;
-  font-style: italic;
+}
+
+/* ===== RESPONSIVE STYLES ===== */
+
+/* Tablet and below (< 1024px) */
+@media (max-width: 1023px) {
+  .file-explorer {
+    width: 260px;
+    min-width: 260px;
+    padding: 12px;
+  }
+
+  .file-explorer h2 {
+    font-size: 12px;
+  }
+
+  .file-explorer button {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 767px) {
+  .file-explorer {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    padding: 12px 8px;
+  }
+
+  .file-explorer h2 {
+    font-size: 11px;
+  }
+
+  .file-explorer button {
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+
+  .file-explorer__item {
+    padding: 8px 6px;
+  }
+
+  .file-explorer__item-name {
+    font-size: 0.8125rem;
+  }
+
+  /* Make sidebar toggleable on mobile */
+  .sidebar-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: 64px;
+    /* Below navbar */
+    padding: 10px 5px;
+    font-size: 10px;
+  }
+}
+
+/* Small mobile (< 480px) */
+@media (max-width: 479px) {
+  .file-explorer {
+    padding: 8px;
+  }
+
+  .file-explorer h2 {
+    font-size: 10px;
+  }
+
+  .file-explorer button {
+    font-size: 9px;
+    padding: 5px 6px;
+  }
+
+  .file-explorer__item {
+    padding: 6px 4px;
+  }
+
+  .file-explorer__item-name {
+    font-size: 0.75rem;
+  }
 }

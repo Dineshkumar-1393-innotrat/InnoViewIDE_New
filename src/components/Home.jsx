@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Box,
   Flex,
   VStack,
+  HStack,
   FormControl,
   FormLabel,
   Input,
@@ -18,16 +19,17 @@ import {
   useColorModeValue,
   useToast,
   Select,
+  Divider,
 } from "@chakra-ui/react";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaClock, FaCalendar } from "react-icons/fa";
 import loginImage from "../images/image.jpg";
 import Ellipse521 from "../images/Ellipse 521.svg";
 import { Link as ChakraLink } from "@chakra-ui/react";
-import Footer from "./Footer";
 
 const Home = () => {
   const [show, setShow] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
   const [formData, setFormData] = useState({
     mobileNumber: "",
     password: "",
@@ -36,6 +38,31 @@ const Home = () => {
 
   const navigate = useNavigate();
   const toast = useToast();
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -59,11 +86,8 @@ const Home = () => {
       const data = await response.json();
 
       if (data.status === "success") {
-        // Store token and userId in sessionStorage
         sessionStorage.setItem("token", data.token);
         sessionStorage.setItem("userId", data.userData.userId);
-
-        // Keep localStorage for backward compatibility
         localStorage.setItem("token", data.token);
         localStorage.setItem("userData", JSON.stringify(data.userData));
 
@@ -75,7 +99,7 @@ const Home = () => {
           isClosable: true,
         });
 
-        navigate("/embedded", { state: { userId: data.userData.userId } });
+        navigate("/editor", { state: { userId: data.userData.userId } });
       } else {
         throw new Error(data.message || "Sign in failed");
       }
@@ -105,20 +129,33 @@ const Home = () => {
       <Box
         position="relative"
         width="100%"
-        height="65px"
-        borderBottom="1px solid gray"
+        height="70px"
+        borderBottom="2px solid"
+        borderColor={useColorModeValue("gray.200", "gray.700")}
         display="flex"
         alignItems="center"
-        padding="0 20px"
+        justifyContent="space-between"
+        padding="0 40px"
         zIndex={1000}
+        bg={useColorModeValue("white", "gray.900")}
+        boxShadow="sm"
       >
-        <Text fontWeight="bold" fontSize="lg">
-          <img
-            src={Ellipse521}
-            alt="Innoide"
-            style={{ maxWidth: "35%", height: "auto" }}
-          />
-        </Text>
+        <img
+          src={Ellipse521}
+          alt="Innoide"
+          style={{ height: "50px", width: "auto" }}
+        />
+        <HStack spacing={6} color={useColorModeValue("gray.600", "gray.300")} fontSize="sm">
+          <HStack spacing={2}>
+            <FaCalendar />
+            <Text fontWeight="medium">{formatDate(currentDateTime)}</Text>
+          </HStack>
+          <Divider orientation="vertical" height="20px" />
+          <HStack spacing={2}>
+            <FaClock />
+            <Text fontWeight="semibold" fontSize="md">{formatTime(currentDateTime)}</Text>
+          </HStack>
+        </HStack>
       </Box>
 
       <motion.div
@@ -128,46 +165,76 @@ const Home = () => {
         transition={{ duration: 0.5 }}
       >
         <Flex
-          minHeight="90vh"
+          minHeight="calc(100vh - 70px)"
           width="full"
           align="center"
           justifyContent="center"
-          bg={useColorModeValue("gray.50", "gray.800")}
+          bg={useColorModeValue("linear-gradient(135deg, #667eea 0%, #764ba2 100%)", "gray.900")}
+          position="relative"
+          _before={{
+            content: '""',
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bg: useColorModeValue("rgba(255,255,255,0.1)", "rgba(0,0,0,0.3)"),
+            backdropFilter: "blur(10px)",
+          }}
         >
           <Box
-            borderWidth={1}
-            px={8}
+            borderWidth={0}
+            px={0}
             width="full"
-            maxWidth="1000px"
-            borderRadius="lg"
+            maxWidth="1100px"
+            borderRadius="2xl"
             textAlign="center"
-            boxShadow="lg"
+            boxShadow="2xl"
+            overflow="hidden"
+            bg={useColorModeValue("white", "gray.800")}
+            position="relative"
+            zIndex={1}
           >
-            <Flex direction={{ base: "column", md: "row" }}>
-              <Box flex={1} display={{ base: "none", md: "block" }}>
+            <Flex direction={{ base: "column", md: "row" }} height="full">
+              <Box
+                flex={1}
+                display={{ base: "none", md: "block" }}
+                position="relative"
+              >
                 <Image
                   src={loginImage}
                   alt="Login"
                   objectFit="cover"
                   height="100%"
                   width="100%"
-                  borderLeftRadius="lg"
                 />
               </Box>
 
               <VStack
                 as="form"
                 onSubmit={handleLogin}
-                spacing={8}
-                p={8}
+                spacing={6}
+                p={10}
                 flex={1}
-                bg={useColorModeValue("white", "gray.700")}
-                borderRightRadius="lg"
+                bg={useColorModeValue("white", "gray.800")}
                 alignItems="flex-start"
+                justify="center"
               >
-                <Heading as="h1" size="2xl">
-                  Innotrat Labs Pvt Ltd
-                </Heading>
+                <Box width="full">
+                  <Heading
+                    as="h1"
+                    size="xl"
+                    bgGradient="linear(to-r, #667eea, #764ba2)"
+                    bgClip="text"
+                    fontWeight="extrabold"
+                    mb={2}
+                  >
+                    Welcome Back
+                  </Heading>
+                  <Text fontSize="md" color={useColorModeValue("gray.600", "gray.400")} mb={4}>
+                    Sign in to Innotrat Labs IDE
+                  </Text>
+                </Box>
 
                 <FormControl id="mobileNumber" isRequired>
                   <FormLabel>Mobile Number</FormLabel>
@@ -203,6 +270,9 @@ const Home = () => {
                       placeholder="Enter password"
                       value={formData.password}
                       onChange={handleInputChange}
+                      color="black"
+                      _placeholder={{ color: "gray.400" }}
+                      fontWeight="medium"
                     />
                     <InputRightElement width="4.5rem">
                       <IconButton
@@ -211,6 +281,7 @@ const Home = () => {
                         onClick={() => setShow(!show)}
                         aria-label={show ? "Hide password" : "Show password"}
                         icon={show ? <FaEyeSlash /> : <FaEye />}
+                        variant="ghost"
                       />
                     </InputRightElement>
                   </InputGroup>
@@ -218,15 +289,27 @@ const Home = () => {
 
                 <Button
                   type="submit"
-                  colorScheme="blue"
                   width="full"
                   size="lg"
                   fontSize="md"
                   isLoading={isLoading}
                   loadingText="Signing in..."
+                  bgGradient="linear(to-r, #667eea, #764ba2)"
+                  color="white"
+                  _hover={{
+                    bgGradient: "linear(to-r, #764ba2, #667eea)",
+                    transform: "translateY(-2px)",
+                    boxShadow: "xl",
+                  }}
+                  _active={{
+                    transform: "translateY(0)",
+                  }}
+                  transition="all 0.2s"
+                  fontWeight="semibold"
                 >
                   Sign in
                 </Button>
+
                 <Flex justify="space-between" width="full" pt={4}>
                   <ChakraLink color="blue.500" onClick={handleForgotPassword}>
                     Forgot password?
@@ -240,7 +323,6 @@ const Home = () => {
           </Box>
         </Flex>
       </motion.div>
-      <Footer />
     </>
   );
 };

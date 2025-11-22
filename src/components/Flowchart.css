@@ -25,6 +25,53 @@
   --highlight-light: #3182ce;
 }
 
+/* Spark effect animations */
+@keyframes sparkPulse {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkExpand {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes sparkRotate {
+  0% {
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 0;
+  }
+
+  50% {
+    transform: translate(-50%, -50%) scale(1.5) rotate(180deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(-50%, -50%) scale(1) rotate(360deg);
+    opacity: 0;
+  }
+}
+
 .flowchart-container {
   display: flex;
   flex-direction: column;
@@ -44,12 +91,12 @@
   width: 100%;
   position: fixed;
   top: 70px;
-  right: 148px; 
+  right: 148px;
   display: flex;
   justify-content: end;
   align-items: center;
   padding: 5px;
-  
+
   gap: 10px;
   z-index: 1000;
 
@@ -57,7 +104,7 @@
 
 .control-button {
   /* background-color: var(--sidebar-dark); */
-    background-color: white;
+  background-color: white;
   /* color: var(--text-dark); */
   color: var(--sidebar-dark);
   border: none;
@@ -241,15 +288,15 @@
 
 
 .sidebar {
-  height: 100%; 
+  height: 100%;
   overflow-y: auto;
-  box-sizing: border-box; 
+  box-sizing: border-box;
   /* background-color: #f8f9fa;  */
 }
 
 .symbol-grid {
   /* display: flex; */
-   flex-direction: column; 
+  flex-direction: column;
 }
 
 
@@ -322,8 +369,10 @@
 
 .symbol-items {
   margin-top: 8px;
-  padding-left: 16px; /* Indent for nested items */
-  border-left: 2px solid #526D82; /* Left border for nested items */
+  padding-left: 16px;
+  /* Indent for nested items */
+  border-left: 2px solid #526D82;
+  /* Left border for nested items */
   animation: fadeIn 0.3s ease-in-out;
 }
 
@@ -342,6 +391,7 @@
     opacity: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -364,6 +414,163 @@
 .canvas-placeholder {
   cursor: default;
 }
+
 /* END FOR DROP DOWN  */
 
+/* ===== RESPONSIVE STYLES ===== */
 
+/* Tablet and below (< 1024px) */
+@media (max-width: 1023px) {
+  .sidebar {
+    width: 260px;
+    padding: 0.75rem;
+  }
+
+  .symbol-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+  }
+
+  .symbol-button {
+    font-size: 0.65rem;
+    padding: 0.4rem;
+  }
+
+  .top-controls {
+    right: 120px;
+    gap: 8px;
+  }
+
+  .control-button,
+  .generate-button {
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .symbol-section h3 {
+    font-size: 14px;
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 767px) {
+  .flowchart-container {
+    height: 100vh;
+  }
+
+  .main-content {
+    flex-direction: column;
+    height: calc(100vh - 56px);
+    padding-top: 56px;
+  }
+
+  /* Sidebar becomes overlay */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 56px;
+    bottom: 0;
+    width: 100%;
+    max-width: 300px;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .symbol-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.3rem;
+  }
+
+  .symbol-button {
+    font-size: 0.6rem;
+    padding: 0.3rem;
+  }
+
+  .symbol-section {
+    margin: 8px;
+  }
+
+  .symbol-section h3 {
+    font-size: 13px;
+  }
+
+  .main-area {
+    flex: 1;
+    width: 100%;
+  }
+
+  .top-controls {
+    top: 56px;
+    right: 10px;
+    gap: 6px;
+    padding: 3px;
+  }
+
+  .control-button,
+  .generate-button {
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+
+  .project-tabs {
+    padding: 0.3rem;
+    gap: 0.3rem;
+  }
+
+  .project-tab {
+    padding: 0.4rem 0.75rem;
+    font-size: 12px;
+  }
+
+  .canvas-area {
+    padding: 0.5rem;
+  }
+}
+
+/* Small mobile (< 480px) */
+@media (max-width: 479px) {
+  .sidebar {
+    max-width: 280px;
+    padding: 0.5rem;
+  }
+
+  .symbol-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.25rem;
+  }
+
+  .symbol-button {
+    font-size: 0.55rem;
+    padding: 0.25rem;
+  }
+
+  .symbol-section {
+    margin: 6px;
+  }
+
+  .symbol-section h3 {
+    font-size: 12px;
+  }
+
+  .top-controls {
+    right: 8px;
+    gap: 4px;
+  }
+
+  .control-button,
+  .generate-button {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+
+  .project-tab {
+    padding: 0.3rem 0.6rem;
+    font-size: 11px;
+  }
+}

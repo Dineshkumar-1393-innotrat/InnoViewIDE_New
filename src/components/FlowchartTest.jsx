@@ -31,6 +31,8 @@ import FileExplorer from './FileExplorer';
 import './FileExplorer.css';
 import EditorNavbar from './EditorNavbar';
 import DiagramTabs from './DiagramTabs';
+import MobileMenuButton from './MobileMenuButton';
+import { useResponsiveSidebar } from '../hooks/useResponsiveSidebar';
 import { Settings, ArrowLeftRight, RotateCcw, RotateCw } from 'lucide-react';
 import hexBg from '../assets/hex_bg.png';
 import { useProject } from '../ProjectContext';
@@ -41,7 +43,7 @@ import { WorkspaceTabsProvider, useWorkspaceTabs } from '../hooks/useWorkspaceTa
 import DefineProductButton from './shared/DefineProductButton';
 import projectFileManager from '../utils/projectFileManager';
 import { useCanvasFileIntegration } from '../hooks/useCanvasFileIntegration';
-import ProjectFileExplorer from './ProjectFileExplorer';
+
 
 // Simple id helpers
 let nodeId = 1;
@@ -2156,14 +2158,22 @@ function DiagramEditor() {
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { edgesRef.current = edges; }, [edges]);
 
+  // Create ref for updateActiveTabState to use in unmount cleanup
+  const updateActiveTabStateRef = useRef(updateActiveTabState);
+  useEffect(() => { updateActiveTabStateRef.current = updateActiveTabState; }, [updateActiveTabState]);
+
   const pushSnapshot = useCallback(() => {
-    if (hydratingRef.current) return;
-    const nodesCurrent = rf.getNodes();
-    const edgesCurrent = rf.getEdges();
+    if (hydratingRef.current) {
+      console.log('pushSnapshot: hydrating, skipping');
+      return;
+    }
+
+    // Use refs to get the latest state, as rf.getNodes() might be stale relative to the render cycle
+    const nodesCurrent = nodesRef.current;
+    const edgesCurrent = edgesRef.current;
     const viewport = rf.getViewport();
 
-    nodesRef.current = nodesCurrent;
-    edgesRef.current = edgesCurrent;
+    console.log('pushSnapshot: Attempting to push. Nodes:', nodesCurrent.length, 'Edges:', edgesCurrent.length);
 
     const snapshot = {
       nodes: nodesCurrent,
@@ -2171,7 +2181,12 @@ function DiagramEditor() {
       viewport,
     };
     const serialized = JSON.stringify(snapshot);
-    if (serialized === lastSnapshotRef.current) return;
+
+    if (serialized === lastSnapshotRef.current) {
+      console.log('pushSnapshot: State unchanged, skipping');
+      return;
+    }
+
     lastSnapshotRef.current = serialized;
 
     const baseEntries = historyRef.current.entries.slice(0, historyRef.current.index + 1);
@@ -2182,7 +2197,20 @@ function DiagramEditor() {
       entries: trimmed,
       index: trimmed.length - 1,
     };
+    console.log('Snapshot pushed. New history length:', trimmed.length, 'Index:', trimmed.length - 1);
   }, [rf]);
+
+  // Initialize history with the initial state
+  useEffect(() => {
+    // Only push if history is empty and we are not hydrating
+    if (!hydratingRef.current && historyRef.current.index === -1) {
+      console.log('Initializing history with initial state');
+      // Small timeout to ensure React Flow is ready
+      setTimeout(() => {
+        pushSnapshot();
+      }, 100);
+    }
+  }, [pushSnapshot]);
 
   const flushPendingSnapshot = useCallback(() => {
     if (debounceRef.current) {
@@ -2193,17 +2221,26 @@ function DiagramEditor() {
   }, [pushSnapshot]);
 
   const persistCurrentState = useCallback(() => {
-    if (hydratingRef.current) return;
+    if (hydratingRef.current) {
+      console.log('[PERSIST] Skipped - hydrating');
+      return;
+    }
+    console.log('[PERSIST] Saving state. Nodes:', nodesRef.current.length, 'Edges:', edgesRef.current.length);
     updateActiveTabState((prev = createFlowchartState()) => ({
       ...prev,
       nodes: nodesRef.current,
       edges: edgesRef.current,
       viewport: rf.getViewport(),
     }));
+    console.log('[PERSIST] State save initiated');
   }, [rf, updateActiveTabState]);
 
   const scheduleSnapshot = useCallback(() => {
-    if (isUndoRedoRef.current || hydratingRef.current) return;
+    if (isUndoRedoRef.current || hydratingRef.current) {
+      console.log('scheduleSnapshot: Skipped (isUndoRedo or hydrating)');
+      return;
+    }
+    console.log('scheduleSnapshot: Scheduled');
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       pushSnapshot();
@@ -2224,6 +2261,59 @@ function DiagramEditor() {
     if (hydratingRef.current || isUndoRedoRef.current) return;
     scheduleSnapshot();
   }, [nodes, edges, scheduleSnapshot]);
+
+  // Save state when component unmounts (e.g., switching screens)
+  // This effect has NO dependencies so it only runs once on mount and cleanup on unmount
+  useEffect(() => {
+    console.log('[UNMOUNT EFFECT] Registered (stable)');
+    return () => {
+      console.log('========================================');
+      console.log('[UNMOUNT] FlowchartTest is unmounting!');
+      console.log('[UNMOUNT] Current nodes:', nodesRef.current.length);
+      console.log('[UNMOUNT] Current edges:', edgesRef.current.length);
+
+      // Clear any pending debounced save
+      if (debounceRef.current) {
+        console.log('[UNMOUNT] Clearing pending debounce');
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+
+      // Push snapshot to history
+      console.log('[UNMOUNT] Pushing final snapshot');
+      const snapshot = {
+        nodes: nodesRef.current,
+        edges: edgesRef.current,
+        viewport: rf.getViewport(),
+      };
+      const serialized = JSON.stringify(snapshot);
+      if (serialized !== lastSnapshotRef.current) {
+        lastSnapshotRef.current = serialized;
+        const entry = JSON.parse(serialized);
+        const history = historyRef.current;
+        const base = history.entries.slice(0, history.index + 1);
+        base.push(entry);
+        const trimmed = base.length > HISTORY_LIMIT ? base.slice(base.length - HISTORY_LIMIT) : base;
+        historyRef.current = { entries: trimmed, index: trimmed.length - 1 };
+        console.log('[UNMOUNT] Snapshot pushed to history');
+      }
+
+      // Force immediate state save to workspace tabs
+      console.log('[UNMOUNT] Saving to workspace tabs');
+      if (updateActiveTabStateRef.current) {
+        updateActiveTabStateRef.current(() => ({
+          nodes: nodesRef.current,
+          edges: edgesRef.current,
+          viewport: rf.getViewport(),
+        }));
+        console.log('[UNMOUNT] State saved to active tab');
+      }
+
+      console.log('[UNMOUNT] Cleanup complete');
+      console.log('========================================');
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run on mount/unmount
 
   const applySnapshot = useCallback((snapshot, nextIndex) => {
     if (!snapshot) return;
@@ -2265,25 +2355,41 @@ function DiagramEditor() {
   }, [rf, setEdges, setNodes, updateActiveTabState]);
 
   const undo = useCallback(() => {
+    console.log('Undo called. History index:', historyRef.current.index);
     flushPendingSnapshot();
 
     const { entries, index } = historyRef.current;
-    if (index <= 0) return;
+    if (index <= 0) {
+      console.log('Undo: No more history to undo');
+      return;
+    }
     const nextIndex = index - 1;
+    console.log('Undo: Applying snapshot at index', nextIndex);
     applySnapshot(entries[nextIndex], nextIndex);
   }, [applySnapshot, flushPendingSnapshot]);
 
   const redo = useCallback(() => {
+    console.log('Redo called. History index:', historyRef.current.index);
     flushPendingSnapshot();
 
     const { entries, index } = historyRef.current;
-    if (index >= entries.length - 1) return;
+    if (index >= entries.length - 1) {
+      console.log('Redo: No more history to redo');
+      return;
+    }
     const nextIndex = index + 1;
+    console.log('Redo: Applying snapshot at index', nextIndex);
     applySnapshot(entries[nextIndex], nextIndex);
   }, [applySnapshot, flushPendingSnapshot]);
 
   const handleNodesChange = useCallback((changes) => {
     onNodesChange(changes);
+    // Sync ref immediately for persistence
+    setNodes((nds) => {
+      nodesRef.current = nds;
+      return nds;
+    });
+
     if (!isUndoRedoRef.current) {
       const meaningfulChange = changes.some(
         (change) => change.type !== 'select' && change.type !== 'selectNodes'
@@ -2292,10 +2398,16 @@ function DiagramEditor() {
         scheduleSnapshot();
       }
     }
-  }, [onNodesChange, scheduleSnapshot]);
+  }, [onNodesChange, scheduleSnapshot, setNodes]);
 
   const handleEdgesChange = useCallback((changes) => {
     onEdgesChange(changes);
+    // Sync ref immediately for persistence
+    setEdges((eds) => {
+      edgesRef.current = eds;
+      return eds;
+    });
+
     if (!isUndoRedoRef.current) {
       const meaningfulChange = changes.some(
         (change) => change.type !== 'select' && change.type !== 'selectNodes'
@@ -2304,12 +2416,12 @@ function DiagramEditor() {
         scheduleSnapshot();
       }
     }
-  }, [onEdgesChange, scheduleSnapshot]);
+  }, [onEdgesChange, scheduleSnapshot, setEdges]);
 
   const onConnect = useCallback(
     (params) => {
-      setEdges((eds) =>
-        addEdge(
+      setEdges((eds) => {
+        const newEdges = addEdge(
           {
             ...params,
             type: 'editable',
@@ -2320,8 +2432,10 @@ function DiagramEditor() {
             data: { showLabel: false },
           },
           eds
-        )
-      );
+        );
+        edgesRef.current = newEdges;
+        return newEdges;
+      });
       scheduleSnapshot();
     },
     [setEdges, scheduleSnapshot]
@@ -2335,6 +2449,9 @@ function DiagramEditor() {
 
   useEffect(() => {
     if (!activeTab) return;
+
+    console.log('Tab switched or loaded. ID:', activeTab.id);
+
     hydratingRef.current = true;
     const state = activeTab.state || createFlowchartState();
     const nextNodes = state.nodes || [];
@@ -2373,8 +2490,31 @@ function DiagramEditor() {
       hydratingRef.current = false;
       scheduleSnapshot();
     });
-    return () => cancelAnimationFrame(frame);
-  }, [activeTab, rf, setEdges, setNodes, updateActiveTabState]);
+
+    // Cleanup: Save current state before switching tabs or unmounting
+    return () => {
+      cancelAnimationFrame(frame);
+      if (activeTab?.id) {
+        console.log('[TAB SWITCH] Switching from tab:', activeTab.id);
+        console.log('[TAB SWITCH] Nodes:', nodesRef.current.length, 'Edges:', edgesRef.current.length);
+        // Flush any pending debounced save
+        if (debounceRef.current) {
+          console.log('[TAB SWITCH] Clearing pending debounce');
+          clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        // The cleanup function closes over the old values of dependencies,
+        // so persistCurrentState here will use the old updateActiveTabState
+        // which closes over the old activeTabId - saving to the correct tab!
+        console.log('[TAB SWITCH] Calling pushSnapshot()');
+        pushSnapshot();
+        console.log('[TAB SWITCH] Calling persistCurrentState()');
+        persistCurrentState();
+        console.log('[TAB SWITCH] Cleanup complete');
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab?.id, rf, setEdges, setNodes, updateActiveTabState]);
 
   const onNodeDragStop = useCallback(() => {
     scheduleSnapshot();
@@ -3048,16 +3188,7 @@ function DiagramEditor() {
 
           <div className="sidebar-body">
             {isExplorerVisible === 'explorer' ? (
-              hasProjects ? (
-                <ProjectFileExplorer
-                  variant="diagram"
-                  onFileClick={handleFileClick}
-                  currentScreenFiles={[]}
-                  activeProjectId={activeProjectId}
-                />
-              ) : (
-                <FileExplorer variant="diagram" />
-              )
+              <FileExplorer variant="diagram" />
             ) : (
               <div className="palette-frame">
                 <div className="palette-header">
@@ -3166,10 +3297,10 @@ function DiagramEditor() {
                 <MiniMap className="export-ignore" />
                 <Controls className="export-ignore">
                   <ControlButton onClick={undo} title="Undo (Ctrl+Z)">
-                    <RotateCcw />
+                    <RotateCcw size={16} />
                   </ControlButton>
                   <ControlButton onClick={redo} title="Redo (Ctrl+Y)">
-                    <RotateCw />
+                    <RotateCw size={16} />
                   </ControlButton>
                 </Controls>
                 <Background className="export-ignore" gap={16} size={1} />

@@ -57,7 +57,7 @@ const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colo
 
   if (isFlashing) {
     return (
-      <Box flex="1" p={3} overflowY="auto">
+      <Box flex="1" p={2} overflowY="auto">
         <Flash onFlashComplete={onFlashComplete} onFlashStart={onFlashStart} />
       </Box>
     );
@@ -65,28 +65,30 @@ const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colo
 
   return (
     <Box flex="1" display="flex" flexDirection="column" overflow="hidden">
-      <Box 
-        flex="1"
+      <Box
+        flex={isDeviceConnected ? "1" : "auto"}
         overflowY="auto"
-        p={3}
-        minH="300px"
-        h="50%"
+        p={2}
+        minH={isDeviceConnected ? "240px" : "auto"}
+        h={isDeviceConnected ? "50%" : "100%"}
       >
         <FileExplorer variant="diagram" />
       </Box>
-      {/* Always show Flash panel so users can connect their device */}
-      <Box
-        borderTop="1px solid"
-        borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
-        p={3}
-        maxH="300px"
-        minH="250px"
-        h="50%"
-        overflowY="auto"
-        transition="all 0.3s ease"
-      >
-        <Flash onFlashComplete={onFlashComplete} onFlashStart={onFlashStart} />
-      </Box>
+      {/* Only show Flash panel when device is connected */}
+      {isDeviceConnected && (
+        <Box
+          borderTop="1px solid"
+          borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
+          p={2}
+          maxH="240px"
+          minH="200px"
+          h="50%"
+          overflowY="auto"
+          transition="all 0.3s ease"
+        >
+          <Flash onFlashComplete={onFlashComplete} onFlashStart={onFlashStart} />
+        </Box>
+      )}
     </Box>
   );
 };
@@ -169,7 +171,7 @@ const getStoredIdentity = () => {
 const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const editorRef = useRef();
   const outputRef = useRef(null);
-  
+
   // Initialize auto-save tabs with default content
   const {
     tabs,
@@ -190,7 +192,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     defaultTabName: "file",
     defaultContent: CODE_SNIPPETS["C"] || ""
   });
-  
+
   const [language, setLanguage] = useState("Select Languages");
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarMode, setSidebarMode] = useState("explorer");
@@ -440,11 +442,11 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         prev.length > 0
           ? prev
           : [
-              {
-                path: activeTabName,
-                line: 1,
-              },
-            ]
+            {
+              path: activeTabName,
+              line: 1,
+            },
+          ]
       );
       pushDebugLog(
         hasStdErr
@@ -541,7 +543,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
     // Use ESP-IDF build from Output component
     const buildRunner = outputRef.current?.buildProject;
-    
+
     if (typeof buildRunner === "function") {
       setActiveToolPanel("build");
       await buildRunner();
@@ -582,7 +584,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
     // Insert code at the beginning of the file (for includes) or at cursor position
     const currentContent = activeTabData.content || "";
-    const newContent = code.startsWith('#include') 
+    const newContent = code.startsWith('#include')
       ? code + '\n\n' + currentContent  // Add includes at the top
       : currentContent + '\n' + code;   // Add other code at the bottom
 
@@ -638,7 +640,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const editorTheme = colorMode === "dark" ? "vs-dark" : "vs-light";
   const activeTabContent = getActiveTab()?.content || "";
   const monacoLanguage = MONACO_LANGUAGE_MAP[language] || language;
-  
+
   // Determine platform for library manager
   const currentPlatform = language === 'esp32' || language === 'arduino' ? 'esp32' : 'stm32';
 
@@ -662,70 +664,41 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         direction="column"
         minH="calc(100vh - 88px)"
         w="100%"
-        pt={6}
-        pb={8}
-        mt={10}
-        px={{ base: 4, lg: 8 }}
+        pt={3}
+        pb={4}
+        mt="72px"
+        px={{ base: 2, lg: 4 }}
         bg={colorMode === "dark" ? "#0b1220" : "#f5f7fb"}
-        gap={6}
+        gap={3}
       >
-        <Flex flex="1" gap={6} overflow="hidden" align="stretch">
+        <Flex flex="1" gap={3} overflow="hidden" align="stretch">
           <Box
             // w={{ base: "280px", lg: "320px" }}
             bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
             border="1px solid"
             borderColor={colorMode === "dark" ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.08)"}
-            borderRadius="2xl"
+            borderRadius="xl"
             boxShadow={colorMode === "dark" ? "0 30px 60px rgba(8,15,32,0.55)" : "0 24px 56px rgba(15,23,42,0.08)"}
-            px={5}
-            py={6}
+            px={3}
+            py={4}
             display="flex"
             flexDirection="column"
-            gap={5}
+            gap={3}
             backdropFilter="blur(16px)"
           >
-            <HStack spacing={3}>
-              <chakra.button
-                onClick={() => setSidebarMode("explorer")}
-                flex="1"
-                py={2.5}
-                px={4}  // Add horizontal padding
-                borderRadius="lg"
-                fontWeight="500"
-                fontSize="sm"
-                color={colorMode === "dark" ? "gray.200" : "gray.800"}
-                bg={colorMode === "dark" ? "rgba(30, 41, 59, 0.5)" : "white"}
-                border="1px solid"
-                borderColor={colorMode === "dark" ? "rgba(148,163,184,0.2)" : "gray.200"}
-                transition="all 0.2s ease"
-                _hover={{
-                  bg: colorMode === "dark" ? "rgba(51, 65, 85, 0.5)" : "gray.50",
-                  borderColor: colorMode === "dark" ? "rgba(148,163,184,0.3)" : "gray.300"
-                }}
-                whiteSpace="nowrap"  // Prevent text wrapping
-                overflow="hidden"    // Hide overflow
-                textOverflow="ellipsis" // Add ellipsis for overflow
-                // minW="120px"        // Ensure minimum width
-                // maxW="100%"         // Allow full width
-                textAlign="center"  // Center text
-              >
-                Explorer
-              </chakra.button>
-            </HStack>
-
             <Box
               flex="1"
               display="flex"
               flexDirection="column"
-              gap={3}
-              borderRadius="xl"
+              gap={2}
+              borderRadius="lg"
               bg={colorMode === "dark" ? "rgba(11,18,32,0.85)" : "rgba(15,23,42,0.02)"}
               border="1px solid"
               borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
               overflow="hidden"
               boxShadow={colorMode === "dark" ? "inset 0 1px 0 rgba(255,255,255,0.04)" : "inset 0 1px 0 rgba(255,255,255,0.9)"}
             >
-              <FileExplorerWithFlash 
+              <FileExplorerWithFlash
                 isFlashing={isFlashing}
                 onFlashComplete={handleFlashComplete}
                 onFlashStart={handleFlashStart}
@@ -734,24 +707,24 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             </Box>
           </Box>
 
-          <Flex flex="1" direction="column" gap={6} minW={0}>
+          <Flex flex="1" direction="column" gap={3} minW={0}>
             <Box
               position="relative"
-              borderRadius="2xl"
+              borderRadius="xl"
               bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
               border="1px solid"
               borderColor={colorMode === "dark" ? "rgba(148,163,184,0.14)" : "rgba(15,23,42,0.1)"}
               boxShadow={colorMode === "dark" ? "0 40px 80px rgba(8,15,32,0.55)" : "0 32px 64px rgba(15,23,42,0.1)"}
-              px={{ base: 4, md: 6 }}
-              py={{ base: 4, md: 6 }}
+              px={{ base: 2, md: 4 }}
+              py={{ base: 2, md: 4 }}
               display="flex"
               flexDirection="column"
-              gap={4}
-              minH={{ base: "520px", lg: "640px" }}
+              gap={2}
+              minH={{ base: "480px", lg: "580px" }}
               overflow="hidden"
             >
-              <Flex justify="space-between" align="center" flexWrap="wrap" gap={3}>
-                <HStack spacing={2} flex="1" overflowX="auto">
+              <Flex justify="space-between" align="center" flexWrap="wrap" gap={2}>
+                <HStack spacing={1} flex="1" overflowX="auto">
                   {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
                     return (
@@ -759,11 +732,11 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                         key={tab.id}
                         align="center"
                         onClick={() => handleTabClick(tab.id)}
-                        px={3}
-                        py={2}
+                        px={2}
+                        py={1.5}
                         bg={isActive ? "linear-gradient(135deg,#2563eb,#38bdf8)" : "transparent"}
                         color={isActive ? "white" : colorMode === "dark" ? "rgba(226,232,240,0.8)" : "#0f172a"}
-                        fontSize="sm"
+                        fontSize="xs"
                         flexShrink={0}
                         borderRadius="md"
                         whiteSpace="nowrap"
@@ -940,7 +913,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
 
       <Erase isOpen={isEraseOpen} onClose={() => setEraseOpen(false)} />
-      
+
       <LibraryManager
         isOpen={isLibraryManagerOpen}
         onClose={() => setLibraryManagerOpen(false)}
