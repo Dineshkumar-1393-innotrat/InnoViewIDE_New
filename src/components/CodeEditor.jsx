@@ -623,9 +623,9 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       const routes = {
         Simulation: "/simulation",
         Flowchart: "/FlowchartTest",
-        "Block Diagram": "/BlockDiagram",
-        "Block Programming": "/blockprogramming",
-        "Code Editor": "/editor",
+        BlockDiagram: "/BlockDiagram",
+        BlockProgramming: "/blockprogramming",
+        CodeEditor: "/editor",
       };
       const next = routes[tab];
       if (next) {

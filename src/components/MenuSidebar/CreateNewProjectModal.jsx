@@ -14,26 +14,28 @@ import {
   Stack,
   Radio,
   VStack,
-  Checkbox,
   Button,
-  useToast,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../ProjectContext";
-import projectFileManager from "../../utils/projectFileManager";
+import axios from "axios";
+import { fetchFileSystem } from "../EmbeddedFileManagement/EmbeddedFileManagement";
+import { buildTree } from "../EmbeddedFileManagement/EmbeddedFileManagement";
 
 const CreateNewProjectModal = ({
   isOpen,
   onClose,
+  fileSystem,
+  folder,
+  userId,
+  setFileSystem,
 }) => {
   const [projectName, setProjectName] = useState("");
   const [boardType, setBoardType] = useState("STM32 U5");
   const [projectType, setProjectType] = useState("bare metal");
   const [feature, setFeature] = useState("writeCode");
-  const [isCreating, setIsCreating] = useState(false);
 
   const {
-    user,
     setActiveProductId,
     setActiveProjectId,
     setActiveProductName,
@@ -41,78 +43,90 @@ const CreateNewProjectModal = ({
   } = useProject();
 
   const navigate = useNavigate();
-  const toast = useToast();
 
-  /**
-   * Handle project creation using the new localStorage-based system
-   */
-  const handleCreateProject = async () => {
-    if (!projectName.trim()) {
-      toast({
-        title: "Project name required",
-        description: "Please enter a valid project name",
-        status: "warning",
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    setIsCreating(true);
-
+  // DEFAULT file creation
+  const createDefaultFile = async (parentId, userId) => {
     try {
-      // Create project using the new project file manager
-      const project = projectFileManager.createProject({
-        projectName: projectName.trim(),
-        projectType,
-        boardType,
-        selectedFeature: feature,
-        userId: user?.id || user?.userId || 'default_user'
+      await axios.post("https://eureka.innotrat.in/api/v1/createFileAndFolder", {
+        parentId,
+        name: "simulation.c",
+        type: "file",
+        userId,
       });
-
-      // Update project context
-      setActiveProductId(project.id);
-      setActiveProjectId(project.id);
-      setActiveProductName(project.name);
-      setActiveProjectName(project.name);
-
-      // Show success message
-      toast({
-        title: "Project created successfully!",
-        description: `${project.name} has been created with organized folder structure`,
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
-
-      // Navigate to appropriate screen based on selected feature
-      const routeMap = {
-        'writeCode': '/embedded',
-        'FlowchartTest': '/FlowchartTest', 
-        'blockDiagram': '/BlockDiagram',
-        'Blockprogramming': '/blockprogramming',
-        'simulation': '/simulation'
-      };
-
-      const targetRoute = routeMap[feature] || '/embedded';
-      navigate(targetRoute);
-
-      // Reset form and close modal
-      setProjectName("");
-      setFeature("writeCode");
-      onClose();
-
     } catch (error) {
-      console.error("Error creating project:", error);
-      toast({
-        title: "Failed to create project",
-        description: error.message || "An unexpected error occurred",
-        status: "error", 
-        duration: 5000,
-        isClosable: true,
+      console.error(`Error creating default file:`, error);
+      alert(
+        error.message ||
+          error.response?.data?.message ||
+          "Error creating default file."
+      );
+    }
+  };
+
+  // ● Create Project Handler
+  const handleCreateProject = async (
+    fileSystem,
+    type,
+    userId,
+    projectName,
+    projectType,
+    boardType,
+    features
+  ) => {
+    try {
+      // 1️⃣ Create Product
+      const response = await axios.post("https://eureka.innotrat.in/product", {
+        name: projectName,
+        userId,
       });
-    } finally {
-      setIsCreating(false);
+
+      const productId = response.data.productID;
+      if (!productId) throw new Error("Product ID not received.");
+
+      alert(`${projectName} project created successfully`);
+
+      // 2️⃣ Create Project Folder/File
+      const { data } = await axios.post(
+        "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+        {
+          parentId: fileSystem?._id,
+          name: projectName,
+          type,
+          userId,
+          productId,
+          projectType,
+          boardType,
+          features,
+        }
+      );
+
+      setActiveProductId(data?.file?.productId);
+      setActiveProjectId(data?.file?._id);
+      setActiveProductName(data?.file?.name);
+      setActiveProjectName(data?.file?.name);
+
+      // 3️⃣ Create default file
+      await createDefaultFile(data?.file?._id, userId);
+
+      // 4️⃣ Refresh UI
+      if (data.success) {
+        fetchFileSystem(userId, setFileSystem, buildTree);
+      } else {
+        throw new Error("File/Folder creation failed.");
+      }
+
+      // 5️⃣ Navigate
+      if (feature === "writeCode") navigate("/embedded");
+      else navigate(`/${feature}`);
+
+      onClose();
+    } catch (error) {
+      console.error(`Error creating project:`, error);
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "An error occurred while creating project."
+      );
     }
   };
 
@@ -137,7 +151,6 @@ const CreateNewProjectModal = ({
             <RadioGroup value={projectType} onChange={setProjectType}>
               <Stack direction="row">
                 <Radio value="bare metal">Bare Metal</Radio>
-                {/* <Radio value="RTOS">RTOS</Radio> */}
               </Stack>
             </RadioGroup>
           </FormControl>
@@ -157,24 +170,32 @@ const CreateNewProjectModal = ({
             <RadioGroup value={feature} onChange={setFeature}>
               <VStack align="start">
                 <Radio value="writeCode">Write Code</Radio>
-                <Radio value="FlowchartTest">Flow Chart</Radio>
+                <Radio value="flowChart">Flow Chart</Radio>
                 <Radio value="blockDiagram">Block Diagram</Radio>
                 <Radio value="simulation">Simulation</Radio>
-                <Radio value="Blockprogramming">Block Programming</Radio>
               </VStack>
             </RadioGroup>
           </FormControl>
         </ModalBody>
 
         <ModalFooter>
-          <Button variant="outline" mr={3} onClick={onClose} isDisabled={isCreating}>
+          <Button variant="outline" mr={3} onClick={onClose}>
             Cancel
           </Button>
+
           <Button
             colorScheme="blue"
-            onClick={handleCreateProject}
-            isLoading={isCreating}
-            loadingText="Creating..."
+            onClick={async () => {
+              await handleCreateProject(
+                fileSystem,
+                folder,
+                userId,
+                projectName,
+                projectType,
+                boardType,
+                feature
+              );
+            }}
             isDisabled={!projectName.trim()}
           >
             Create

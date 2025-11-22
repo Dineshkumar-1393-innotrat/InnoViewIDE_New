@@ -15,6 +15,7 @@
     "@chakra-ui/react": "^2.10.0",
     "@dytesdk/react-ui-kit": "^3.0.8",
     "@dytesdk/react-web-core": "^3.1.11",
+    "@dytesdk/web-core": "^3.1.11",
     "@electron/remote": "^2.1.2",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
@@ -25,8 +26,8 @@
     "@reactflow/node-resizer": "^2.2.14",
     "axios": "^1.7.7",
     "bootstrap": "^5.3.3",
-    "electron": "^34.0.2",
-    "electron-builder": "^25.1.8",
+    "electron": "^39.2.1",
+    "electron-builder": "^26.2.0",
     "formik": "^2.4.6",
     "frame": "^1.0.0-alpha.2",
     "framer-motion": "^11.18.2",
@@ -56,6 +57,6 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
-    "vite": "^5.4.1"
+    "vite": "^7.2.2"
   }
 }

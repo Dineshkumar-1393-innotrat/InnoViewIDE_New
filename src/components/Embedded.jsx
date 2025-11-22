@@ -16,7 +16,7 @@ const Embedded = () => {
         const routes = {
             Embedded: '/embedded',
             Simulation: '/simulation',
-            Flowchart: '/FlowchartTest',
+            Flowchart: '/Flowchartone',
             'Block Diagram': '/BlockDiagram',
             'Code Editor': '/editor',
         };

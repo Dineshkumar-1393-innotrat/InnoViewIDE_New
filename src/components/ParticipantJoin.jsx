@@ -41,7 +41,11 @@ const JoinMeeting = () => {
         
         await initMeeting({
           authToken: token,
-          defaults: { audio: false, video: false },
+          defaults: { 
+            audio: true, 
+            video: true,
+            screenShare: true,
+          },
         });
 
         console.log("✅ Meeting initialized successfully");
@@ -56,28 +60,45 @@ const JoinMeeting = () => {
 
   // Listen for screen share events from other participants (host)
   useEffect(() => {
-    if (!meeting) return;
+    if (!meeting || !meeting.participants || !meeting.participants.joined) return;
 
     const handleScreenShareUpdate = () => {
       // Check if any participant is sharing screen
-      const isAnyoneSharing = meeting.participants.joined.some(
-        participant => participant.screenShareEnabled
-      ) || meeting.self.screenShareEnabled;
+      const isAnyoneSharing = (
+        Array.isArray(meeting.participants.joined) && 
+        meeting.participants.joined.some(participant => participant.screenShareEnabled)
+      ) || (meeting.self && meeting.self.screenShareEnabled);
       
       setIsScreenShareActive(isAnyoneSharing);
-      console.log('📺 Screen share status:', isAnyoneSharing ? 'Active' : 'Inactive');
+      console.log('📺 Participant view - Screen share status:', isAnyoneSharing ? 'Active' : 'Inactive');
+      
+      if (isAnyoneSharing) {
+        console.log('📺 Screen share detected - should be visible in main view');
+        // Force a small delay to ensure UI updates
+        setTimeout(() => {
+          console.log('📺 Screen share UI should now be updated');
+        }, 1000);
+      }
     };
 
     // Listen for participant screen share changes
-    meeting.participants.joined.addListener('screenShareUpdate', handleScreenShareUpdate);
-    meeting.self.addListener('screenShareUpdate', handleScreenShareUpdate);
+    if (meeting.participants.joined.addListener) {
+      meeting.participants.joined.addListener('screenShareUpdate', handleScreenShareUpdate);
+    }
+    if (meeting.self && meeting.self.addListener) {
+      meeting.self.addListener('screenShareUpdate', handleScreenShareUpdate);
+    }
 
     // Initial check
     handleScreenShareUpdate();
 
     return () => {
-      meeting.participants.joined.removeListener('screenShareUpdate', handleScreenShareUpdate);
-      meeting.self.removeListener('screenShareUpdate', handleScreenShareUpdate);
+      if (meeting.participants.joined && meeting.participants.joined.removeListener) {
+        meeting.participants.joined.removeListener('screenShareUpdate', handleScreenShareUpdate);
+      }
+      if (meeting.self && meeting.self.removeListener) {
+        meeting.self.removeListener('screenShareUpdate', handleScreenShareUpdate);
+      }
     };
   }, [meeting]);
 
@@ -199,7 +220,36 @@ const JoinMeeting = () => {
             meeting={meeting}
             mode="fill"
             showSetupScreen={true}
-            style={{ width: "100%", height: "100%" }}
+            style={{ 
+              width: "100%", 
+              height: "100%",
+              backgroundColor: '#000'
+            }}
+            config={{
+              controlBar: {
+                elements: {
+                  fullscreen: true,
+                  share: false,
+                  screenShare: false,
+                  camera: true,
+                  mic: true,
+                  participants: true,
+                  plugins: false,
+                  settings: true,
+                  chat: true,
+                  polls: true,
+                  leave: true,
+                },
+              },
+              header: {
+                elements: {
+                  logo: false,
+                  title: true,
+                  participantCount: true,
+                  clock: true,
+                },
+              },
+            }}
           />
         </div>
       </DyteProvider>

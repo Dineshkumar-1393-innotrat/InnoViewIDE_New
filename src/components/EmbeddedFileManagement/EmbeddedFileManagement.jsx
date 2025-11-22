@@ -33,8 +33,9 @@ import { useProject } from "../../ProjectContext.jsx";
 
 export const checkProductDefinition = async (
   activeProductId,
-  setIsProductDefined
-) => {
+  setIsProductDefined,
+  response
+) => {  
   if (!activeProductId) {
     setIsProductDefined(null); // Reset if no active project
     return;
@@ -119,11 +120,12 @@ export const fetchFileSystem = async (userId, setFileSystem, buildTree) => {
   }
 };
 
-const EmbeddedFileManagement = () => {
+const EmbeddedFileManagement = ({ userData }) => {
+  console.log("response in embedded file management:", userData);
   const [fileSystem, setFileSystem] = useState({});
   const [openFiles, setOpenFiles] = useState([]);
   const [activeTab, setActiveTab] = useState(null);
-  const [user, setUser] = useState({});
+  const [user, setUser] = useState(...userData);
   // const [activeProjectId, setActiveProjectId] = useState(null);
   const [isProductDefined, setIsProductDefined] = useState(null);
   // const [activeProjectName, setActiveProjectName] = useState(null);
@@ -640,9 +642,9 @@ const EmbeddedFileManagement = () => {
                     value={file}
                     updateFileContent={updateFileContent}
 
-                    // onChange={(newValue) =>
-                    //   updateFileContent(file.name, newValue)
-                    // }
+                  // onChange={(newValue) =>
+                  //   updateFileContent(file.name, newValue)
+                  // }
                   />
                 </TabPanel>
               ))}
@@ -653,7 +655,13 @@ const EmbeddedFileManagement = () => {
 
       <CreateNewProjectModal
         isOpen={isOpen}
+        onOpen={onOpen}
         onClose={onClose}
+        // handleCreateProject={handleCreateProject}
+        fileSystem={fileSystem}
+        folder={"folder"}
+        userId={user?.userId}
+        setFileSystem={setFileSystem}
       />
 
       <Footer />

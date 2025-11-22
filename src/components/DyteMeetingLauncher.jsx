@@ -1386,35 +1386,21 @@
 // export default DyteMeetingLauncher;
 
 
-//13-11-25
+//13-11-25// DyteMeetingLauncher.jsx
+
+
+
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { DyteMeeting } from '@dytesdk/react-ui-kit';
 import { DyteProvider, useDyteClient } from '@dytesdk/react-web-core';
 import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  Center,
-  Spinner,
-  Text,
-  HStack,
-  Avatar,
-  AvatarGroup,
-  Button,
-  IconButton,
-  Tooltip,
-  useDisclosure,
-  useToast,
-  VStack,
-  Flex,
-  Box,
-  useClipboard,
+  Modal, ModalBody, ModalContent, ModalHeader, ModalOverlay,
+  Center, Spinner, Text, HStack, Avatar, AvatarGroup,
+  Button, IconButton, Tooltip, useDisclosure, useToast, VStack, Box, useClipboard
 } from '@chakra-ui/react';
-import { AlertCircle, Video, Users, Mic, Camera, Share2, PhoneOff, Copy } from 'lucide-react';
-import { createMeetingAsHost, initializePresets, joinExistingMeeting } from '../services/dyteService';
+import { AlertCircle, Video, Users, Copy } from 'lucide-react';
+import { createMeetingAsHost, joinExistingMeeting } from '../services/dyteService';
+
 
 const LOGO_SRC = './assets/Logo.png';
 
@@ -1422,6 +1408,7 @@ const DyteMeetingLauncher = ({
   buttonClassName = 'editor-navbar__icon-btn',
   participantName,
   meetingTitle = 'New Meeting',
+  fullButton = false,
 }) => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -1429,15 +1416,21 @@ const DyteMeetingLauncher = ({
   const [authToken, setAuthToken] = useState(null);
   const [meetingInfo, setMeetingInfo] = useState(null);
   const [error, setError] = useState(null);
+
+  // dyte client hook
+  // useDyteClient returns [meeting, initMeeting] in your setup
   const [meeting, initMeeting] = useDyteClient();
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isMicEnabled, setIsMicEnabled] = useState(true);
-  const [isCameraEnabled, setIsCameraEnabled] = useState(true);
+
   const { onCopy, hasCopied, setValue: setClipboardValue } = useClipboard('');
   const initTokenRef = useRef(null);
-  const presetsInitializedRef = useRef(false);
+  const hasInitializedRef = useRef(false); // prevents repeated init per session
 
-  // Safe participant name extraction
+  // Prevent concurrent join calls
+  const joinLockRef = useRef(false);
+
+  // Local participants list for UI debugging (not strictly needed for Dyte UI Kit)
+  const [participantsSnapshot, setParticipantsSnapshot] = useState([]);
+
   const safeParticipantName = useMemo(() => {
     if (participantName && participantName.trim()) return participantName.trim();
     try {
@@ -1450,67 +1443,126 @@ const DyteMeetingLauncher = ({
     return 'Host User';
   }, [participantName]);
 
-  // Initialize presets once on component mount
-  useEffect(() => {
-    if (presetsInitializedRef.current) return;
-    
-    const initPresets = async () => {
-      try {
-        console.log('🔧 Initializing Dyte presets...');
-        await initializePresets();
-        presetsInitializedRef.current = true;
-        console.log('✅ Presets initialized successfully');
-      } catch (error) {
-        console.warn('⚠️ Preset initialization warning:', error.message);
-        // Don't block the UI if presets already exist
-        presetsInitializedRef.current = true;
-      }
-    };
-
-    initPresets();
-  }, []);
-
-  // Reset state on close
+  // Reset state when modal closes
   const resetState = useCallback(() => {
     setAuthToken(null);
     setMeetingInfo(null);
     setError(null);
-    setIsScreenSharing(false);
-    setIsMicEnabled(true);
-    setIsCameraEnabled(true);
     initTokenRef.current = null;
+    hasInitializedRef.current = false;
+    joinLockRef.current = false;
+    setParticipantsSnapshot([]);
   }, []);
 
-  // Initialize Dyte meeting when authToken is available
+  // Initialize and join meeting once per token (safe guarded)
   useEffect(() => {
-    if (!authToken || !isOpen || initTokenRef.current === authToken) return;
+    if (!authToken) return;
+    if (!isOpen) return;
+    if (initTokenRef.current === authToken) return; // already done
+    if (!initMeeting) return;
 
     let mounted = true;
     const loadMeeting = async () => {
       try {
-        console.log('🎥 Initializing Dyte meeting...');
+        console.log('[Dyte] initMeeting() with token...');
         initTokenRef.current = authToken;
-        
-        await initMeeting({
+
+        // initMeeting sets the meeting instance used by useDyteClient
+        const meetingInstance = await initMeeting({
           authToken,
-          defaults: {
-            audio: true,
-            video: true,
-          },
+          defaults: { audio: true, video: true, screenShare: true },
         });
 
+        if (!meetingInstance) throw new Error('initMeeting returned falsy instance');
+
+        // Prevent concurrent join attempts
+        if (joinLockRef.current) {
+          console.warn('[Dyte] join already in progress, skipping duplicate call');
+        } else {
+          joinLockRef.current = true;
+          try {
+            // joinRoom may throw if called concurrently — we guard it
+            if (!meetingInstance.self.roomJoined) {
+              console.log('[Dyte] calling joinRoom()...');
+              await meetingInstance.joinRoom();
+              console.log('[Dyte] joinRoom() success');
+            } else {
+              console.log('[Dyte] already roomJoined');
+            }
+          } catch (joinErr) {
+            console.warn('[Dyte] joinRoom failed first attempt:', joinErr);
+            // give a short delay and retry once
+            try {
+              await new Promise((r) => setTimeout(r, 900));
+              if (!meetingInstance.self.roomJoined) {
+                await meetingInstance.joinRoom();
+                console.log('[Dyte] joinRoom success on retry');
+              }
+            } catch (retryErr) {
+              console.error('[Dyte] joinRoom retry failed:', retryErr);
+              throw retryErr;
+            }
+          } finally {
+            joinLockRef.current = false;
+          }
+        }
+
+        // After joining, explicitly request audio & video
+        try {
+          if (!meetingInstance.self.videoEnabled) {
+            await meetingInstance.self.enableVideo();
+            console.log('[Dyte] enableVideo() OK');
+          }
+        } catch (vErr) {
+          console.warn('[Dyte] enableVideo failed (permissions?):', vErr);
+          // Show user visible guidance
+          toast({
+            title: 'Camera permission required',
+            description: 'Allow camera access in browser settings and refresh. (Check site lock icon)',
+            status: 'warning',
+            duration: 7000,
+            isClosable: true,
+          });
+        }
+
+        try {
+          if (!meetingInstance.self.audioEnabled) {
+            await meetingInstance.self.enableAudio();
+            console.log('[Dyte] enableAudio() OK');
+          }
+        } catch (aErr) {
+          console.warn('[Dyte] enableAudio failed (permissions?):', aErr);
+          toast({
+            title: 'Microphone permission required',
+            description: 'Allow microphone access in browser settings and refresh.',
+            status: 'warning',
+            duration: 7000,
+            isClosable: true,
+          });
+        }
+
+        // Track participants snapshot so we can debug participant names & counts
+        try {
+          const snapshot = Array.from(meetingInstance?.participants?.values?.() || []) // if Map-like
+            .map((p) => ({ id: p.id || p.client_specific_id || p.clientId, name: p.display_name || p.name || p.displayName || p.name || '(unknown)' }));
+          setParticipantsSnapshot(snapshot);
+        } catch (snapErr) {
+          // ignore snapshot errors
+        }
+
+        hasInitializedRef.current = true;
         if (mounted) {
-          console.log('✅ Dyte meeting initialized successfully');
+          console.log('[Dyte] meeting initialized and joined');
         }
       } catch (err) {
-        console.error('❌ Dyte initialization error:', err);
+        console.error('[Dyte] initialization error', err);
         if (mounted) {
-          setError(err.message || 'Failed to initialize Dyte meeting.');
+          setError(err?.message || String(err));
           toast({
             title: 'Meeting Error',
-            description: err.message || 'Failed to initialize meeting',
+            description: err?.message || 'Failed to initialize meeting',
             status: 'error',
-            duration: 5000,
+            duration: 7000,
             isClosable: true,
           });
         }
@@ -1518,450 +1570,266 @@ const DyteMeetingLauncher = ({
     };
 
     loadMeeting();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [authToken, initMeeting, isOpen, toast]);
 
-  // Monitor meeting state changes
+  // Monitor meeting state changes, participants and UI readiness
   useEffect(() => {
     if (!meeting || !meeting.self) return;
 
-    const handleMicUpdate = ({ audioEnabled }) => setIsMicEnabled(audioEnabled);
-    const handleCameraUpdate = ({ videoEnabled }) => setIsCameraEnabled(videoEnabled);
-    const handleScreenShareUpdate = ({ screenShareEnabled }) => {
-      setIsScreenSharing(screenShareEnabled);
-      console.log('🎥 Host screen share status changed:', screenShareEnabled);
-    };
-
-    meeting.self.on('audioUpdate', handleMicUpdate);
-    meeting.self.on('videoUpdate', handleCameraUpdate);
-    meeting.self.on('screenShareUpdate', handleScreenShareUpdate);
-
-    return () => {
-      meeting.self.removeListener('audioUpdate', handleMicUpdate);
-      meeting.self.removeListener('videoUpdate', handleCameraUpdate);
-      meeting.self.removeListener('screenShareUpdate', handleScreenShareUpdate);
-    };
-  }, [meeting]);
-
-  // Launch meeting handler - Create only ONE session as HOST
-  const handleLaunch = useCallback(async () => {
-    setError(null);
-    if (!isOpen) onOpen();
-    if (authToken) return; // Already initialized
-
-    try {
-      setIsLoading(true);
-      console.log('🚀 Creating Dyte session as HOST...');
-
-      // Create a single host session (one meeting, one host token)
-      const session = await createMeetingAsHost(
-        meetingTitle,
-        safeParticipantName
-      );
-
-      console.log('✅ Host session created:', session);
-      console.log('📋 Meeting ID:', session.meetingId);
-      console.log('🎫 Auth Token received');
-      console.log('👑 Is Host:', session.isHost);
-
-      if (session?.authToken) {
-        setAuthToken(session.authToken);
-        setMeetingInfo({
-          id: session.meetingId,
-          title: session.meetingTitle || meetingTitle,
-          isHost: session.isHost,
-        });
-
+    // Make sure dyte web component has attached shadow root
+    const uiTimeout = setTimeout(() => {
+      const element = document.querySelector('dyte-meeting');
+      if (element && !element.shadowRoot) {
+        console.warn('[Dyte] dyte-meeting element exists but shadowRoot not attached yet');
         toast({
-          title: '👑 Meeting Ready',
-          description: `Host session created for ${session.meetingTitle || meetingTitle}`,
-          status: 'success',
+          title: 'Meeting UI Loading',
+          description: 'The meeting interface is taking longer to render. If this persists, check console for errors.',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    }, 9000);
+
+    const handleAudio = ({ audioEnabled }) => {
+      console.log('[Dyte Event] audioUpdate', audioEnabled);
+    };
+    const handleVideo = ({ videoEnabled }) => {
+      console.log('[Dyte Event] videoUpdate', videoEnabled);
+      if (!videoEnabled) {
+        toast({
+          title: 'Camera off',
+          description: 'Your camera is turned off. Use the camera control to enable it.',
+          status: 'info',
           duration: 3000,
           isClosable: true,
         });
-      } else {
-        throw new Error('No authToken returned from Dyte API');
       }
-    } catch (apiError) {
-      console.error('❌ Failed to create session:', apiError);
-      setError(apiError?.message || 'Failed to start Dyte meeting.');
-      toast({
-        title: 'Meeting Error',
-        description: apiError?.message || 'Failed to start Dyte meeting.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
+    };
+    const handleScreen = ({ screenShareEnabled }) => {
+      console.log('[Dyte Event] screenShareUpdate', screenShareEnabled);
+      if (screenShareEnabled) {
+        toast({ title: 'Screen sharing active', status: 'success', duration: 2000 });
+      }
+    };
+    const handleRoomJoined = () => {
+      console.log('[Dyte Event] roomJoined', meeting.self.roomJoined);
+      toast({ title: 'Meeting Ready', description: 'Camera, mic and screen share are available.', status: 'success', duration: 2500 });
+    };
+
+    // Participant updates: there is no single universal event name across all Dyte versions;
+    // subscribe to common event names and also poll participants if necessary.
+    const handleParticipant = (p) => {
+      console.log('[Dyte Event] participantUpdate', p);
+      try {
+        const snapshot = Array.from(meeting?.participants?.values?.() || []).map((x) => ({
+          id: x.id || x.client_specific_id || x.clientId,
+          name: x.display_name || x.name || x.displayName || '(unknown)',
+        }));
+        setParticipantsSnapshot(snapshot);
+      } catch {}
+    };
+
+    // Attach listeners defensively
+    try {
+      meeting.self.on('audioUpdate', handleAudio);
+      meeting.self.on('videoUpdate', handleVideo);
+      meeting.self.on('screenShareUpdate', handleScreen);
+      meeting.self.on('roomJoined', handleRoomJoined);
+    } catch (e) {
+      console.warn('[Dyte] failed to add self listeners', e);
+    }
+
+    // Some SDK versions emit 'participantJoined'/'participantLeft' on meeting object
+    try {
+      meeting.on && meeting.on('participantJoined', handleParticipant);
+      meeting.on && meeting.on('participantLeft', handleParticipant);
+      meeting.on && meeting.on('participantsUpdated', () => handleParticipant());
+    } catch (e) {
+      // ignore if not supported
+    }
+
+    // If already joined, ensure audio/video enabled (for late joins)
+    (async () => {
+      try {
+        if (meeting.self.roomJoined) {
+          if (!meeting.self.videoEnabled) await meeting.self.enableVideo().catch(() => {});
+          if (!meeting.self.audioEnabled) await meeting.self.enableAudio().catch(() => {});
+        }
+      } catch {}
+    })();
+
+    return () => {
+      clearTimeout(uiTimeout);
+      try {
+        meeting.self.removeListener && meeting.self.removeListener('audioUpdate', handleAudio);
+        meeting.self.removeListener && meeting.self.removeListener('videoUpdate', handleVideo);
+        meeting.self.removeListener && meeting.self.removeListener('screenShareUpdate', handleScreen);
+        meeting.self.removeListener && meeting.self.removeListener('roomJoined', handleRoomJoined);
+      } catch {}
+      try {
+        meeting.removeListener && meeting.removeListener('participantJoined', handleParticipant);
+        meeting.removeListener && meeting.removeListener('participantLeft', handleParticipant);
+        meeting.removeListener && meeting.removeListener('participantsUpdated', handleParticipant);
+      } catch {}
+    };
+  }, [meeting, toast]);
+
+  // Launch meeting handler (create as host)
+  const handleLaunch = useCallback(async () => {
+    setError(null);
+    if (!isOpen) onOpen();
+
+    // If already created and initialized, only open the modal
+    if (authToken && hasInitializedRef.current) {
+      console.log('[Dyte] already initialized; opening modal only');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('[Dyte] Creating host session...');
+      const session = await createMeetingAsHost(meetingTitle, safeParticipantName);
+      if (!session?.authToken) throw new Error('No authToken returned by backend');
+
+      setAuthToken(session.authToken);
+      setMeetingInfo({
+        id: session.meetingId,
+        title: session.meetingTitle || meetingTitle,
+        isHost: !!session.isHost,
       });
+
+      toast({ title: 'Host session created', description: `Created ${session.meetingTitle || meetingTitle}`, status: 'success', duration: 3000 });
+    } catch (err) {
+      console.error('[Dyte] createMeetingAsHost error', err);
+      setError(err?.message || 'Failed to create meeting');
+      toast({ title: 'Meeting Error', description: err?.message || 'Failed to create meeting', status: 'error', duration: 6000 });
     } finally {
       setIsLoading(false);
     }
   }, [authToken, meetingTitle, safeParticipantName, toast, isOpen, onOpen]);
 
-  // Close and cleanup
   const handleClose = useCallback(() => {
-    try {
-      if (meeting && meeting.self) {
-        meeting.leaveRoom();
-      }
-    } catch (e) {
-      console.warn('Leave error:', e);
-    }
+    try { meeting && meeting.leaveRoom(); } catch (e) { console.warn('leave error', e); }
     resetState();
     onClose();
   }, [meeting, onClose, resetState]);
 
-  // Copy invite link
   const handleCopyInvite = useCallback(() => {
     if (!meetingInfo?.id) return;
     const inviteUrl = `${window.location.origin}/join/${meetingInfo.id}`;
     setClipboardValue(inviteUrl);
     onCopy();
-    toast({
-      title: 'Invite link copied',
-      description: 'Meeting link copied to clipboard',
-      status: 'success',
-      duration: 2000,
-    });
+    toast({ title: 'Invite copied', status: 'success', duration: 2000 });
   }, [meetingInfo?.id, onCopy, setClipboardValue, toast]);
 
-  // Toggle controls
-  const toggleMic = useCallback(async () => {
-    if (!meeting || !meeting.self) return;
-    try {
-      if (isMicEnabled) {
-        await meeting.self.disableAudio();
-      } else {
-        await meeting.self.enableAudio();
-      }
-    } catch (error) {
-      console.error('Mic toggle error:', error);
-      toast({
-        title: 'Microphone error',
-        description: error.message || 'Failed to toggle microphone',
-        status: 'error',
-        duration: 2000,
-      });
-    }
-  }, [meeting, isMicEnabled, toast]);
-
-  const toggleCamera = useCallback(async () => {
-    if (!meeting || !meeting.self) return;
-    try {
-      if (isCameraEnabled) {
-        await meeting.self.disableVideo();
-      } else {
-        await meeting.self.enableVideo();
-      }
-    } catch (error) {
-      console.error('Camera toggle error:', error);
-      toast({
-        title: 'Camera error',
-        description: error.message || 'Failed to toggle camera',
-        status: 'error',
-        duration: 2000,
-      });
-    }
-  }, [meeting, isCameraEnabled, toast]);
-
-  const toggleScreenShare = useCallback(async () => {
-    if (!meeting || !meeting.self) return;
-    try {
-      if (isScreenSharing) {
-        console.log('🛑 Stopping screen share...');
-        await meeting.self.disableScreenShare();
-      } else {
-        console.log('🚀 Starting screen share...');
-        // More explicit screen share configuration
-        await meeting.self.enableScreenShare({
-          displaySurface: 'monitor', // Try 'monitor' instead of 'window' for better compatibility
-          audio: true, // Include system audio if available
-        });
-      }
-    } catch (error) {
-      console.error('Screen share error:', error);
-      toast({
-        title: 'Screen sharing error',
-        description: error.message || 'Failed to toggle screen sharing',
-        status: 'error',
-        duration: 3000,
-      });
-    }
-  }, [meeting, isScreenSharing, toast]);
-
-  // Optional: Add a participant to existing meeting (for testing)
   const handleAddParticipant = useCallback(async () => {
     if (!meetingInfo?.id) return;
-    
     try {
-      const participantName = `Test Participant ${Date.now()}`;
-      const participantSession = await joinExistingMeeting(
-        meetingInfo.id,
-        participantName,
-        false // asHost: false
-      );
-      
-      console.log('✅ Participant session created:', participantSession);
-      
-      // Open participant join page in new tab with the meeting ID
-      const joinUrl = `${window.location.origin}/join/${meetingInfo.id}`;
-      window.open(joinUrl, '_blank');
-      
-      toast({
-        title: 'Participant Link Opened',
-        description: `Opened ${joinUrl} in new tab for testing`,
-        status: 'info',
-        duration: 3000,
-      });
-      
-      console.log('🎫 Participant token (for reference):', participantSession.authToken);
-    } catch (error) {
-      console.error('❌ Failed to add participant:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to create participant token',
-        status: 'error',
-        duration: 3000,
-      });
+      const participantName = `Test ${Date.now().toString().slice(-4)}`;
+      const participantSession = await joinExistingMeeting(meetingInfo.id, participantName, false);
+      console.log('participant token', participantSession);
+      window.open(`${window.location.origin}/join/${meetingInfo.id}`, '_blank');
+      toast({ title: 'Participant opened', status: 'info', duration: 2500 });
+    } catch (err) {
+      console.error('add participant failed', err);
+      toast({ title: 'Error', description: 'Failed to create participant token', status: 'error', duration: 3000 });
     }
   }, [meetingInfo?.id, toast]);
 
+  const triggerButton = fullButton ? (
+    <Button leftIcon={isLoading ? <Spinner size="sm" /> : <Video size={20} />} onClick={handleLaunch} isDisabled={isLoading} colorScheme="blue" size="lg" borderRadius="full" className={buttonClassName}>
+      New meeting
+    </Button>
+  ) : (
+    <Tooltip label="Start video meeting as host" hasArrow placement="bottom">
+      <IconButton aria-label="Start meeting" icon={isLoading ? <Spinner size="sm" /> : <Video size={20} />} onClick={handleLaunch} isDisabled={isLoading} colorScheme="blue" variant="ghost" rounded="full" size="lg" className={buttonClassName} />
+    </Tooltip>
+  );
+
+  // Render
   return (
     <>
-      <Tooltip label="Start video meeting as host" hasArrow placement="bottom">
-        <IconButton
-          aria-label="Start meeting"
-          icon={isLoading ? <Spinner size="sm" /> : <Video size={20} />}
-          onClick={handleLaunch}
-          isDisabled={isLoading}
-          colorScheme="blue"
-          variant="ghost"
-          rounded="full"
-          size="lg"
-          className={buttonClassName}
-        />
-      </Tooltip>
+      {triggerButton}
 
-      {/* Debug button to add participant (hidden in production) */}
       {process.env.NODE_ENV === 'development' && meetingInfo?.id && (
         <Tooltip label="Add test participant" hasArrow placement="bottom">
-          <IconButton
-            aria-label="Add participant"
-            icon={<Users size={20} />}
-            onClick={handleAddParticipant}
-            variant="ghost"
-            colorScheme="green"
-            rounded="full"
-            size="lg"
-            ml={2}
-          />
+          <IconButton aria-label="Add participant" icon={<Users size={20} />} onClick={handleAddParticipant} variant="ghost" colorScheme="green" rounded="full" size="lg" ml={2} />
         </Tooltip>
       )}
 
-      <Modal
-        isOpen={isOpen}
-        onClose={handleClose}
-        size="full"
-        isCentered
-        motionPreset="slideInBottom"
-        closeOnOverlayClick={false}
-      >
+      <Modal isOpen={isOpen} onClose={handleClose} size="full" isCentered motionPreset="slideInBottom" closeOnOverlayClick={false}>
         <ModalOverlay backdropFilter="blur(8px)" bg="blackAlpha.800" />
-        <ModalContent
-          bg="#0a0f1c"
-          maxW="100vw"
-          maxH="100vh"
-          w="100vw"
-          h="100vh"
-          m={0}
-          borderRadius={0}
-        >
-          {/* Header */}
-          <ModalHeader
-            p={4}
-            borderBottom="1px solid"
-            borderColor="whiteAlpha.200"
-            bg="#111827"
-            display="flex"
-            alignItems="center"
-            justifyContent="space-between"
-          >
+        <ModalContent bg="#0a0f1c" maxW="100vw" maxH="100vh" w="100vw" h="100vh" m={0} borderRadius={0}>
+          <ModalHeader p={4} borderBottom="1px solid" borderColor="whiteAlpha.200" bg="#111827" display="flex" alignItems="center" justifyContent="space-between">
             <HStack spacing={3}>
-              <img
-                src={LOGO_SRC}
-                alt="Logo"
-                style={{ height: 32 }}
-                onError={(e) => (e.target.style.display = 'none')}
-              />
+              <img src={LOGO_SRC} alt="Logo" style={{ height: 32 }} onError={(e) => (e.target.style.display = 'none')} />
               <VStack align="start" spacing={0}>
-                <Text fontSize="lg" fontWeight="500" color="white">
-                  {meetingInfo?.title || meetingTitle}
-                </Text>
-                {meetingInfo?.isHost && (
-                  <Text fontSize="xs" color="blue.400" fontWeight="500">
-                    👑 Host Mode
-                  </Text>
-                )}
+                <Text fontSize="lg" fontWeight="500" color="white">{meetingInfo?.title || meetingTitle}</Text>
+                {meetingInfo?.isHost && <Text fontSize="xs" color="blue.400" fontWeight="500">👑 Host Mode</Text>}
               </VStack>
             </HStack>
+
             <HStack spacing={4}>
-              {meetingInfo?.id && (
-                <Text fontSize="sm" color="gray.400">
-                  ID: {meetingInfo.id.slice(0, 8)}
-                </Text>
-              )}
-              <AvatarGroup size="sm" max={3}>
-                <Avatar name={safeParticipantName} bg="blue.500" color="white" />
-              </AvatarGroup>
+              {meetingInfo?.id && <Text fontSize="sm" color="gray.400">ID: {meetingInfo.id.slice(0, 8)}</Text>}
+              <AvatarGroup size="sm" max={3}><Avatar name={safeParticipantName} bg="blue.500" color="white" /></AvatarGroup>
             </HStack>
           </ModalHeader>
 
-          {/* Body */}
           <ModalBody p={0} position="relative" overflow="hidden">
             {error ? (
               <Center h="100%" bg="#0a0f1c">
                 <VStack spacing={6}>
                   <AlertCircle size={48} color="#f87171" />
                   <Box textAlign="center">
-                    <Text fontSize="xl" fontWeight="500" color="white">
-                      Unable to join meeting
-                    </Text>
-                    <Text mt={2} color="gray.400" maxW="500px">
-                      {error}
-                    </Text>
+                    <Text fontSize="xl" fontWeight="500" color="white">Unable to join meeting</Text>
+                    <Text mt={2} color="gray.400" maxW="500px">{error}</Text>
                   </Box>
-                  <Button
-                    leftIcon={<Video size={16} />}
-                    onClick={handleLaunch}
-                    colorScheme="blue"
-                    size="lg"
-                  >
-                    Try Again
-                  </Button>
+                  <Button leftIcon={<Video size={16} />} onClick={handleLaunch} colorScheme="blue" size="lg">Try Again</Button>
                 </VStack>
               </Center>
-            ) : !meeting ? (
+            ) : !meeting || !meeting.self?.roomJoined ? (
               <Center h="100%" bg="#0a0f1c">
                 <VStack spacing={6}>
                   <Spinner size="xl" color="blue.400" thickness="4px" />
-                  <Text fontSize="lg" color="white">
-                    Setting up your meeting as host...
-                  </Text>
-                  <Text fontSize="sm" color="gray.400">
-                    Please wait a moment
-                  </Text>
+                  <Text fontSize="lg" color="white">{meeting ? 'Connecting to meeting...' : 'Setting up your meeting as host...'}</Text>
+                  <Text fontSize="sm" color="gray.400">If camera is blocked, check site permissions (lock icon).</Text>
+
+                  {/* debug participants snapshot */}
+                  {participantsSnapshot.length > 0 && (
+                    <Box mt={2}>
+                      <Text fontSize="sm" color="gray.300">Participants (debug): {participantsSnapshot.map(p => p.name).join(', ')}</Text>
+                    </Box>
+                  )}
+
                 </VStack>
               </Center>
             ) : (
               <Box w="100%" h="100%" bg="#000" position="relative">
-                {/* Debug: Show meeting state */}
-                {process.env.NODE_ENV === 'development' && (
-                  <Box position="absolute" top={4} left={4} zIndex={1000} bg="red.500" color="white" p={2} fontSize="xs">
-                    Meeting: {meeting ? 'initialized' : 'null'}
-                  </Box>
-                )}
                 <DyteProvider value={meeting}>
                   <DyteMeeting
                     mode="fill"
-                    meeting={meeting}
-                    showSetupScreen={true}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      backgroundColor: '#000', // Ensure black background
+                    showSetupScreen={false}
+                    style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
+                    onError={(err) => {
+                      console.error('Dyte UI Error:', err);
+                      setError('Dyte UI failed to load. Please refresh and try again.');
+                      toast({ title: 'Dyte UI Error', description: 'UI failed to render correctly. See console for details.', status: 'error', duration: 6000 });
                     }}
                   />
                 </DyteProvider>
-                {/* Fallback message if Dyte UI doesn't render */}
-                <Box position="absolute" top="50%" left="50%" transform="translate(-50%, -50%)" color="white" textAlign="center" display="none" id="dyte-fallback">
-                  <Text fontSize="lg">Dyte meeting UI not visible</Text>
-                  <Text fontSize="sm" mt={2}>Check console for errors</Text>
-                </Box>
+
+                {meeting && meetingInfo?.id && (
+                  <Box position="absolute" top={4} right={4} zIndex={1000}>
+                    <Button leftIcon={<Copy size={16} />} onClick={handleCopyInvite} size="sm" colorScheme="blue" variant="solid" boxShadow="lg">
+                      {hasCopied ? '✓ Copied!' : 'Copy Invite Link'}
+                    </Button>
+                  </Box>
+                )}
               </Box>
             )}
           </ModalBody>
-
-          {/* Footer Controls */}
-          {meeting && (
-            <ModalFooter
-              position="absolute"
-              bottom={0}
-              width="100%"
-              py={4}
-              px={6}
-              bg="rgba(17,24,39,0.95)"
-              backdropFilter="blur(12px)"
-              borderTop="1px solid"
-              borderColor="whiteAlpha.200"
-              zIndex={100}
-            >
-              <Flex w="100%" justify="space-between" align="center">
-                <HStack spacing={2}>
-                  <Tooltip label={isMicEnabled ? 'Mute' : 'Unmute'}>
-                    <IconButton
-                      aria-label="Toggle mic"
-                      icon={<Mic size={20} />}
-                      onClick={toggleMic}
-                      variant="ghost"
-                      colorScheme={isMicEnabled ? 'whiteAlpha' : 'red'}
-                      rounded="full"
-                    />
-                  </Tooltip>
-                  <Tooltip label={isCameraEnabled ? 'Turn off camera' : 'Turn on camera'}>
-                    <IconButton
-                      aria-label="Toggle camera"
-                      icon={<Camera size={20} />}
-                      onClick={toggleCamera}
-                      variant="ghost"
-                      colorScheme={isCameraEnabled ? 'whiteAlpha' : 'red'}
-                      rounded="full"
-                    />
-                  </Tooltip>
-                  <Tooltip label={isScreenSharing ? 'Stop sharing' : 'Share screen'}>
-                    <IconButton
-                      aria-label="Share screen"
-                      icon={<Share2 size={20} />}
-                      onClick={toggleScreenShare}
-                      variant="ghost"
-                      colorScheme={isScreenSharing ? 'blue' : 'whiteAlpha'}
-                      rounded="full"
-                    />
-                  </Tooltip>
-                  <Button
-                    leftIcon={<Copy size={16} />}
-                    onClick={handleCopyInvite}
-                    variant="outline"
-                    size="sm"
-                    colorScheme="whiteAlpha"
-                  >
-                    {hasCopied ? 'Copied!' : 'Copy invite'}
-                  </Button>
-                </HStack>
-
-                <Button
-                  leftIcon={<PhoneOff size={16} />}
-                  onClick={handleClose}
-                  colorScheme="red"
-                  size="lg"
-                  rounded="full"
-                  px={8}
-                >
-                  Leave Meeting
-                </Button>
-
-                <Tooltip label="Participants">
-                  <IconButton
-                    aria-label="Show participants"
-                    icon={<Users size={20} />}
-                    variant="ghost"
-                    colorScheme="whiteAlpha"
-                    rounded="full"
-                  />
-                </Tooltip>
-              </Flex>
-            </ModalFooter>
-          )}
         </ModalContent>
       </Modal>
     </>

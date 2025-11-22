@@ -111,16 +111,19 @@ import React, { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { ChakraProvider } from "@chakra-ui/react";
-import { AuthProvider } from "./contexts/AuthContext"; // ✅ import your AuthProvider
+import { AuthProvider } from "./contexts/AuthContext"; 
 import { ProjectProvider } from "./ProjectContext";
 
+import MeetLanding from "./components/MeetLanding";
+import JoinMeeting from "./components/JoinMeeting";
 import CodeEditor from "./components/CodeEditor";
 import Home from "./components/Home";
+// import MeetLandingPage from "./components/MeetLandingPage";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Feedback from "./components/Feedback";
 import Template from "./components/Template";
-import Flowchart from "./components/Flowchart";
+// import Flowchart from "./components/Flowchart";
 import Flash from "./components/Flash";
 import Embedded from "./components/Embedded";
 import BlockDiagram from "./components/BlockDiagram";
@@ -147,8 +150,7 @@ import FlowchartTest from "./components/FlowchartTest";
 import BlockProgramming from "./components/BlockProgramming";
 import MathCodeEditor from "./components/MathCodeEditor";
 import ParticipantJoin from "./components/ParticipantJoin";
-
-
+// import JoinMeeting from "./components/JoinMeeting";
 const App = () => {
   const [currentPanel, setCurrentPanel] = useState("fileExplorer");
 
@@ -173,6 +175,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/template" element={<Template />} />
+              <Route path="/meet" element={<MeetLanding />} />
               <Route
                 path="/editor"
                 element={
@@ -183,6 +186,7 @@ const App = () => {
                   />
                 }
               />
+              {/* <Route path="/Flowchartone" element={<Flowchartone />} /> */}
               <Route path="/FlowchartTest" element={<FlowchartTest />} />
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/defineproduct" element={<DefineProduct />} />
@@ -195,7 +199,7 @@ const App = () => {
               <Route path="/defineproductone" element={<DefineProductOne />} />
               <Route path="/defineproducttwo" element={<DefineProductTwo />} />
               <Route path="/BlockDiagram" element={<BlockDiagramTest />} />
-              <Route path="/flowcharttest" element={<Flowchart />} />
+               {/* <Route path="/flowcharttest" element={<Flowchart />} />  */}
               <Route path="/blockprogramming" element={<BlockProgramming />} />
               <Route path="/fileexplorerone" element={<FileExplorerOne />} />
               <Route
@@ -209,7 +213,10 @@ const App = () => {
               <Route path="/embedded/manage" element={<EmbeddedFileManagement />} />
               <Route path="/toggle" element={<Toggle />} />
               <Route path="/mathcodeeditor" element={<MathCodeEditor />} />
-              <Route path="/join/:meetingId" element={<ParticipantJoin />} />
+              {/* <Route path="/join/:meetingId" element={<ParticipantJoin />} /> */}
+              {/* <Route path="/dytemeeting" element={<MeetLandingPage />} />
+        <Route path="/join" element={<JoinMeeting />} /> */}
+              <Route path="/join/:meetingId" element={<JoinMeeting />} />
             </Routes>
 
             {/* <Footer /> */}
@@ -220,3 +227,9 @@ const App = () => {
 };
 
 export default App;
+
+
+
+
+
+
