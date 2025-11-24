@@ -64,6 +64,7 @@ export function ProcessNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -91,7 +92,7 @@ export function DecisionNode({ id, data, selected }) {
       style={{ ...baseNodeStyles(data), position: 'relative' }}
       onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}
     >
-      <NodeResizer isVisible={selected} minWidth={80} minHeight={80} color={data?.stroke || '#000'} />
+      <NodeResizer isVisible={selected} minWidth={80} minHeight={80} color={data?.stroke || '#000'} lineStyle={{ borderColor: 'transparent' }} />
       <svg viewBox="0 0 160 80" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
         <polygon points="80,0 160,40 80,80 0,40" fill={fill} stroke={stroke} strokeWidth={sw} />
       </svg>
@@ -129,6 +130,7 @@ export function DecisionNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -201,6 +203,7 @@ export function TerminatorNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -236,7 +239,7 @@ export function EllipseNode({ id, data, selected }) {
       }}
       onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}
     >
-      <NodeResizer isVisible={selected} minWidth={60} minHeight={60} color={data?.stroke || '#000'} />
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={60} color={data?.stroke || '#000'} lineStyle={{ borderColor: 'transparent' }} />
       <Handle id="top-in" type="target" position={Position.Top} />
       <Handle id="right-in" type="target" position={Position.Right} />
       <Handle id="bottom-in" type="target" position={Position.Bottom} />
@@ -264,6 +267,7 @@ export function EllipseNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -334,6 +338,7 @@ export function DataNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -366,8 +371,8 @@ export function DatabaseNode({ id, data, selected }) {
   const sw = data?.strokeWidth ?? 2;
   return (
     <div style={{ ...baseNodeStyles(data), position: 'relative' }}
-         onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
-      <NodeResizer isVisible={selected} minWidth={80} minHeight={60} color={stroke} />
+      onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
+      <NodeResizer isVisible={selected} minWidth={80} minHeight={60} color={stroke} lineStyle={{ borderColor: 'transparent' }} />
       <svg viewBox="0 0 160 80" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
         <ellipse cx="80" cy="15" rx="70" ry="12" fill={fill} stroke={stroke} strokeWidth={sw} />
         <rect x="10" y="15" width="140" height="50" fill={fill} stroke={stroke} strokeWidth={sw} />
@@ -393,6 +398,7 @@ export function DatabaseNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -425,8 +431,8 @@ export function ManualInputNode({ id, data, selected }) {
   const sw = data?.strokeWidth ?? 2;
   return (
     <div style={{ ...baseNodeStyles(data), position: 'relative' }}
-         onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
-      <NodeResizer isVisible={selected} minWidth={80} minHeight={40} color={stroke} />
+      onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
+      <NodeResizer isVisible={selected} minWidth={80} minHeight={40} color={stroke} lineStyle={{ borderColor: 'transparent' }} />
       <svg viewBox="0 0 160 80" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
         <polygon points="20,5 155,5 140,75 5,75" fill={fill} stroke={stroke} strokeWidth={sw} />
       </svg>
@@ -450,6 +456,7 @@ export function ManualInputNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -482,8 +489,8 @@ export function DocumentNode({ id, data, selected }) {
   const sw = data?.strokeWidth ?? 2;
   return (
     <div style={{ ...baseNodeStyles(data), position: 'relative' }}
-         onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
-      <NodeResizer isVisible={selected} minWidth={80} minHeight={50} color={stroke} />
+      onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
+      <NodeResizer isVisible={selected} minWidth={80} minHeight={50} color={stroke} lineStyle={{ borderColor: 'transparent' }} />
       <svg viewBox="0 0 160 80" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
         <rect x="5" y="5" width="150" height="55" fill={fill} stroke={stroke} strokeWidth={sw} />
         <path d="M5 60 C 35 50, 65 70, 95 60 S 155 70, 155 60" fill="none" stroke={stroke} strokeWidth={sw} />
@@ -508,6 +515,7 @@ export function DocumentNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -540,8 +548,8 @@ export function TriangleNode({ id, data, selected }) {
   const sw = data?.strokeWidth ?? 2;
   return (
     <div style={{ ...baseNodeStyles(data), position: 'relative' }}
-         onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
-      <NodeResizer isVisible={selected} minWidth={60} minHeight={50} color={stroke} />
+      onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
+      <NodeResizer isVisible={selected} minWidth={60} minHeight={50} color={stroke} lineStyle={{ borderColor: 'transparent' }} />
       <svg viewBox="0 0 160 80" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
         <polygon points="80,5 155,75 5,75" fill={fill} stroke={stroke} strokeWidth={sw} />
       </svg>
@@ -565,6 +573,7 @@ export function TriangleNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -597,8 +606,8 @@ export function HexagonNode({ id, data, selected }) {
   const sw = data?.strokeWidth ?? 2;
   return (
     <div style={{ ...baseNodeStyles(data), position: 'relative' }}
-         onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
-      <NodeResizer isVisible={selected} minWidth={80} minHeight={50} color={stroke} />
+      onDoubleClick={() => rf.setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, editing: true } } : n)))}>
+      <NodeResizer isVisible={selected} minWidth={80} minHeight={50} color={stroke} lineStyle={{ borderColor: 'transparent' }} />
       <svg viewBox="0 0 160 80" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0 }}>
         <polygon points="30,5 130,5 155,40 130,75 30,75 5,40" fill={fill} stroke={stroke} strokeWidth={sw} />
       </svg>
@@ -622,6 +631,7 @@ export function HexagonNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -660,14 +670,74 @@ export function SvgStampNode({ id, data, selected }) {
   );
 }
 
+// Junction Node - small connector for branching connections
+export function JunctionNode({ id, data, selected }) {
+  const fill = data?.fill || '#000000';
+  const stroke = data?.stroke || '#000000';
+  const size = data?.size || 20;
+
+  // Handles hidden by default, visible on hover or selection
+  const handleStyle = {
+    width: 8,
+    height: 8,
+    background: '#555',
+    border: '2px solid #fff',
+    borderRadius: '50%',
+    opacity: selected ? 1 : 0,
+    transition: 'opacity 0.2s',
+  };
+
+  return (
+    <div
+      className="junction-node"
+      style={{
+        width: size,
+        height: size,
+        position: 'relative',
+      }}
+      onMouseEnter={(e) => {
+        // Show handles on hover
+        const handles = e.currentTarget.querySelectorAll('.react-flow__handle');
+        handles.forEach(h => h.style.opacity = 1);
+      }}
+      onMouseLeave={(e) => {
+        // Hide handles on leave if not selected
+        if (!selected) {
+          const handles = e.currentTarget.querySelectorAll('.react-flow__handle');
+          handles.forEach(h => h.style.opacity = 0);
+        }
+      }}
+    >
+      <Handle id="top-in" type="target" position={Position.Top} style={handleStyle} />
+      <Handle id="right-in" type="target" position={Position.Right} style={handleStyle} />
+      <Handle id="bottom-in" type="target" position={Position.Bottom} style={handleStyle} />
+      <Handle id="left-in" type="target" position={Position.Left} style={handleStyle} />
+      <Handle id="top-out" type="source" position={Position.Top} style={handleStyle} />
+      <Handle id="right-out" type="source" position={Position.Right} style={handleStyle} />
+      <Handle id="bottom-out" type="source" position={Position.Bottom} style={handleStyle} />
+      <Handle id="left-out" type="source" position={Position.Left} style={handleStyle} />
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          background: fill,
+          border: `2px solid ${stroke}`,
+          boxShadow: selected ? '0 0 0 2px #3b82f6' : 'none',
+        }}
+      />
+    </div>
+  );
+}
+
 // Node for adding editable text to the canvas
 export function TextNode({ id, data, selected }) {
   const { setNodes } = useReactFlow();
   const [label, setLabel] = useState(data.label || 'Text');
 
   const handleStyle = {
-    width: 8, 
-    height: 8, 
+    width: 8,
+    height: 8,
     background: '#555',
     borderRadius: '50%',
   };
@@ -686,12 +756,12 @@ export function TextNode({ id, data, selected }) {
   };
 
   return (
-    <div 
+    <div
       style={{
         padding: '10px',
         border: selected ? '1px solid #007bff' : '1px solid transparent',
         borderRadius: '2px',
-        fontSize: data.fontSize || 16, 
+        fontSize: data.fontSize || 16,
         color: data.text || '#000000',
         position: 'relative',
         minWidth: 30,
@@ -706,7 +776,7 @@ export function TextNode({ id, data, selected }) {
       <Handle type="target" position={Position.Right} id="right-target" style={handleStyle} />
       <Handle type="target" position={Position.Bottom} id="bottom-target" style={handleStyle} />
       <Handle type="target" position={Position.Left} id="left-target" style={handleStyle} />
-      
+
       <div
         contentEditable
         suppressContentEditableWarning
@@ -807,7 +877,7 @@ export function EditableEdge(edgeProps) {
                   setEditing(false);
                 }
               }}
-              style={{ width: 60, textAlign: 'center', border: '1px solid #ccc', borderRadius: 4, padding: 2 }}
+              style={{ width: 60, textAlign: 'center', border: '1px solid #ccc', borderRadius: 4, padding: 2, color: '#000', background: '#fff' }}
             />
           ) : (
             <div style={{ padding: '2px 5px', borderRadius: 4, background: 'rgba(255,255,255,0.8)' }}>
@@ -819,6 +889,7 @@ export function EditableEdge(edgeProps) {
     </>
   );
 }
+
 
 
 

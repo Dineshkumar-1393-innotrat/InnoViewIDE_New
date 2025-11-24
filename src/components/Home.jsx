@@ -188,7 +188,6 @@ const Home = () => {
             width="full"
             maxWidth="1100px"
             borderRadius="2xl"
-            textAlign="center"
             boxShadow="2xl"
             overflow="hidden"
             bg={useColorModeValue("white", "gray.800")}
@@ -213,14 +212,14 @@ const Home = () => {
               <VStack
                 as="form"
                 onSubmit={handleLogin}
-                spacing={6}
+                spacing={8}
                 p={10}
                 flex={1}
                 bg={useColorModeValue("white", "gray.800")}
-                alignItems="flex-start"
+                alignItems="stretch"
                 justify="center"
               >
-                <Box width="full">
+                <Box width="full" textAlign="left">
                   <Heading
                     as="h1"
                     size="xl"
@@ -231,60 +230,83 @@ const Home = () => {
                   >
                     Welcome Back
                   </Heading>
-                  <Text fontSize="md" color={useColorModeValue("gray.600", "gray.400")} mb={4}>
+                  <Text fontSize="md" color={useColorModeValue("gray.600", "gray.400")} mb={6}>
                     Sign in to Innotrat Labs IDE
                   </Text>
                 </Box>
 
-                <FormControl id="mobileNumber" isRequired>
-                  <FormLabel>Mobile Number</FormLabel>
-                  <InputGroup>
+                <FormControl id="mobileNumber" isRequired width="full">
+                  <FormLabel fontWeight="bold" mb={3}>Mobile Number</FormLabel>
+                  <HStack spacing={2} alignItems="stretch">
                     <Select
                       id="countryCode"
                       value={formData.countryCode}
                       onChange={handleInputChange}
                       width="100px"
-                      marginRight="2"
+                      height="50px"
+                      borderRadius="lg"
                       color="black"
+                      bg="gray.50"
+                      border="1px solid"
+                      borderColor="gray.200"
+                      _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
+                      fontSize="md"
                     >
                       <option value="+91">+91</option>
                     </Select>
                     <Input
+                      id="mobileNumber"
                       type="tel"
                       placeholder="Enter your mobile number"
-                      size="md"
+                      height="50px"
+                      borderRadius="lg"
                       pattern="[0-9]{10}"
                       maxLength="10"
                       focusBorderColor="blue.500"
                       value={formData.mobileNumber}
                       onChange={handleInputChange}
                       color="black"
+                      bg="gray.50"
+                      border="1px solid"
+                      borderColor="gray.200"
                       _placeholder={{ color: "gray.400" }}
+                      fontSize="md"
+                      flex={1}
+                      _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
                     />
-                  </InputGroup>
+                  </HStack>
                 </FormControl>
 
-                <FormControl id="password" isRequired>
-                  <FormLabel>Password</FormLabel>
-                  <InputGroup size="md">
+                <FormControl id="password" isRequired width="full">
+                  <FormLabel fontWeight="bold" mb={3}>Password</FormLabel>
+                  <InputGroup width="full">
                     <Input
-                      pr="4.5rem"
+                      pr="3.5rem"
                       type={show ? "text" : "password"}
                       placeholder="Enter password"
+                      height="50px"
+                      borderRadius="lg"
                       value={formData.password}
                       onChange={handleInputChange}
                       color="black"
+                      bg="gray.50"
+                      border="1px solid"
+                      borderColor="gray.200"
                       _placeholder={{ color: "gray.400" }}
+                      fontSize="md"
                       fontWeight="medium"
+                      _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
                     />
-                    <InputRightElement width="4.5rem">
+                    <InputRightElement height="50px" width="3.5rem">
                       <IconButton
-                        h="1.75rem"
+                        h="2rem"
                         size="sm"
                         onClick={() => setShow(!show)}
                         aria-label={show ? "Hide password" : "Show password"}
                         icon={show ? <FaEyeSlash /> : <FaEye />}
                         variant="ghost"
+                        color="gray.500"
+                        _hover={{ bg: "gray.100" }}
                       />
                     </InputRightElement>
                   </InputGroup>
@@ -293,8 +315,9 @@ const Home = () => {
                 <Button
                   type="submit"
                   width="full"
-                  size="lg"
-                  fontSize="md"
+                  height="50px"
+                  fontSize="lg"
+                  borderRadius="lg"
                   isLoading={isLoading}
                   loadingText="Signing in..."
                   bgGradient="linear(to-r, #667eea, #764ba2)"
@@ -308,7 +331,8 @@ const Home = () => {
                     transform: "translateY(0)",
                   }}
                   transition="all 0.2s"
-                  fontWeight="semibold"
+                  fontWeight="bold"
+                  mt={2}
                 >
                   Sign in
                 </Button>

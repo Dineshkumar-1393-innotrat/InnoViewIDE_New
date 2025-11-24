@@ -1,244 +1,309 @@
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  :root {
-    --navbar-height: 56px; /* EditorNavbar fixed height */
-    --toolbar-height: 40px; /* .header toolbar height */
-  }
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-  .diagram-builder {
-    width: 100%;
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    padding-top: var(--navbar-height); /* push content below fixed navbars */
-  }
-  .header {
-    flex: 0 0 var(--toolbar-height);
-    height: var(--toolbar-height);
-    border-bottom: 1px solid #E0E0E0;
-    position: sticky;
-    top: var(--navbar-height); /* stick just under the fixed navbars */
-    z-index: 950; /* below navbars (999/1000), above canvas */
-    background: #fff;
-  }
-  .content {
-    flex: 1;
-    display: flex;
-    min-height: 0; /* allow children to shrink within viewport */
-    min-width: 0;
-    overflow: hidden;
-  }
-  .sidebarr {
-    flex: 0 0 260px;
-    width: 260px;
-    border-right: 1px solid #E0E0E0;
-    background-color: white;
-    overflow: auto; /* scroll independently */
-  }
-  .diagram-container {
-    flex: 1;
-    min-width: 0;  /* prevent overflow due to intrinsic min-width */
-    min-height: 0; /* allow React Flow to size to container */
-    background-color: #fff;
-    position: relative;
-    overflow: hidden;
-  }
-  .properties-panel {
-    flex: 0 0 280px;
-    width: 280px;
-    border-left: 1px solid #E0E0E0;
-    background-color: #fff;
-    padding: 12px;
-    overflow: auto; /* scroll independently */
-  }
-  .properties-panel h3 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin: 0 0 10px 0;
-  }
-  .prop-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin: 8px 0;
-  }
-  .prop-row label {
-    font-size: 12px;
-    color: #444;
-  }
-  .edit-text-btn {
-    margin-top: 12px;
-    padding: 8px 10px;
-    font-size: 12px;
-    background: #3b82f6;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .edit-text-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .rf-wrapper {
-    width: 100%;
-    height: 100%;
-  }
-  .diagram-container .react-flow {
-    height: 100%;
-  }
-  .palette-item {
-    user-select: none;
-    background: #f5f5f7;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 12px;
-    margin-bottom: 8px;
-    cursor: grab;
-  }
-  .palette-item:active {
-    cursor: grabbing;
-  }
-  .palette-header { padding: 10px 12px; border-bottom: 1px solid #E0E0E0; }
-  .palette-title { font-size: 12px; font-weight: 600; color: #333; }
-  .palette-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    padding: 10px;
-  }
-  .shape-card {
-    user-select: none;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    padding: 10px 8px;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    gap: 6px;
-    cursor: grab;
-    transition: box-shadow 0.15s ease, transform 0.05s ease;
-  }
-  .shape-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-  .shape-card:active { cursor: grabbing; transform: scale(0.98); }
-  .shape-svg {
-    width: 56px;
-    height: 36px;
-    display: grid;
-    place-items: center;
-    overflow: hidden; /* prevent any SVG overflow artifacts */
-  }
-  .shape-svg svg {
-    width: 100%;
-    height: 100%;
-  }
-  .shape-svg img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    display: block;
-    /* Subtle outline so white strokes are visible on light background without turning black */
-    filter: drop-shadow(0 0 0.5px rgba(0,0,0,0.45));
-    user-select: none;
-    -webkit-user-drag: none;
-    pointer-events: none;
-  }
-  .shape-label { font-size: 11px; color: #374151; }
-  .edge-popover {
-    position: absolute;
-    top: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    z-index: 20;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.08);
-    min-width: 220px;
-  }
-  .edge-popover .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-  .edge-popover .row span {
-    font-size: 11px;
-    color: #444;
-  }
-  .edge-popover .segmented {
-    display: flex;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .edge-popover .segmented button {
-    flex: 1;
-    font-size: 11px;
-    padding: 6px 8px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: #374151;
-  }
-  .edge-popover .segmented button.active {
-    background: #fff;
-    box-shadow: inset 0 0 0 1px #3b82f6;
-    color: #111;
-  }
-  .edge-popover .segmented button.icon {
-    flex: 0 0 32px;
-    border-left: 1px solid #e5e7eb;
-    display: grid;
-    place-items: center;
-  }
-  .edge-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(17, 24, 39, 0.18);
-    backdrop-filter: blur(0.5px);
-    z-index: 25; /* below the edge container when open (container z-index 30) */
-  }
-  
-  /* React Flow handle visibility and positioning */
-  .react-flow__handle {
-    width: 10px;
-    height: 10px;
-    background: #555;
-    border: 2px solid #fff;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 120ms ease;
-  }
-  .react-flow__node:hover .react-flow__handle,
-  .react-flow__node.selected .react-flow__handle {
-    opacity: 1;
-    pointer-events: all;
-  }
-  .react-flow__handle:hover {
-    background: #3b82f6;
-  }
-  
-  .edge-icon-btn {
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    border-radius: 6px;
-    padding: 2px;
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-  }
-  .edge-icon-btn:hover { box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+:root {
+  --navbar-height: 56px;
+  /* EditorNavbar fixed height */
+  --toolbar-height: 40px;
+  /* .header toolbar height */
+}
+
+.diagram-builder {
+  width: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: var(--navbar-height);
+  /* push content below fixed navbars */
+}
+
+.header {
+  flex: 0 0 var(--toolbar-height);
+  height: var(--toolbar-height);
+  border-bottom: 1px solid #E0E0E0;
+  position: sticky;
+  top: var(--navbar-height);
+  /* stick just under the fixed navbars */
+  z-index: 950;
+  /* below navbars (999/1000), above canvas */
+  background: #fff;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  /* allow children to shrink within viewport */
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sidebarr {
+  flex: 0 0 260px;
+  width: 260px;
+  border-right: 1px solid #E0E0E0;
+  background-color: white;
+  overflow: auto;
+  /* scroll independently */
+}
+
+.diagram-container {
+  flex: 1;
+  min-width: 0;
+  /* prevent overflow due to intrinsic min-width */
+  min-height: 0;
+  /* allow React Flow to size to container */
+  background-color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.properties-panel {
+  flex: 0 0 280px;
+  width: 280px;
+  border-left: 1px solid #E0E0E0;
+  background-color: #fff;
+  padding: 12px;
+  overflow: auto;
+  /* scroll independently */
+}
+
+.properties-panel h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 10px 0;
+}
+
+.prop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.prop-row label {
+  font-size: 12px;
+  color: #444;
+}
+
+.edit-text-btn {
+  margin-top: 12px;
+  padding: 8px 10px;
+  font-size: 12px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.edit-text-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rf-wrapper {
+  width: 100%;
+  height: 100%;
+}
+
+.diagram-container .react-flow {
+  height: 100%;
+}
+
+.palette-item {
+  user-select: none;
+  background: #f5f5f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  margin-bottom: 8px;
+  cursor: grab;
+}
+
+.palette-item:active {
+  cursor: grabbing;
+}
+
+.palette-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.palette-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+}
+
+.shape-card {
+  user-select: none;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 8px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 6px;
+  cursor: grab;
+  transition: box-shadow 0.15s ease, transform 0.05s ease;
+}
+
+.shape-card:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.shape-card:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.shape-svg {
+  width: 56px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  /* prevent any SVG overflow artifacts */
+}
+
+.shape-svg svg {
+  width: 100%;
+  height: 100%;
+}
+
+.shape-svg img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  /* Subtle outline so white strokes are visible on light background without turning black */
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.45));
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+.shape-label {
+  font-size: 11px;
+  color: #374151;
+}
+
+.edge-popover {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 20;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  min-width: 220px;
+}
+
+.edge-popover .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.edge-popover .row span {
+  font-size: 11px;
+  color: #000;
+}
+
+.edge-popover .segmented {
+  display: flex;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.edge-popover .segmented button {
+  flex: 1;
+  font-size: 11px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #374151;
+}
+
+.edge-popover .segmented button.active {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #3b82f6;
+  color: #111;
+}
+
+.edge-popover .segmented button.icon {
+  flex: 0 0 32px;
+  border-left: 1px solid #e5e7eb;
+  display: grid;
+  place-items: center;
+}
+
+.edge-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.18);
+  backdrop-filter: blur(0.5px);
+  z-index: 25;
+  /* below the edge container when open (container z-index 30) */
+}
+
+/* React Flow handle visibility and positioning */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background: #555;
+  border: 2px solid #fff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.react-flow__node:hover .react-flow__handle,
+.react-flow__node.selected .react-flow__handle {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.react-flow__handle:hover {
+  background: #3b82f6;
+}
+
+.edge-icon-btn {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  border-radius: 6px;
+  padding: 2px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.edge-icon-btn:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}

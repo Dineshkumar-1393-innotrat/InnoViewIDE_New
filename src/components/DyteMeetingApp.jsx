@@ -129,7 +129,7 @@ import { DyteProvider, useDyteClient } from '@dytesdk/react-web-core';
 import { Box, Button, Input, Select, VStack, HStack, Heading } from '@chakra-ui/react';
 
 // Configure your Dyte backend URL here
-// const DYTE_BACKEND_URL = 'http://192.168.68.115:5004/api/v1';
+const DYTE_BACKEND_URL = 'https://eureka.innotrat.in/api/v1';
 
 const DyteMeetingApp = ({ onClose }) => {
     const [meetingId, setMeetingId] = useState('');

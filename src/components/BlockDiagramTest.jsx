@@ -119,6 +119,7 @@ function ProcessNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -186,6 +187,7 @@ function DecisionNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -258,6 +260,7 @@ function TerminatorNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -314,6 +317,7 @@ function TextNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
             color: data?.text || '#000',
           }}
@@ -393,6 +397,7 @@ function EllipseNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -468,6 +473,7 @@ function DatabaseNode({ id, data, selected }) {
               position: 'relative',
               zIndex: 5,
               background: '#fff',
+              color: '#000',
               pointerEvents: 'all',
             }}
           />
@@ -542,6 +548,7 @@ function DataNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -604,6 +611,7 @@ function DelayNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -666,6 +674,7 @@ function ConnectorNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
             textAlign: 'center',
           }}
@@ -729,6 +738,7 @@ function SummingNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
             textAlign: 'center',
           }}
@@ -817,6 +827,7 @@ function MicNode({ id, data, selected }) {
             fontSize: data?.fontSize || 12,
             textAlign: 'center',
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -888,6 +899,7 @@ function BluetoothNode({ id, data, selected }) {
             fontSize: data?.fontSize || 12,
             textAlign: 'center',
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -961,6 +973,7 @@ function AntennaNode({ id, data, selected }) {
             fontSize: data?.fontSize || 12,
             textAlign: 'center',
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
@@ -1034,12 +1047,73 @@ function ActorNode({ id, data, selected }) {
             fontSize: data?.fontSize || 12,
             textAlign: 'center',
             background: '#fff',
+            color: '#000',
             pointerEvents: 'all',
           }}
         />
       ) : (
         <span style={{ color: data?.text || '#000', fontSize: data?.fontSize || 12 }}>{data?.label ?? 'Actor'}</span>
       )}
+    </div>
+  );
+}
+
+// Junction Node - small connector for branching connections
+function JunctionNode({ id, data, selected }) {
+  const fill = data?.fill || '#000000';
+  const stroke = data?.stroke || '#000000';
+  const size = data?.size || 20;
+
+  // Handles hidden by default, visible on hover or selection
+  const handleStyle = {
+    width: 8,
+    height: 8,
+    background: '#555',
+    border: '2px solid #fff',
+    borderRadius: '50%',
+    opacity: selected ? 1 : 0,
+    transition: 'opacity 0.2s',
+  };
+
+  return (
+    <div
+      className="junction-node"
+      style={{
+        width: size,
+        height: size,
+        position: 'relative',
+      }}
+      onMouseEnter={(e) => {
+        // Show handles on hover
+        const handles = e.currentTarget.querySelectorAll('.react-flow__handle');
+        handles.forEach(h => h.style.opacity = 1);
+      }}
+      onMouseLeave={(e) => {
+        // Hide handles on leave if not selected
+        if (!selected) {
+          const handles = e.currentTarget.querySelectorAll('.react-flow__handle');
+          handles.forEach(h => h.style.opacity = 0);
+        }
+      }}
+    >
+      <Handle id="top-in" type="target" position={Position.Top} style={handleStyle} />
+      <Handle id="right-in" type="target" position={Position.Right} style={handleStyle} />
+      <Handle id="bottom-in" type="target" position={Position.Bottom} style={handleStyle} />
+      <Handle id="left-in" type="target" position={Position.Left} style={handleStyle} />
+      <Handle id="top-out" type="source" position={Position.Top} style={handleStyle} />
+      <Handle id="right-out" type="source" position={Position.Right} style={handleStyle} />
+      <Handle id="bottom-out" type="source" position={Position.Bottom} style={handleStyle} />
+      <Handle id="left-out" type="source" position={Position.Left} style={handleStyle} />
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          borderRadius: '50%',
+          background: fill,
+          border: `2px solid ${stroke}`,
+          boxShadow: selected ? '0 0 0 2px #3b82f6' : 'none',
+        }}
+      />
     </div>
   );
 }
@@ -1226,6 +1300,7 @@ function EditableEdge(edgeProps) {
                   position: 'relative',
                   zIndex: 5,
                   background: '#fff',
+                  color: '#000',
                   pointerEvents: 'all',
                 }}
               />
@@ -1295,6 +1370,28 @@ function EditableEdge(edgeProps) {
             </div>
           )}
         </div>
+        {/* Connection Handle for Edge Splitting */}
+        <div
+          className="edge-connection-handle"
+          data-edge-id={id}
+          data-x={labelX}
+          data-y={labelY}
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: 'all',
+            width: 12,
+            height: 12,
+            background: '#000',
+            borderRadius: '50%',
+            cursor: 'crosshair',
+            zIndex: 20,
+            opacity: 0, // Hidden by default, shown on hover via CSS
+            transition: 'opacity 0.2s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+        />
       </EdgeLabelRenderer>
     </>
   );
@@ -1315,6 +1412,7 @@ const nodeTypes = {
   bluetooth: BluetoothNode,
   antenna: AntennaNode,
   actor: ActorNode,
+  junction: JunctionNode,
 };
 
 const edgeTypes = {
@@ -1468,6 +1566,15 @@ const PALETTE_GROUPS = [
           </svg>
         ),
       },
+      {
+        type: 'junction',
+        label: 'Junction',
+        icon: (
+          <svg viewBox="0 0 80 80" preserveAspectRatio="xMidYMid meet">
+            <circle cx="40" cy="40" r="8" fill="#000" stroke="#111" strokeWidth="2" />
+          </svg>
+        ),
+      },
     ],
   },
 ];
@@ -1480,6 +1587,7 @@ function DiagramEditor() {
   const [selected, setSelected] = useState(null);
   const [hasProjects, setHasProjects] = useState(false);
   const [clipboard, setClipboard] = useState({ nodes: [], edges: [] });
+  const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const rf = useReactFlow();
   const canvasIntegration = useCanvasFileIntegration('Block Diagram');
   const historyRef = useRef({ entries: [], index: -1 });
@@ -1673,6 +1781,85 @@ function DiagramEditor() {
         )
       ),
     [setEdges]
+  );
+
+  const connectionStartParams = useRef(null);
+
+  const onConnectStart = useCallback((_, params) => {
+    connectionStartParams.current = params;
+  }, []);
+
+  const onConnectEnd = useCallback(
+    (event) => {
+      const target = event.target;
+      const edgeHandle = target.closest('.edge-connection-handle');
+
+      if (edgeHandle && connectionStartParams.current) {
+        const edgeId = edgeHandle.getAttribute('data-edge-id');
+        const x = parseFloat(edgeHandle.getAttribute('data-x'));
+        const y = parseFloat(edgeHandle.getAttribute('data-y'));
+        const { nodeId: sourceNodeId, handleId: sourceHandleId } = connectionStartParams.current;
+
+        // Find the target edge
+        const targetEdge = edges.find((e) => e.id === edgeId);
+        if (!targetEdge) return;
+
+        // Create Junction Node
+        const junctionId = `junction-${Date.now()}`;
+        const junctionNode = {
+          id: junctionId,
+          type: 'junction',
+          position: { x, y }, // Position at the edge midpoint
+          data: { label: 'Junction', size: 2 }, // Very small size to look like a point/hidden
+          // Adjust position to center the node (size is 2)
+          position: { x: x - 1, y: y - 1 },
+        };
+
+        // Create new edges
+        const edge1 = {
+          id: `e-${targetEdge.source}-${junctionId}`,
+          source: targetEdge.source,
+          target: junctionId,
+          sourceHandle: targetEdge.sourceHandle,
+          targetHandle: 'left-in',
+          type: 'editable',
+          style: targetEdge.style,
+          markerEnd: undefined, // No arrow
+        };
+
+        const edge2 = {
+          id: `e-${junctionId}-${targetEdge.target}`,
+          source: junctionId,
+          target: targetEdge.target,
+          sourceHandle: 'right-out',
+          targetHandle: targetEdge.targetHandle,
+          type: 'editable',
+          style: targetEdge.style,
+          markerEnd: targetEdge.markerEnd, // Keep original end marker if any (usually arrow)
+        };
+
+        const edge3 = {
+          id: `e-${sourceNodeId}-${junctionId}-new`,
+          source: sourceNodeId,
+          target: junctionId,
+          sourceHandle: sourceHandleId,
+          targetHandle: 'bottom-in',
+          type: 'editable',
+          style: { strokeWidth: 2, stroke: '#000000' },
+          markerEnd: undefined, // No arrow for the joining line
+        };
+
+        // Update state
+        setNodes((nds) => nds.concat(junctionNode));
+        setEdges((eds) =>
+          eds
+            .filter((e) => e.id !== edgeId) // Remove old edge
+            .concat([edge1, edge2, edge3]) // Add new edges
+        );
+      }
+      connectionStartParams.current = null;
+    },
+    [edges, nodes, setEdges, setNodes]
   );
 
   const onSelectionChange = useCallback(({ nodes: nds, edges: eds }) => {
@@ -2403,6 +2590,8 @@ function DiagramEditor() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                onConnectStart={onConnectStart}
+                onConnectEnd={onConnectEnd}
                 onSelectionChange={onSelectionChange}
                 onPaneClick={exitEditing}
                 nodeTypes={nodeTypes}
@@ -2468,3 +2657,4 @@ function App() {
 }
 
 export default App;
+
