@@ -114,11 +114,9 @@ import { ChakraProvider } from "@chakra-ui/react";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProjectProvider } from "./ProjectContext";
 
-import MeetLanding from "./components/MeetLanding";
-import JoinMeeting from "./components/JoinMeeting";
+
 import CodeEditor from "./components/CodeEditor";
 import Home from "./components/Home";
-// import MeetLandingPage from "./components/MeetLandingPage";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import Feedback from "./components/Feedback";
@@ -149,8 +147,7 @@ import Toggle from "./components/Toggle/Toggle";
 import FlowchartTest from "./components/FlowchartTest";
 import BlockProgramming from "./components/BlockProgramming";
 import MathCodeEditor from "./components/MathCodeEditor";
-import ParticipantJoin from "./components/ParticipantJoin";
-// import JoinMeeting from "./components/JoinMeeting";
+
 const App = () => {
   const [currentPanel, setCurrentPanel] = useState("fileExplorer");
 
@@ -175,7 +172,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/template" element={<Template />} />
-            <Route path="/meet" element={<MeetLanding />} />
+
             <Route
               path="/editor"
               element={
@@ -213,10 +210,7 @@ const App = () => {
             <Route path="/embedded/manage" element={<EmbeddedFileManagement />} />
             <Route path="/toggle" element={<Toggle />} />
             <Route path="/mathcodeeditor" element={<MathCodeEditor />} />
-            {/* <Route path="/join/:meetingId" element={<ParticipantJoin />} /> */}
-            {/* <Route path="/dytemeeting" element={<MeetLandingPage />} />
-        <Route path="/join" element={<JoinMeeting />} /> */}
-            <Route path="/join/:meetingId" element={<JoinMeeting />} />
+
           </Routes>
 
           {/* <Footer /> */}

@@ -178,7 +178,7 @@ const SelectProduct = () => {
           colorScheme="blue"
           disabled={!selectedProduct}
           onClick={() => {
-            navigate("/embedded");
+            navigate("/editor");
           }}
         >
           Flash

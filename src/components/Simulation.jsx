@@ -636,14 +636,10 @@
 //           y: offset.y - 100,
 //           width: 120,
 //           height: 120,
+//           id: Date.now() + Math.random(), // Add unique ID
 //         };
-//         setTabs((prevTabs) =>
-//           prevTabs.map((tab) =>
-//             tab.id === activeTab
-//               ? { ...tab, symbols: [...tab.symbols, newSymbol] }
-//               : tab
-//           )
-//         );
+//         dispatch(addDroppedItem(newSymbol));
+//         setActiveSymbol(droppedItems.length);
 //       }
 //     },
 //   }));
@@ -1178,8 +1174,32 @@ const symbolsData = [
   },
 ];
 
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  setDroppedItems,
+  addDroppedItem,
+  updateDroppedItem,
+  removeDroppedItem,
+  setConnections,
+  addConnection
+} from '../store/slices/simulationSlice';
+
+// ... existing imports
+
 const BlockDiagram = () => {
-  const [droppedItems, setDroppedItems] = useState([]);
+  const dispatch = useDispatch();
+  // Use Redux state for droppedItems and connections
+  const droppedItems = useSelector((state) => state.simulation.droppedItems);
+  const connections = useSelector((state) => state.simulation.connections); // This might need to be an array in Redux, but Set in component. 
+  // Redux can't store Sets. We need to convert between them or use Array in Redux.
+  // My slice defined connections as array.
+  // In component it was `useState(new Set())`.
+  // I will use a local Set derived from Redux array for efficient lookup, or just use Array.includes.
+  // Let's stick to Array in Redux and convert to Set for local checks if needed, or just use Array methods.
+
+  // const [droppedItems, setDroppedItems] = useState([]); // REMOVED
+  // const [connections, setConnections] = useState(new Set()); // REMOVED
+
   const [activeSymbol, setActiveSymbol] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
   const contextMenuRef = useRef(null);
@@ -1210,8 +1230,9 @@ const BlockDiagram = () => {
   const [sidebarMode, setSidebarMode] = useState("components");
   const navigate = useNavigate();
   const toast = useToast();
-  const [connections, setConnections] = useState(new Set()); // Track connected pairs
+  // const [connections, setConnections] = useState(new Set()); // REMOVED - using Redux
   const [sparkEffects, setSparkEffects] = useState([]); // Track active spark animations
+  const [rotatingItem, setRotatingItem] = useState(null); // Optimize rotation performance
 
   const [selectedProject, setSelectedProject] = useState(null);
   const [isProductDefined, setIsProductDefined] = useState(null);
@@ -1265,6 +1286,7 @@ const BlockDiagram = () => {
         const fetchedDiagrams = response.data.data[0].simulationDiagram.map(
           (diagram) => ({
             ...diagram,
+            id: diagram.id || Date.now() + Math.random(), // Ensure ID exists
             symbol: {
               ...diagram.symbol,
               src: decodeURIComponent(diagram.symbol.src),
@@ -1275,26 +1297,26 @@ const BlockDiagram = () => {
         console.log("Decoded simulation diagrams:", fetchedDiagrams);
 
         // Ensure all diagrams are retrieved and replace existing state
-        setDroppedItems(fetchedDiagrams);
+        dispatch(setDroppedItems(fetchedDiagrams));
 
         setIsFetched(true);
         lastSavedDiagrams.current = fetchedDiagrams;
       } else {
         console.warn("No simulation diagrams found, initializing empty state.");
-        setDroppedItems([]);
+        dispatch(setDroppedItems([]));
         setIsFetched(false);
         lastSavedDiagrams.current = [];
       }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         console.warn("No stored simulation diagrams yet for this project.");
-        setDroppedItems([]);
+        dispatch(setDroppedItems([]));
         setIsFetched(false);
         lastSavedDiagrams.current = [];
         return;
       }
       console.error("Error fetching diagrams:", err);
-      setDroppedItems([]);
+      dispatch(setDroppedItems([]));
       setIsFetched(false);
       lastSavedDiagrams.current = [];
     }
@@ -1408,9 +1430,15 @@ const BlockDiagram = () => {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Delete" && activeSymbol !== null) {
-        setDroppedItems((prev) =>
-          prev.filter((_, index) => index !== activeSymbol)
-        );
+        const itemToDelete = droppedItems[activeSymbol];
+        if (itemToDelete) {
+          // If we have an ID, use it. Otherwise use index filtering.
+          // Since we are moving to IDs, let's try to use ID if available.
+          // But activeSymbol is an INDEX in the current logic.
+          // We need to filter by index.
+          const newItems = droppedItems.filter((_, index) => index !== activeSymbol);
+          dispatch(setDroppedItems(newItems));
+        }
         setActiveSymbol(null); // Reset active symbol after deletion
       }
     };
@@ -1485,9 +1513,8 @@ const BlockDiagram = () => {
 
   const handleDelete = () => {
     if (contextMenu) {
-      setDroppedItems((items) =>
-        items.filter((_, index) => index !== contextMenu.symbolIndex)
-      );
+      const newItems = droppedItems.filter((_, index) => index !== contextMenu.symbolIndex);
+      dispatch(setDroppedItems(newItems));
       setContextMenu(null);
       setActiveSymbol(null);
       alert("Symbol deleted successfully!");
@@ -1509,31 +1536,32 @@ const BlockDiagram = () => {
   };
 
   // Handle connection detection and notification
-  const handleConnectionDetection = (movedIndex, newPosition) => {
-    console.log('🔍 Checking connections for component:', movedIndex);
-    console.log('Current position:', newPosition);
+  // Handle connection detection and notification
+  const handleConnectionDetection = (movedItem) => {
+    console.log('🔍 Checking connections for component:', movedItem.id);
+    console.log('Current position:', { x: movedItem.x, y: movedItem.y });
     console.log('Total components:', droppedItems.length);
 
-    const movedItem = { ...droppedItems[movedIndex], ...newPosition };
-
-    droppedItems.forEach((item, index) => {
-      if (index === movedIndex) return; // Skip self
+    droppedItems.forEach((item) => {
+      if (item.id === movedItem.id) return; // Skip self
 
       const distance = Math.sqrt(
         Math.pow((item.x + item.width / 2) - (movedItem.x + movedItem.width / 2), 2) +
         Math.pow((item.y + item.height / 2) - (movedItem.y + movedItem.height / 2), 2)
       );
 
-      console.log(`Distance to component ${index}:`, distance);
+      console.log(`Distance to component ${item.id}:`, distance);
 
       if (checkProximity(movedItem, item)) {
-        const connectionKey = [movedIndex, index].sort().join("-");
+        // Create a consistent key based on sorted IDs
+        const connectionKey = [movedItem.id, item.id].sort().join("-");
         console.log('✅ Connection detected!', connectionKey);
 
         // Only show toast if not already connected
-        if (!connections.has(connectionKey)) {
+        // connections is now an array from Redux
+        if (!connections.includes(connectionKey)) {
           console.log('🎉 New connection! Showing toast...');
-          setConnections(prev => new Set([...prev, connectionKey]));
+          dispatch(addConnection(connectionKey));
 
           // Calculate connection point (midpoint between components)
           const connectionX = (movedItem.x + movedItem.width / 2 + item.x + item.width / 2) / 2;
@@ -1578,7 +1606,7 @@ const BlockDiagram = () => {
     const savedData = localStorage.getItem("savedDesign");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
-      setDroppedItems(
+      dispatch(setDroppedItems(
         parsedData.map((item) => ({
           ...item,
           x: item.x || 100, // Preserve original x-position
@@ -1587,7 +1615,7 @@ const BlockDiagram = () => {
           height: item.height || 120, // Preserve height
           rotation: item.rotation || 0, // Preserve rotation
         }))
-      );
+      ));
       alert("Design loaded successfully!");
     } else {
       alert("No saved design found.");
@@ -1640,20 +1668,20 @@ const BlockDiagram = () => {
       drop: (item, monitor) => {
         const offset = monitor.getClientOffset();
         if (item && item.symbol && offset) {
-          setDroppedItems((prev) => {
-            const newSymbol = {
-              symbol: item.symbol,
-              x: offset.x - 100,
-              y: offset.y - 100,
-              width: 120,
-              height: 120,
-              rotation: 0,
-            };
-            return [...prev, newSymbol];
-          });
+          const newSymbol = {
+            symbol: item.symbol,
+            x: offset.x - 100,
+            y: offset.y - 100,
+            width: 120,
+            height: 120,
+            rotation: 0,
+            id: Date.now() + Math.random(),
+          };
+          dispatch(addDroppedItem(newSymbol));
+          setActiveSymbol(droppedItems.length);
         }
       },
-    }));
+    }), [droppedItems]);
 
     const handleRotateStart = (index, event) => {
       event.preventDefault();
@@ -1676,19 +1704,32 @@ const BlockDiagram = () => {
           Math.atan2(currentY - centerY, currentX - centerX) * (180 / Math.PI);
 
         const angleChange = newAngle - startAngle;
+        const newRotation = startRotation + angleChange;
 
-        setDroppedItems((prev) =>
-          prev.map((item, i) =>
-            i === index
-              ? { ...item, rotation: startRotation + angleChange }
-              : item
-          )
-        );
+        setRotatingItem({ index, rotation: newRotation });
       };
 
-      const handleMouseUp = () => {
+      const handleMouseUp = (e) => {
         window.removeEventListener("mousemove", handleMouseMove);
         window.removeEventListener("mouseup", handleMouseUp);
+
+        // Dispatch final rotation
+        // We need to calculate the final rotation again or use the last state?
+        // Better to recalculate or just use the last known if we had a ref.
+        // But since we are in a closure, we can just recalculate one last time or use the setRotatingItem value?
+        // Actually, let's just recalculate to be safe and clean.
+
+        const currentX = e.clientX;
+        const currentY = e.clientY;
+        const newAngle =
+          Math.atan2(currentY - centerY, currentX - centerX) * (180 / Math.PI);
+        const angleChange = newAngle - startAngle;
+
+        dispatch(updateDroppedItem({
+          id: symbol.id,
+          rotation: startRotation + angleChange
+        }));
+        setRotatingItem(null);
       };
 
       window.addEventListener("mousemove", handleMouseMove);
@@ -1696,19 +1737,16 @@ const BlockDiagram = () => {
     };
 
     const handleResizeStop = (index, _dir, ref, delta, position) => {
-      setDroppedItems((prev) =>
-        prev.map((item, i) =>
-          i === index
-            ? {
-              ...item,
-              width: parseFloat(ref.style.width), // Ensure width is updated
-              height: parseFloat(ref.style.height), // Ensure height is updated
-              x: position.x,
-              y: position.y,
-            }
-            : item
-        )
-      );
+      const item = droppedItems[index];
+      if (item) {
+        dispatch(updateDroppedItem({
+          id: item.id,
+          width: ref.offsetWidth,
+          height: ref.offsetHeight,
+          x: position.x,
+          y: position.y,
+        }));
+      }
     };
 
     const handleSelect = (index) => {
@@ -1716,212 +1754,276 @@ const BlockDiagram = () => {
     };
 
     return (
-      <div
-        ref={drop}
-        className="canvas-placeholder"
-        style={{
-          width: "100%",
-          height: "100vh",
-          position: "relative",
-          backgroundColor: "white",
-        }}
-        onClick={() => setActiveSymbol(null)} // Deselects when clicking outside
-      >
-        {droppedItems.map((item, index) => (
-          <Rnd
-            key={index}
-            position={{ x: item.x, y: item.y }}
-            size={{ width: item.width, height: item.height }}
-            enableResizing={activeSymbol === index}
-            disableDragging={false}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleSelect(index);
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              handleSelect(index);
-            }}
-            onResize={(e, dir, ref) => {
-              // Update dimensions during resize for live feedback
-              const newWidth = ref.offsetWidth;
-              const newHeight = ref.offsetHeight;
-              setDroppedItems((prev) =>
-                prev.map((i, idx) =>
-                  idx === index ? { ...i, width: newWidth, height: newHeight } : i
-                )
-              );
-            }}
-            onResizeStop={(e, dir, ref, delta, position) =>
-              handleResizeStop(index, dir, ref, delta, position)
-            }
-            onDragStop={(e, d) => {
-              setDroppedItems((prev) =>
-                prev.map((item, i) =>
-                  i === index ? { ...item, x: d.x, y: d.y } : item
-                )
-              );
-              // Check for connections after drag
-              handleConnectionDetection(index, { x: d.x, y: d.y });
-            }}
+      <>
+        <style>
+          {`
+          @keyframes spark-scale {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+          }
+        `}
+        </style>
+        <div
+          ref={drop}
+          className="canvas-placeholder"
+          style={{
+            width: "100%",
+            height: "100vh",
+            position: "relative",
+            backgroundColor: "white",
+          }}
+          onClick={() => setActiveSymbol(null)} // Deselects when clicking outside
+        >
+          {/* Connection Lines Layer */}
+          <svg
             style={{
-              transform: `rotate(${item.rotation}deg)`,
-              transformOrigin: "center",
-              border: activeSymbol === index ? "2px dashed blue" : "none",
               position: "absolute",
-              cursor: "move",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              pointerEvents: "none", // Allow clicks to pass through to canvas/items
+              zIndex: 0,
             }}
           >
-            <div
-              style={{ position: "relative", width: "100%", height: "100%" }}
-            >
-              <Tooltip
-                label={item.symbol.name}
-                placement="top"
-                hasArrow
-                bg="gray.700"
-                color="white"
-                fontSize="sm"
-                px={3}
-                py={2}
-                borderRadius="md"
-              >
-                <img
-                  src={item.symbol.src}
-                  alt={item.symbol.name}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    pointerEvents: "all",
-                    transform: `rotate(${item.rotation}deg)`,
-                  }}
-                />
-              </Tooltip>
-              {activeSymbol === index && (
-                <div
-                  className="rotate-handle"
-                  style={{
-                    position: "absolute",
-                    top: "-25px", // Move slightly higher for better reach
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "30px", // Increase handle size
-                    height: "30px",
-                    background: "rgba(0, 0, 255, 0.7)", // Slight transparency for better visibility
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor:
-                      "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto", // Custom rotation cursor
-                    transition: "transform 0.2s ease-in-out",
-                  }}
-                  onMouseDown={(e) => {
-                    e.target.style.cursor = "grabbing"; // Change cursor on click
-                    handleRotateStart(index, e);
-                  }}
-                  onMouseUp={(e) => {
-                    e.target.style.cursor =
-                      "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto";
-                  }}
-                >
-                  🔄 {/* Unicode icon for rotation visual cue */}
-                </div>
-              )}
-              {/* Size display overlay */}
-              {activeSymbol === index && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "-35px",
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    background: "rgba(0, 0, 0, 0.8)",
-                    color: "white",
-                    padding: "4px 12px",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    fontWeight: "600",
-                    whiteSpace: "nowrap",
-                    pointerEvents: "none",
-                    zIndex: 1000,
-                  }}
-                >
-                  {Math.round(item.width)} × {Math.round(item.height)} px
-                </div>
-              )}
-            </div>
-          </Rnd>
-        ))}
+            {connections.map((connKey) => {
+              const [id1, id2] = connKey.split("-");
+              // IDs are stored as strings in connection key, but might be numbers in items
+              // Convert to string for comparison or just use loose equality if safe, but explicit is better.
+              const item1 = droppedItems.find((i) => String(i.id) === id1);
+              const item2 = droppedItems.find((i) => String(i.id) === id2);
 
-        {/* Spark effects */}
-        {sparkEffects.map((spark) => (
-          <div
-            key={spark.id}
-            style={{
-              position: "absolute",
-              left: spark.x,
-              top: spark.y,
-              width: "60px",
-              height: "60px",
-              transform: "translate(-50%, -50%)",
-              pointerEvents: "none",
-              zIndex: 9999,
-            }}
-          >
-            {/* Spark animation */}
+              if (item1 && item2) {
+                return (
+                  <line
+                    key={connKey}
+                    x1={item1.x + item1.width / 2}
+                    y1={item1.y + item1.height / 2}
+                    x2={item2.x + item2.width / 2}
+                    y2={item2.y + item2.height / 2}
+                    stroke="black"
+                    strokeWidth="2"
+                    strokeDasharray="5,5" // Optional: dashed line
+                  />
+                );
+              }
+              return null;
+            })}
+          </svg>
+
+          {/* Spark Effects Layer */}
+          {sparkEffects.map((spark) => (
             <div
+              key={spark.id}
               style={{
                 position: "absolute",
-                width: "100%",
-                height: "100%",
-                borderRadius: "50%",
-                background: "radial-gradient(circle, #FFD700 0%, #FFA500 30%, transparent 70%)",
-                animation: "sparkPulse 0.5s ease-out",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                width: "100%",
-                height: "100%",
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.5) 40%, transparent 70%)",
-                animation: "sparkExpand 0.5s ease-out",
-              }}
-            />
-            {/* Lightning bolt emoji */}
-            <div
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
+                left: spark.x,
+                top: spark.y,
                 transform: "translate(-50%, -50%)",
-                fontSize: "32px",
-                animation: "sparkRotate 0.5s ease-out",
+                pointerEvents: "none",
+                zIndex: 1000,
               }}
             >
-              ⚡
+              <div className="spark-animation" style={{
+                width: "40px",
+                height: "40px",
+                background: "radial-gradient(circle, rgba(255,255,0,1) 0%, rgba(255,165,0,0) 70%)",
+                borderRadius: "50%",
+                animation: "spark-scale 0.5s ease-out forwards",
+              }} />
             </div>
-          </div>
-        ))}
+          ))}
 
-        {contextMenu && (
-          <div
-            ref={contextMenuRef}
-            className="context-menu"
-            style={{
-              position: "fixed",
-              top: contextMenu.y,
-              left: contextMenu.x,
-            }}
-          >
-            <button onClick={handleDelete} className="delete-button">
-              <FiTrash size={16} /> Delete
-            </button>
-          </div>
-        )}
-      </div>
+          {droppedItems.map((item, index) => (
+            <Rnd
+              key={index}
+              position={{ x: item.x, y: item.y }}
+              size={{ width: item.width, height: item.height }}
+              enableResizing={activeSymbol === index}
+              disableDragging={false}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSelect(index);
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                handleSelect(index);
+              }}
+              onResizeStop={(e, dir, ref, delta, position) =>
+                handleResizeStop(index, dir, ref, delta, position)
+              }
+              onDragStop={(e, d) => {
+                const item = droppedItems[index];
+                if (item) {
+                  const updatedItem = { ...item, x: d.x, y: d.y };
+                  dispatch(updateDroppedItem({
+                    id: item.id,
+                    x: d.x,
+                    y: d.y
+                  }));
+                  // Check for connections after drag
+                  handleConnectionDetection(updatedItem);
+                }
+              }}
+              style={{
+                transform: `rotate(${rotatingItem?.index === index ? rotatingItem.rotation : item.rotation}deg)`,
+                transformOrigin: "center",
+                border: activeSymbol === index ? "2px dashed blue" : "none",
+                position: "absolute",
+                cursor: "move",
+              }}
+            >
+              <div
+                style={{ position: "relative", width: "100%", height: "100%" }}
+              >
+                <Tooltip
+                  label={item.symbol.name}
+                  placement="top"
+                  hasArrow
+                  bg="gray.700"
+                  color="white"
+                  fontSize="sm"
+                  px={3}
+                  py={2}
+                  borderRadius="md"
+                >
+                  <img
+                    src={item.symbol.src}
+                    alt={item.symbol.name}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      pointerEvents: "all",
+                      transform: `rotate(${item.rotation}deg)`,
+                    }}
+                  />
+                </Tooltip>
+                {activeSymbol === index && (
+                  <div
+                    className="rotate-handle"
+                    style={{
+                      position: "absolute",
+                      top: "-25px", // Move slightly higher for better reach
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      width: "30px", // Increase handle size
+                      height: "30px",
+                      background: "rgba(0, 0, 255, 0.7)", // Slight transparency for better visibility
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor:
+                        "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto", // Custom rotation cursor
+                      transition: "transform 0.2s ease-in-out",
+                    }}
+                    onMouseDown={(e) => {
+                      e.target.style.cursor = "grabbing"; // Change cursor on click
+                      handleRotateStart(index, e);
+                    }}
+                    onMouseUp={(e) => {
+                      e.target.style.cursor =
+                        "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto";
+                    }}
+                  >
+                    🔄 {/* Unicode icon for rotation visual cue */}
+                  </div>
+                )}
+                {/* Size display overlay */}
+                {activeSymbol === index && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: "-35px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      background: "rgba(0, 0, 0, 0.8)",
+                      color: "white",
+                      padding: "4px 12px",
+                      borderRadius: "4px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      zIndex: 1000,
+                    }}
+                  >
+                    {Math.round(item.width)} × {Math.round(item.height)} px
+                  </div>
+                )}
+              </div>
+            </Rnd>
+          ))}
+
+          {/* Spark effects */}
+          {sparkEffects.map((spark) => (
+            <div
+              key={spark.id}
+              style={{
+                position: "absolute",
+                left: spark.x,
+                top: spark.y,
+                width: "60px",
+                height: "60px",
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+                zIndex: 9999,
+              }}
+            >
+              {/* Spark animation */}
+              <div
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, #FFD700 0%, #FFA500 30%, transparent 70%)",
+                  animation: "sparkPulse 0.5s ease-out",
+                }}
+              />
+              <div
+                style={{
+                  position: "absolute",
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.5) 40%, transparent 70%)",
+                  animation: "sparkExpand 0.5s ease-out",
+                }}
+              />
+              {/* Lightning bolt emoji */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  fontSize: "32px",
+                  animation: "sparkRotate 0.5s ease-out",
+                }}
+              >
+                ⚡
+              </div>
+            </div>
+          ))}
+
+          {contextMenu && (
+            <div
+              ref={contextMenuRef}
+              className="context-menu"
+              style={{
+                position: "fixed",
+                top: contextMenu.y,
+                left: contextMenu.x,
+              }}
+            >
+              <button onClick={handleDelete} className="delete-button">
+                <FiTrash size={16} /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </>
     );
   };
   return (
@@ -1992,6 +2094,15 @@ const BlockDiagram = () => {
             </SimulationPopup>
 
             {/* <CodeDrawer /> */}
+
+            <Button
+              width={"auto"}
+              colorScheme="teal"
+              size="sm"
+              onClick={() => navigate("/view-data")}
+            >
+              View Data
+            </Button>
           </Box>
         </div>
 
@@ -2134,42 +2245,14 @@ const BlockDiagram = () => {
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
+                justifyContent: "flex-end",
                 backgroundColor: "#27374D",
                 padding: "8px",
                 borderRadius: "8px",
                 marginBottom: "10px",
-                overflowX: "auto",
                 border: "1px solid rgba(221,230,237,0.2)",
               }}
             >
-              <div style={{
-                display: "flex",
-                alignItems: "center"
-              }}>
-                {tabs.map((tab) => (
-                  <div
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      backgroundColor:
-                        activeTab === tab.id ? "#DDE6ED" : "rgba(39,55,77,0.5)",
-                      color: activeTab === tab.id ? "#27374D" : "#DDE6ED",
-                      padding: "6px 14px",
-                      borderRadius: "6px",
-                      marginRight: "8px",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      minWidth: "fit-content",
-                      border: "1px solid rgba(221,230,237,0.24)",
-                    }}
-                  >
-                    <span style={{ marginRight: "8px" }}>{tab.name}</span>
-                  </div>
-                ))}
-              </div>
               <DefineProductButton position="inline" />
             </div>
 

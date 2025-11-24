@@ -18,7 +18,7 @@ const ScientificCalculator = ({ onSaveEquation }) => {
   };
 
   const handleOperator = (op) => {
-    setExpression(display + ' ' + op + ' ');
+    setExpression(expression + display + ' ' + op + ' ');
     setDisplay('0');
   };
 
@@ -97,7 +97,7 @@ const ScientificCalculator = ({ onSaveEquation }) => {
           result = value * value * value;
           break;
         case 'pow':
-          setExpression(display + ' ^ ');
+          setExpression(expression + display + ' ^ ');
           setDisplay('0');
           return;
         case 'exp':
@@ -200,10 +200,10 @@ const ScientificCalculator = ({ onSaveEquation }) => {
         result: display,
         timestamp: new Date().toLocaleString()
       };
-      
+
       // Add to local state
       setSavedEquations([newEquation, ...savedEquations]);
-      
+
       // Call parent callback if provided
       if (typeof onSaveEquation === 'function') {
         onSaveEquation(newEquation);
@@ -254,7 +254,7 @@ const ScientificCalculator = ({ onSaveEquation }) => {
       // f'(x) ≈ (f(x+h) - f(x-h)) / (2h)
       const xNum = parseFloat(x);
       if (isNaN(xNum)) return NaN;
-      
+
       // For simple expressions like x^2, we'll use numerical differentiation
       const f = (val) => {
         try {
@@ -265,7 +265,7 @@ const ScientificCalculator = ({ onSaveEquation }) => {
           return NaN;
         }
       };
-      
+
       const derivative = (f(xNum + h) - f(xNum - h)) / (2 * h);
       return derivative;
     } catch (error) {
@@ -279,7 +279,7 @@ const ScientificCalculator = ({ onSaveEquation }) => {
       const aNum = parseFloat(a);
       const bNum = parseFloat(b);
       if (isNaN(aNum) || isNaN(bNum)) return NaN;
-      
+
       const f = (val) => {
         try {
           const expr = func.replace(/x/g, `(${val})`);
@@ -288,15 +288,15 @@ const ScientificCalculator = ({ onSaveEquation }) => {
           return NaN;
         }
       };
-      
+
       const h = (bNum - aNum) / n;
       let sum = f(aNum) + f(bNum);
-      
+
       for (let i = 1; i < n; i++) {
         const x = aNum + i * h;
         sum += i % 2 === 0 ? 2 * f(x) : 4 * f(x);
       }
-      
+
       return (h / 3) * sum;
     } catch (error) {
       return NaN;
@@ -308,23 +308,23 @@ const ScientificCalculator = ({ onSaveEquation }) => {
       if (operation === 'derivative') {
         const expr = prompt('Enter function (use x as variable):', 'x^2');
         if (!expr) return;
-        
+
         const x = prompt('Enter x value:', '1');
         if (x === null) return;
-        
+
         const result = calculateDerivative(expr, x);
         setExpression(`d/dx(${expr}) at x=${x}`);
         setDisplay(result.toString());
       } else if (operation === 'integral') {
         const expr = prompt('Enter function (use x as variable):', 'x^2');
         if (!expr) return;
-        
+
         const a = prompt('Enter lower limit (a):', '0');
         if (a === null) return;
-        
+
         const b = prompt('Enter upper limit (b):', '1');
         if (b === null) return;
-        
+
         const result = calculateIntegral(expr, a, b);
         setExpression(`∫(${expr})dx from ${a} to ${b}`);
         setDisplay(result.toString());
@@ -354,8 +354,8 @@ const ScientificCalculator = ({ onSaveEquation }) => {
               DEG
             </button>
           </div>
-          <div className="equations-dropdown " style={{display:"none"}}>
-            <button 
+          <div className="equations-dropdown " style={{ display: "none" }}>
+            <button
               className="list-btn"
               onClick={() => setShowEquationsList(!showEquationsList)}
               title="Saved Equations"
@@ -365,8 +365,8 @@ const ScientificCalculator = ({ onSaveEquation }) => {
             {showEquationsList && savedEquations.length > 0 && (
               <div className="equations-list">
                 {savedEquations.map((eq) => (
-                  <div 
-                    key={eq.id} 
+                  <div
+                    key={eq.id}
                     className="equation-item"
                     onClick={() => handleLoadEquation(eq)}
                   >
@@ -465,7 +465,7 @@ const ScientificCalculator = ({ onSaveEquation }) => {
         <button onClick={handleInsertFile} className="btn-insert">Insert</button>
       </div>
     </div>
-   
+
   );
 };
 

@@ -2,18 +2,18 @@ import { Tabs, TabList, TabPanels, Tab, TabPanel, Box } from "@chakra-ui/react";
 import { LuFolder, LuSquareCheck, LuUser } from "react-icons/lu";
 import SelectProduct from "./SelectProduct";
 import { useEffect } from "react";
-import Navbar from "../EmbeddedFileManagement/Navbar";
-import Footer from "../Footer";
+import EditorNavbar from "../EditorNavbar";
+
+
 const VisualizeData = () => {
   return (
     <>
-      <Navbar />
+      <EditorNavbar />
       <Box
         style={{
-          marginTop: "1.5rem",
-          minHeight: "100vh",
-          padding: "50px",
-          backgroundColor: "whitesmoke",
+          marginTop: "70px",
+          minHeight: "calc(100vh - 70px)",
+          padding: "20px",
         }}
       >
         <Tabs defaultIndex={0}>
@@ -31,7 +31,7 @@ const VisualizeData = () => {
           </TabPanels>
         </Tabs>
       </Box>
-      <Footer />
+
     </>
   );
 };

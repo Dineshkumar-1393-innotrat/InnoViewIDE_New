@@ -1505,7 +1505,9 @@ import {
 } from 'lucide-react';
 import './EditorNavbar.css';
 import hexLogo from '../assets/hex_bg.png';
-import DyteMeetingLauncher from './DyteMeetingLauncher';
+import DyteMeetingApp from './DyteMeetingApp';
+import { Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody } from '@chakra-ui/react';
+// import DyteMeetingLauncher from './DyteMeetingLauncher';
 
 const IDENTITY_FIELDS = [
   'name',
@@ -1630,6 +1632,7 @@ const EditorNavbar = ({
   const [isSerialActive, setIsSerialActive] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isDownloadMenuOpen, setDownloadMenuOpen] = useState(false);
+  const [isVideoCallOpen, setVideoCallOpen] = useState(false);
 
   useEffect(() => {
     if (!accountOpen && !activeMenu && !isDownloadMenuOpen) return;
@@ -2020,7 +2023,15 @@ const EditorNavbar = ({
             )}
           </div>
         )}
-        <DyteMeetingLauncher participantName={displayName} meetingTitle={`${displayName}'s Workspace Session`} />
+        {/* Video Call Button */}
+        <button
+          type="button"
+          className="editor-navbar__icon-btn"
+          title="Video Call"
+          onClick={() => setVideoCallOpen(true)}
+        >
+          <Video size={18} />
+        </button>
         {/* <button type="button" className="editor-navbar__icon-btn" title="Templates">
           <Braces size={18} />
         </button> */}
@@ -2103,6 +2114,17 @@ const EditorNavbar = ({
           </div>
         </div>
       )}
+
+      {/* Video Call Modal */}
+      <Modal isOpen={isVideoCallOpen} onClose={() => setVideoCallOpen(false)} size="6xl">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalCloseButton />
+          <ModalBody p={0}>
+            <DyteMeetingApp onClose={() => setVideoCallOpen(false)} />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </header>
   );
 };

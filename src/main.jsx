@@ -28,15 +28,23 @@ const router = createBrowserRouter([
   }
 });
 
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './store/store';
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <GoogleOAuthProvider 
-      clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
-      onScriptLoadError={(err) => console.error('Google OAuth script failed to load:', err)}
-    >
-      <ChakraProvider theme={theme}>
-        <RouterProvider router={router} />
-      </ChakraProvider>
-    </GoogleOAuthProvider>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <GoogleOAuthProvider
+          clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+          onScriptLoadError={(err) => console.error('Google OAuth script failed to load:', err)}
+        >
+          <ChakraProvider theme={theme}>
+            <RouterProvider router={router} />
+          </ChakraProvider>
+        </GoogleOAuthProvider>
+      </PersistGate>
+    </Provider>
   </React.StrictMode>
 );

@@ -75,20 +75,18 @@ const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colo
         <FileExplorer variant="diagram" />
       </Box>
       {/* Only show Flash panel when device is connected */}
-      {isDeviceConnected && (
-        <Box
-          borderTop="1px solid"
-          borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
-          p={2}
-          maxH="240px"
-          minH="200px"
-          h="50%"
-          overflowY="auto"
-          transition="all 0.3s ease"
-        >
-          <Flash onFlashComplete={onFlashComplete} onFlashStart={onFlashStart} />
-        </Box>
-      )}
+      <Box
+        borderTop="1px solid"
+        borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
+        p={2}
+        maxH="240px"
+        minH="200px"
+        h="50%"
+        overflowY="auto"
+        transition="all 0.3s ease"
+      >
+        <Flash onFlashComplete={onFlashComplete} onFlashStart={onFlashStart} />
+      </Box>
     </Box>
   );
 };

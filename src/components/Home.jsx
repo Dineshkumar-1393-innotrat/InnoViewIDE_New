@@ -245,6 +245,7 @@ const Home = () => {
                       onChange={handleInputChange}
                       width="100px"
                       marginRight="2"
+                      color="black"
                     >
                       <option value="+91">+91</option>
                     </Select>
@@ -257,6 +258,8 @@ const Home = () => {
                       focusBorderColor="blue.500"
                       value={formData.mobileNumber}
                       onChange={handleInputChange}
+                      color="black"
+                      _placeholder={{ color: "gray.400" }}
                     />
                   </InputGroup>
                 </FormControl>
