@@ -605,41 +605,49 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
       <Flex
         direction="column"
-        minH="calc(100vh - 88px)"
+        h="calc(100vh - 72px)"
         w="100%"
-        pt={3}
-        pb={4}
+        pt={0}
+        pb={0}
         mt="72px"
-        px={{ base: 2, lg: 4 }}
+        px={0}
         bg={colorMode === "dark" ? "#0b1220" : "#f5f7fb"}
-        gap={3}
+        gap={0}
+        overflow="hidden"
       >
-        <Flex flex="1" gap={3} overflow="hidden" align="stretch">
+        <Flex flex="1" gap={0} overflow="hidden" align="stretch">
           <Box
-            // w={{ base: "280px", lg: "320px" }}
             bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
-            border="1px solid"
-            borderColor={colorMode === "dark" ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.08)"}
-            borderRadius="xl"
-            boxShadow={colorMode === "dark" ? "0 30px 60px rgba(8,15,32,0.55)" : "0 24px 56px rgba(15,23,42,0.08)"}
             px={3}
             py={4}
             display="flex"
             flexDirection="column"
             gap={3}
-            backdropFilter="blur(16px)"
+            h="100%"
+            overflowY="auto"
+            css={{
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: colorMode === "dark" ? "rgba(15,23,42,0.3)" : "rgba(15,23,42,0.05)",
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: colorMode === "dark" ? "rgba(148,163,184,0.3)" : "rgba(148,163,184,0.4)",
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: colorMode === "dark" ? "rgba(148,163,184,0.5)" : "rgba(148,163,184,0.6)",
+              },
+            }}
           >
             <Box
               flex="1"
               display="flex"
               flexDirection="column"
               gap={2}
-              borderRadius="lg"
               bg={colorMode === "dark" ? "rgba(11,18,32,0.85)" : "rgba(15,23,42,0.02)"}
-              border="1px solid"
-              borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
               overflow="hidden"
-              boxShadow={colorMode === "dark" ? "inset 0 1px 0 rgba(255,255,255,0.04)" : "inset 0 1px 0 rgba(255,255,255,0.9)"}
             >
               <FileExplorerWithFlash
                 isFlashing={isFlashing}
@@ -650,14 +658,32 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             </Box>
           </Box>
 
-          <Flex flex="1" direction="column" gap={3} minW={0}>
+          <Flex
+            flex="1"
+            direction="column"
+            gap={3}
+            minW={0}
+            h="100%"
+            overflowY="auto"
+            css={{
+              '&::-webkit-scrollbar': {
+                width: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: colorMode === "dark" ? "rgba(15,23,42,0.3)" : "rgba(15,23,42,0.05)",
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: colorMode === "dark" ? "rgba(148,163,184,0.3)" : "rgba(148,163,184,0.4)",
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb:hover': {
+                background: colorMode === "dark" ? "rgba(148,163,184,0.5)" : "rgba(148,163,184,0.6)",
+              },
+            }}
+          >
             <Box
               position="relative"
-              borderRadius="xl"
               bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
-              border="1px solid"
-              borderColor={colorMode === "dark" ? "rgba(148,163,184,0.14)" : "rgba(15,23,42,0.1)"}
-              boxShadow={colorMode === "dark" ? "0 40px 80px rgba(8,15,32,0.55)" : "0 32px 64px rgba(15,23,42,0.1)"}
               px={{ base: 2, md: 4 }}
               py={{ base: 2, md: 4 }}
               display="flex"
@@ -681,7 +707,6 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                         color={isActive ? "white" : colorMode === "dark" ? "rgba(226,232,240,0.8)" : "#0f172a"}
                         fontSize="xs"
                         flexShrink={0}
-                        borderRadius="md"
                         whiteSpace="nowrap"
                         cursor="pointer"
                         transition="all 0.2s ease"
@@ -795,10 +820,6 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         >
           <Box
             bg={colorMode === "dark" ? "rgba(15,23,42,0.92)" : "white"}
-            borderRadius="xl"
-            border="1px solid"
-            borderColor={colorMode === "dark" ? "rgba(148,163,184,0.2)" : "rgba(15,23,42,0.12)"}
-            boxShadow={colorMode === "dark" ? "0 40px 80px rgba(8,15,32,0.65)" : "0 24px 64px rgba(15,23,42,0.12)"}
             p={5}
             display="flex"
             flexDirection="column"
