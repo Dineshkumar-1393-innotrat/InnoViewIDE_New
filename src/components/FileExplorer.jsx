@@ -23,7 +23,8 @@ import {
   FolderPlus,
   FilePlus,
   MoreVertical,
-  Pencil
+  Pencil,
+  RefreshCw
 } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -40,6 +41,8 @@ import {
 const FileExplorer = ({ variant }) => {
   const [fileSystem, setFileSystem] = useState({});
   const [user, setUser] = useState({});
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const navigate = useNavigate();
 
@@ -78,9 +81,21 @@ const FileExplorer = ({ variant }) => {
     const userInfo = getUserInfo();
     if (userInfo) {
       setUser(userInfo);
-      fetchFileSystem(userInfo?.userId, setFileSystem, buildTree);
+      loadFileSystem(userInfo.userId);
+    } else {
+      setError("User not logged in");
     }
   }, []);
+
+  const loadFileSystem = async (userId) => {
+    setIsLoading(true);
+    setError(null);
+    const result = await fetchFileSystem(userId, setFileSystem, buildTree);
+    if (result && !result.success) {
+      setError(result.error);
+    }
+    setIsLoading(false);
+  };
 
   const openCreateModal = (parent, type) => {
     setCreateItemParent(parent);
@@ -95,7 +110,7 @@ const FileExplorer = ({ variant }) => {
 
   const handleRefresh = () => {
     if (user?.userId) {
-      fetchFileSystem(user.userId, setFileSystem, buildTree);
+      loadFileSystem(user.userId);
     }
   };
 
@@ -171,7 +186,7 @@ const FileExplorer = ({ variant }) => {
     if (lowerName === "simulation.c" || lowerName.includes("simulation")) {
       navigate("/simulation");
     } else if (lowerName.includes("flowchart") || lowerName.includes("flow chart")) {
-      navigate("/flowcharttest");
+      navigate("/FlowchartTest");
     } else if (lowerName.includes("block diagram")) {
       navigate("/BlockDiagram");
     } else if (lowerName.includes("block programming")) {
@@ -393,6 +408,27 @@ const FileExplorer = ({ variant }) => {
         >
           Create New Project
         </Button>
+      </Box>
+
+      {error && (
+        <Box px={2} py={2} mb={2} bg="red.50" color="red.500" borderRadius="md" fontSize="xs">
+          <Text fontWeight="bold">Error loading files:</Text>
+          <Text>{error}</Text>
+          <Button size="xs" mt={2} colorScheme="red" variant="outline" onClick={handleRefresh} isLoading={isLoading}>
+            Retry
+          </Button>
+        </Box>
+      )}
+
+      <Box px={1} mb={2} display="flex" justifyContent="flex-end">
+        <IconButton
+          icon={<RefreshCw size={14} />}
+          size="xs"
+          aria-label="Refresh"
+          onClick={handleRefresh}
+          isLoading={isLoading}
+          variant="ghost"
+        />
       </Box>
 
       <Box flex="1" overflowY="auto" className="custom-scrollbar" px={1}>

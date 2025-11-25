@@ -87,7 +87,7 @@ export const buildTree = (flatArray) => {
 
 // Fetch file system and ensure root folder exists
 export const fetchFileSystem = async (userId, setFileSystem, buildTree) => {
-  if (!userId) return;
+  if (!userId) return { success: false, error: "No User ID provided" };
 
   try {
     const { data } = await axios.get(
@@ -113,9 +113,13 @@ export const fetchFileSystem = async (userId, setFileSystem, buildTree) => {
     if (fileResponse.data.success) {
       const structuredData = buildTree(fileResponse.data.files);
       setFileSystem(structuredData);
+      return { success: true };
+    } else {
+      return { success: false, error: "Failed to fetch files" };
     }
   } catch (error) {
     console.error("Error fetching file system:", error);
+    return { success: false, error: error.message || "Unknown error" };
   }
 };
 
@@ -640,9 +644,9 @@ const EmbeddedFileManagement = () => {
                     value={file}
                     updateFileContent={updateFileContent}
 
-                    // onChange={(newValue) =>
-                    //   updateFileContent(file.name, newValue)
-                    // }
+                  // onChange={(newValue) =>
+                  //   updateFileContent(file.name, newValue)
+                  // }
                   />
                 </TabPanel>
               ))}

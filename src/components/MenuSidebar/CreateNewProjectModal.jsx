@@ -143,8 +143,15 @@ const CreateNewProjectModal = ({
         throw new Error("File/Folder creation failed.");
       }
 
-      if (feature === "writeCode") navigate("/editor");
-      else navigate(`/${feature}`);
+      // Navigate based on selected feature
+      const routeMap = {
+        writeCode: "/editor",
+        flowChart: "/FlowchartTest",
+        blockDiagram: "/BlockDiagram",
+        simulation: "/simulation",
+      };
+
+      navigate(routeMap[feature] || "/editor");
 
       onClose();
     } catch (error) {

@@ -1789,21 +1789,18 @@ const EditorNavbar = ({
         label: 'Flash',
         icon: isFlashing ? <Loader2 size={14} className="spin" /> : <Zap size={14} />,
         handler: handleFlash,
-        disabled: !isDeviceConnected,
       },
       {
         key: 'erase',
         label: 'Erase Chip',
         icon: isErasing ? <Loader2 size={14} className="spin" /> : <Trash size={14} />,
         handler: handleErase,
-        disabled: !isDeviceConnected,
       },
       {
         key: 'serialMonitor',
         label: isSerialActive ? 'Close Serial Monitor' : 'Serial Monitor',
         icon: <Radio size={14} />,
         handler: handleSerialMonitor,
-        disabled: !isDeviceConnected,
       },
       {
         key: 'terminal',

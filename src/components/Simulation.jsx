@@ -1521,8 +1521,52 @@ const BlockDiagram = () => {
     }
   };
 
+  const SNAP_THRESHOLD = 50; // Distance in pixels to trigger snap
+
+  // Calculate the best snap position
+  const calculateSnapPosition = (movedItem, allItems) => {
+    let bestX = movedItem.x;
+    let bestY = movedItem.y;
+    let snapped = false;
+
+    allItems.forEach((item) => {
+      if (item.id === movedItem.id) return;
+
+      const centerX1 = movedItem.x + movedItem.width / 2;
+      const centerY1 = movedItem.y + movedItem.height / 2;
+      const centerX2 = item.x + item.width / 2;
+      const centerY2 = item.y + item.height / 2;
+
+      const distance = Math.sqrt(
+        Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2)
+      );
+
+      // If close enough, snap to a position that aligns centers or edges
+      // For "magnetic" feel, let's pull it towards the other component but keep a small gap or align centers
+      // Here we implement a simple "gravity" pull towards the center if within threshold
+      if (distance < SNAP_THRESHOLD + 100) { // Increased range for "pull"
+        // Calculate vector to target
+        const dx = centerX2 - centerX1;
+        const dy = centerY2 - centerY1;
+
+        // If very close, snap to a fixed distance or align
+        // Let's try to align centers if they are somewhat aligned
+        if (Math.abs(dx) < SNAP_THRESHOLD) {
+          bestX = item.x + item.width / 2 - movedItem.width / 2; // Align vertically
+          snapped = true;
+        }
+        if (Math.abs(dy) < SNAP_THRESHOLD) {
+          bestY = item.y + item.height / 2 - movedItem.height / 2; // Align horizontally
+          snapped = true;
+        }
+      }
+    });
+
+    return { x: bestX, y: bestY, snapped };
+  };
+
   // Check if two components are close enough to be considered "connected"
-  const checkProximity = (item1, item2, threshold = 120) => {
+  const checkProximity = (item1, item2, threshold = 150) => { // Increased threshold
     const centerX1 = item1.x + item1.width / 2;
     const centerY1 = item1.y + item1.height / 2;
     const centerX2 = item2.x + item2.width / 2;
@@ -1761,6 +1805,20 @@ const BlockDiagram = () => {
             0% { transform: scale(0); opacity: 1; }
             100% { transform: scale(1.5); opacity: 0; }
           }
+          @keyframes sparkPulse {
+            0% { transform: scale(0); opacity: 1; }
+            50% { opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+          }
+          @keyframes sparkExpand {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+          }
+          @keyframes sparkRotate {
+            0% { transform: translate(-50%, -50%) rotate(0deg) scale(0); opacity: 0; }
+            50% { opacity: 1; transform: translate(-50%, -50%) rotate(180deg) scale(1.2); }
+            100% { transform: translate(-50%, -50%) rotate(360deg) scale(0); opacity: 0; }
+          }
         `}
         </style>
         <div
@@ -1855,13 +1913,22 @@ const BlockDiagram = () => {
               onDragStop={(e, d) => {
                 const item = droppedItems[index];
                 if (item) {
-                  const updatedItem = { ...item, x: d.x, y: d.y };
+                  // Calculate snapped position
+                  const currentItem = { ...item, x: d.x, y: d.y };
+                  const { x: snappedX, y: snappedY, snapped } = calculateSnapPosition(currentItem, droppedItems);
+
+                  const finalX = snapped ? snappedX : d.x;
+                  const finalY = snapped ? snappedY : d.y;
+
+                  const updatedItem = { ...item, x: finalX, y: finalY };
+
                   dispatch(updateDroppedItem({
                     id: item.id,
-                    x: d.x,
-                    y: d.y
+                    x: finalX,
+                    y: finalY
                   }));
-                  // Check for connections after drag
+
+                  // Check for connections after drag (using final position)
                   handleConnectionDetection(updatedItem);
                 }
               }}

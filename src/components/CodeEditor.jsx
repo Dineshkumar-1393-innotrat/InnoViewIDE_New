@@ -310,40 +310,18 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   }, []);
 
   const handleFlashClick = useCallback(async () => {
-    if (!isDeviceConnected) {
-      toast({
-        title: "No device connected",
-        description: "Please connect a device before flashing.",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
     const flashRunner = outputRef.current?.flashCode;
 
     if (typeof flashRunner === "function") {
       setIsFlashing(true);
       await flashRunner();
     }
-  }, [isDeviceConnected]);
+  }, []);
 
   const handleEraseClick = useCallback(() => {
-    if (!isDeviceConnected) {
-      toast({
-        title: "No device connected",
-        description: "Please connect a device before erasing data.",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setEraseOpen(true);
     setActiveToolPanel(null);
-  }, [isDeviceConnected]);
+  }, []);
 
   const handleScrollToOutput = useCallback(() => {
     const node = document.getElementById("code-editor-output");
@@ -463,20 +441,9 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   );
 
   const handleRunAndDebug = useCallback(async () => {
-    if (!isDeviceConnected) {
-      toast({
-        title: "No device connected",
-        description: "Please connect a device before running.",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setActiveToolPanel("debug");
     await runProgram({ reason: "run-debug", append: false, label: "Run & Debug" });
-  }, [runProgram, isDeviceConnected]);
+  }, [runProgram]);
 
   const handleDebugRestart = useCallback(async () => {
     setActiveToolPanel("debug");
@@ -528,17 +495,6 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   }, [pushDebugLog, pushDebugOutput, setThreadState]);
 
   const handleBuildClick = useCallback(async () => {
-    if (!isDeviceConnected) {
-      toast({
-        title: "No device connected",
-        description: "Please connect a device before building.",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
     // Use ESP-IDF build from Output component
     const buildRunner = outputRef.current?.buildProject;
 
@@ -550,27 +506,16 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       setActiveToolPanel("build");
       await runProgram({ reason: "build", append: false, label: "Build" });
     }
-  }, [runProgram, isDeviceConnected]);
+  }, [runProgram]);
 
   const handleDebugClick = useCallback(() => {
-    if (!isDeviceConnected) {
-      toast({
-        title: "No device connected",
-        description: "Please connect a device before debugging.",
-        status: "warning",
-        duration: 5000,
-        isClosable: true,
-      });
-      return;
-    }
-
     if (activeToolPanel === "debug") {
       setActiveToolPanel(null);
       return;
     }
     setActiveToolPanel("debug");
     handleRunAndDebug();
-  }, [activeToolPanel, handleRunAndDebug, isDeviceConnected]);
+  }, [activeToolPanel, handleRunAndDebug]);
 
   const handleLibrariesClick = useCallback(() => {
     setLibraryManagerOpen(true);

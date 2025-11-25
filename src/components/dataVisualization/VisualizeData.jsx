@@ -3,12 +3,30 @@ import { LuFolder, LuSquareCheck, LuUser } from "react-icons/lu";
 import SelectProduct from "./SelectProduct";
 import { useEffect } from "react";
 import EditorNavbar from "../EditorNavbar";
+import { useNavigate } from "react-router-dom";
 
 
 const VisualizeData = () => {
+  const navigate = useNavigate();
+
+  const handleTabChange = (tab) => {
+    const routes = {
+      Simulation: "/simulation",
+      Flowchart: "/FlowchartTest",
+      "Block Diagram": "/BlockDiagram",
+      "Block Programming": "/blockprogramming",
+      "Code Editor": "/editor",
+      MathCodeEditor: "/mathcodeeditor",
+    };
+    const next = routes[tab];
+    if (next) {
+      navigate(next);
+    }
+  };
+
   return (
     <>
-      <EditorNavbar />
+      <EditorNavbar onTabChange={handleTabChange} />
       <Box
         style={{
           marginTop: "70px",

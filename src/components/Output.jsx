@@ -38,14 +38,14 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
   const [terminalOutput, setTerminalOutput] = useState([]);
   const [serialOutput, setSerialOutput] = useState([]);
   const [isConnectedToDevice, setIsConnectedToDevice] = useState(false);
-  
+
   // Initialize device connection state from localStorage immediately
   const [isDeviceConnectedForActions, setIsDeviceConnectedForActions] = useState(() => {
     const savedState = localStorage.getItem('innoide:device-connected');
     console.log('Initial device state from localStorage:', savedState);
     return savedState === 'true';
   });
-  
+
   const [selectedDeviceInfo, setSelectedDeviceInfo] = useState(() => {
     const savedDeviceInfo = localStorage.getItem('innoide:device-info');
     if (savedDeviceInfo) {
@@ -65,7 +65,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
 
   const handleTerminalCommand = () => {
     if (!terminalInput.trim()) return;
-    
+
     // Add the command to terminal output
     setTerminalOutput(prev => [
       ...prev,
@@ -78,13 +78,13 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
 
   const simulateCommandOutput = (command) => {
     const cmd = command.toLowerCase().trim();
-    
+
     if (cmd === 'help') {
       return [
         'Available commands:',
         '  help - Show this help message',
         '  ls - List files',
-        '  pwd - Show current directory', 
+        '  pwd - Show current directory',
         '  date - Show current date',
         '  clear - Clear terminal',
         '  echo <text> - Echo text back'
@@ -108,11 +108,11 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
   // Read real serial output from connected device using Web Serial API
   useEffect(() => {
     if (!isConnectedToDevice) return;
-    
+
     let reader;
     let keepReading = true;
     let currentPort = null;
-    
+
     const readSerialData = async () => {
       // Check if we have a serial port from the device connection
       const deviceInfoStr = localStorage.getItem('innoide:device-info');
@@ -121,17 +121,17 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
         startSimulation();
         return;
       }
-      
+
       try {
         const deviceInfo = JSON.parse(deviceInfoStr);
-        
+
         // If simulated device, use simulation
         if (deviceInfo.isSimulated) {
           console.log('Simulated device detected, using simulation mode');
           startSimulation();
           return;
         }
-        
+
         // Try to get the actual serial port
         if ('serial' in navigator) {
           const ports = await navigator.serial.getPorts();
@@ -140,9 +140,9 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
             startSimulation();
             return;
           }
-          
+
           currentPort = ports[0]; // Use first available port
-          
+
           // Open port if not already open
           if (!currentPort.readable) {
             try {
@@ -156,15 +156,15 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
               }
             }
           }
-          
+
           // Only create new reader if port is readable
           if (currentPort.readable) {
             const textDecoder = new TextDecoderStream();
             const readableStreamClosed = currentPort.readable.pipeTo(textDecoder.writable);
             reader = textDecoder.readable.getReader();
-            
+
             console.log('✅ Serial reader created, reading real data...');
-            
+
             // Read data from serial port
             while (keepReading) {
               try {
@@ -173,11 +173,11 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
                   console.log('⚠️ Serial stream ended, attempting reconnection...');
                   break;
                 }
-                
+
                 if (value) {
                   const timestamp = new Date().toTimeString().split(' ')[0];
                   const lines = value.split('\n').filter(line => line.trim());
-                  
+
                   setSerialOutput(prev => [
                     ...prev.slice(-50),
                     ...lines.map(line => `[${timestamp}] ${line.trim()}`)
@@ -206,13 +206,13 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
         startSimulation();
       }
     };
-    
+
     // Fallback simulation function
     const startSimulation = () => {
       let ledState = false;
       const interval = setInterval(() => {
         const timestamp = new Date().toTimeString().split(' ')[0];
-        
+
         if (ledState) {
           setSerialOutput(prev => [
             ...prev.slice(-50),
@@ -224,33 +224,33 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
             `[${timestamp}] LED ON`
           ]);
         }
-        
+
         ledState = !ledState;
-        
+
         if (Math.random() > 0.7) {
           const additionalMessages = [
             '[INFO] Device initialized',
             '[DEBUG] GPIO pin 2 set HIGH',
-            '[DEBUG] GPIO pin 2 set LOW', 
+            '[DEBUG] GPIO pin 2 set LOW',
             '[INFO] Loop iteration completed',
             `[DATA] Sensor reading: ${Math.floor(Math.random() * 100)}`,
             '[DEBUG] Memory usage: 85%'
           ];
           const randomMessage = additionalMessages[Math.floor(Math.random() * additionalMessages.length)];
           const msgTimestamp = new Date().toTimeString().split(' ')[0];
-          
+
           setSerialOutput(prev => [
             ...prev.slice(-50),
             `[${msgTimestamp}] ${randomMessage}`
           ]);
         }
       }, 1000);
-      
+
       return () => clearInterval(interval);
     };
-    
+
     readSerialData();
-    
+
     return () => {
       keepReading = false;
       if (reader) {
@@ -272,15 +272,15 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
       console.log('✅ Output: Device connect event received', event.detail);
       setIsDeviceConnectedForActions(true);
       localStorage.setItem('innoide:device-connected', 'true');
-      
+
       if (event.detail) {
         setSelectedDeviceInfo(event.detail);
         localStorage.setItem('innoide:device-info', JSON.stringify(event.detail));
       }
-      
+
       console.log('✅ Output: Device connection state updated to TRUE');
     };
-    
+
     const handleDeviceDisconnect = () => {
       console.log('❌ Output: Device disconnect event received');
       setIsDeviceConnectedForActions(false);
@@ -288,7 +288,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
       localStorage.setItem('innoide:device-connected', 'false');
       localStorage.removeItem('innoide:device-info');
     };
-    
+
     const handleDeviceFailed = () => {
       console.log('⚠️ Output: Device detection failed');
       setIsDeviceConnectedForActions(false);
@@ -551,7 +551,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
   const handleCodeFlash = async () => {
     console.log('Flash button clicked. Device connected:', isDeviceConnectedForActions);
     console.log('Selected device info:', selectedDeviceInfo);
-    
+
     if (!isDeviceConnectedForActions) {
       console.error('Flash blocked: No device connected');
       toast({
@@ -580,10 +580,10 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
     setActivePanel("serial");
     setRunSummary({ status: "running", reason: "flash" });
     setOutput([]);
-    
+
     // Clear and start serial output
     setSerialOutput([]);
-    
+
     // Keep device connected during flash
     // Don't change isConnectedToDevice state to avoid disconnecting serial reader
     const wasConnected = isConnectedToDevice;
@@ -595,7 +595,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
       // Submit code to device API
       appendOutputLine("=== Submitting Code to Device ===");
       appendOutputLine("Connecting to device...");
-      
+
       // Add initial serial output
       const timestamp = new Date().toTimeString().split(' ')[0];
       setSerialOutput(prev => [
@@ -603,14 +603,14 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
         `[${timestamp}] [INFO] Connecting to device...`,
         `[${timestamp}] [INFO] Submitting code for flashing...`
       ]);
-      
+
       const result = await submitCodeToDevice(sourceCode, language || "esp32");
 
       if (result) {
         const message = "Code submitted successfully! Device is flashing...";
         setResponse(message);
         appendOutputLine(`\n✓ ${message}`);
-        
+
         // Add success serial output
         const successTimestamp = new Date().toTimeString().split(' ')[0];
         setSerialOutput(prev => [
@@ -620,7 +620,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
           `[${successTimestamp}] [INFO] Device will reset and start running...`,
           `[${successTimestamp}] [INFO] Waiting for device output...`
         ]);
-        
+
         setRunSummary({ status: "success", reason: "flash" });
 
         toast({
@@ -632,7 +632,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
 
         // Ensure device stays connected after flash
         console.log('✅ Flash complete, maintaining device connection');
-        
+
         // Re-confirm device connection state
         localStorage.setItem('innoide:device-connected', 'true');
 
@@ -646,14 +646,14 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
       const message = error?.message || "Firmware flashing failed.";
 
       appendOutputLine(`\n✗ Flash error: ${message}`);
-      
+
       // Add error to serial output
       const errorTimestamp = new Date().toTimeString().split(' ')[0];
       setSerialOutput(prev => [
         ...prev,
         `[${errorTimestamp}] [ERROR] Flash failed: ${message}`
       ]);
-      
+
       setRunSummary({ status: "error", reason: "flash" });
 
       toast({
@@ -705,7 +705,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
     try {
       appendOutputLine("=== ESP-IDF Build ===");
       appendOutputLine("Starting build process...");
-      
+
       const result = await buildProject({
         projectPath: ".",
         target: "esp32",
@@ -773,10 +773,10 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
   const statusColor = runSummary.status === "error"
     ? "red"
     : runSummary.status === "success"
-    ? "green"
-    : runSummary.status === "running"
-    ? "blue"
-    : "gray";
+      ? "green"
+      : runSummary.status === "running"
+        ? "blue"
+        : "gray";
 
   const statusLabel = (() => {
     switch (runSummary.status) {
@@ -818,7 +818,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
           </HStack>
         </Box>
       )}
-      
+
       <Box display="flex" alignItems="center" mb={4} gap={4} flexWrap="wrap">
 
         <Button
@@ -830,9 +830,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
           variant={isLoading ? "solid" : "outline"}
           cursor="pointer"
           onClick={handleCodeFlash}
-          isDisabled={!isDeviceConnectedForActions}
-          opacity={isDeviceConnectedForActions ? 1 : 0.5}
-          title={isDeviceConnectedForActions ? "Flash Code to Device" : "Connect a device to flash code"}
+          title="Flash Code to Device"
         >
           Flash
         </Button>
@@ -845,9 +843,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
           colorScheme="green"
           variant={isLoading && runSummary.reason !== "flash" ? "solid" : "outline"}
           onClick={() => runCode({ append: false, reason: "manual" })}
-          isDisabled={!isDeviceConnectedForActions}
-          opacity={isDeviceConnectedForActions ? 1 : 0.5}
-          title={isDeviceConnectedForActions ? "Run Code" : "Connect a device to run code"}
+          title="Run Code"
         >
           Run
         </Button>
@@ -860,9 +856,7 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
           colorScheme="blue"
           variant={isLoading && runSummary.reason === "build" ? "solid" : "outline"}
           onClick={handleBuildProject}
-          isDisabled={!isDeviceConnectedForActions}
-          opacity={isDeviceConnectedForActions ? 1 : 0.5}
-          title={isDeviceConnectedForActions ? "Build Project (ESP-IDF)" : "Connect a device to build"}
+          title="Build Project (ESP-IDF)"
         >
           Build
         </Button>
@@ -945,16 +939,16 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
               </Text>
             ) : (
               serialOutput.map((line, index) => (
-                <Text 
-                  key={index} 
+                <Text
+                  key={index}
                   color={
                     line.includes('[ERROR]') ? 'red.400' :
-                    line.includes('[INFO]') ? 'blue.400' :
-                    line.includes('[DEBUG]') ? 'yellow.400' :
-                    line.includes('[DATA]') ? 'green.400' :
-                    line.includes('LED ON') ? 'green.300' :
-                    line.includes('LED OFF') ? 'gray.400' :
-                    colorMode === "dark" ? "gray.200" : "gray.700"
+                      line.includes('[INFO]') ? 'blue.400' :
+                        line.includes('[DEBUG]') ? 'yellow.400' :
+                          line.includes('[DATA]') ? 'green.400' :
+                            line.includes('LED ON') ? 'green.300' :
+                              line.includes('LED OFF') ? 'gray.400' :
+                                colorMode === "dark" ? "gray.200" : "gray.700"
                   }
                   fontWeight={line.includes('LED') ? 'bold' : 'normal'}
                 >
