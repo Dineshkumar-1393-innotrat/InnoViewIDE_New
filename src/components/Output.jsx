@@ -1,7 +1,1140 @@
-import { forwardRef, useImperativeHandle, useMemo, useState, useEffect } from "react";
+// import { forwardRef, useImperativeHandle, useMemo, useState, useEffect } from "react";
+// import {
+//   Box,
+//   Badge,
+//   Text,
+//   Button,
+//   useColorMode,
+//   useToast,
+//   Modal,
+//   ModalOverlay,
+//   ModalContent,
+//   ModalHeader,
+//   ModalCloseButton,
+//   ModalBody,
+//   ModalFooter,
+//   RadioGroup,
+//   Radio,
+//   Stack,
+//   Input,
+//   HStack,
+// } from "@chakra-ui/react";
+// import { executeCode, submitCodeToDevice } from "../api";
+// import { buildProject, buildAndFlash } from "../utils/espIdfUtils";
+
+// import axios from "axios";
+
+// const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart, ...rest }, ref) => {
+//   const toast = useToast();
+//   const { colorMode } = useColorMode();
+//   const [output, setOutput] = useState([]);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [isError, setIsError] = useState(false);
+//   const [userInput, setUserInput] = useState("");
+//   const [response, setResponse] = useState("");
+//   const [activePanel, setActivePanel] = useState("problem");
+//   const [runSummary, setRunSummary] = useState({ status: "idle", reason: "" });
+//   const [terminalInput, setTerminalInput] = useState("");
+//   const [terminalOutput, setTerminalOutput] = useState([]);
+//   const [serialOutput, setSerialOutput] = useState([]);
+//   const [isConnectedToDevice, setIsConnectedToDevice] = useState(false);
+
+//   // Initialize device connection state from localStorage immediately
+//   const [isDeviceConnectedForActions, setIsDeviceConnectedForActions] = useState(() => {
+//     const savedState = localStorage.getItem('innoide:device-connected');
+//     console.log('Initial device state from localStorage:', savedState);
+//     return savedState === 'true';
+//   });
+
+//   const [selectedDeviceInfo, setSelectedDeviceInfo] = useState(() => {
+//     const savedDeviceInfo = localStorage.getItem('innoide:device-info');
+//     if (savedDeviceInfo) {
+//       try {
+//         return JSON.parse(savedDeviceInfo);
+//       } catch (e) {
+//         return null;
+//       }
+//     }
+//     return null;
+//   });
+
+//   const handlePanelChange = (panel) => {
+//     setActivePanel(panel);
+//   };
+
+
+//   const handleTerminalCommand = () => {
+//     if (!terminalInput.trim()) return;
+
+//     // Add the command to terminal output
+//     setTerminalOutput(prev => [
+//       ...prev,
+//       `$ ${terminalInput}`,
+//       // Simulate command output
+//       ...simulateCommandOutput(terminalInput)
+//     ]);
+//     setTerminalInput("");
+//   };
+
+//   const simulateCommandOutput = (command) => {
+//     const cmd = command.toLowerCase().trim();
+
+//     if (cmd === 'help') {
+//       return [
+//         'Available commands:',
+//         '  help - Show this help message',
+//         '  ls - List files',
+//         '  pwd - Show current directory',
+//         '  date - Show current date',
+//         '  clear - Clear terminal',
+//         '  echo <text> - Echo text back'
+//       ];
+//     } else if (cmd === 'ls') {
+//       return ['main.c', 'Makefile', 'README.md', 'src/', 'build/'];
+//     } else if (cmd === 'pwd') {
+//       return ['/workspace/project'];
+//     } else if (cmd === 'date') {
+//       return [new Date().toString()];
+//     } else if (cmd === 'clear') {
+//       setTerminalOutput([]);
+//       return [];
+//     } else if (cmd.startsWith('echo ')) {
+//       return [cmd.substring(5)];
+//     } else {
+//       return [`bash: ${cmd}: command not found`];
+//     }
+//   };
+
+//   // Read real serial output from connected device using Web Serial API
+//   useEffect(() => {
+//     if (!isConnectedToDevice) return;
+
+//     let reader;
+//     let keepReading = true;
+//     let currentPort = null;
+//     let cleanupInterval = null;
+
+//     const readSerialData = async () => {
+//       // Check if we have a serial port from the device connection
+//       const deviceInfoStr = localStorage.getItem('innoide:device-info');
+//       if (!deviceInfoStr) {
+//         console.log('No device info found');
+//         return;
+//       }
+
+//       try {
+//         const deviceInfo = JSON.parse(deviceInfoStr);
+
+//         // If simulated device, use simulation
+//         if (deviceInfo.isSimulated) {
+//           console.log('Simulated device detected, using simulation mode');
+//           cleanupInterval = startSimulation();
+//           return;
+//         }
+
+//         // Try to get the actual serial port
+//         if ('serial' in navigator) {
+//           const ports = await navigator.serial.getPorts();
+
+//           if (ports.length === 0) {
+//             console.log('No serial ports available');
+//             setSerialOutput(prev => [
+//               ...prev.slice(-50),
+//               `[${new Date().toTimeString().split(' ')[0]}] [INFO] No serial ports detected. Please connect a device.`
+//             ]);
+//             return;
+//           }
+
+//           // Find the matching port based on device info
+//           let matchedPort = null;
+//           if (deviceInfo.port?.usbVendorId && deviceInfo.port?.usbProductId) {
+//             for (const port of ports) {
+//               const info = await port.getInfo();
+//               if (info.usbVendorId === deviceInfo.port.usbVendorId &&
+//                 info.usbProductId === deviceInfo.port.usbProductId) {
+//                 matchedPort = port;
+//                 break;
+//               }
+//             }
+//           }
+
+//           currentPort = matchedPort || ports[0]; // Use matched port or first available
+
+//           // Open port if not already open
+//           if (!currentPort.readable && !currentPort.writable) {
+//             try {
+//               await currentPort.open({ baudRate: 115200 });
+//               console.log('✅ Serial port opened successfully at 115200 baud');
+
+//               setSerialOutput(prev => [
+//                 ...prev.slice(-50),
+//                 `[${new Date().toTimeString().split(' ')[0]}] [INFO] Serial port opened successfully`,
+//                 `[${new Date().toTimeString().split(' ')[0]}] [INFO] Listening for device output...`
+//               ]);
+//             } catch (openError) {
+//               if (openError.message.includes('already open')) {
+//                 console.log('⚠️ Port already open, continuing...');
+//               } else {
+//                 console.error('Failed to open serial port:', openError);
+//                 setSerialOutput(prev => [
+//                   ...prev.slice(-50),
+//                   `[${new Date().toTimeString().split(' ')[0]}] [ERROR] Failed to open serial port: ${openError.message}`
+//                 ]);
+//                 return;
+//               }
+//             }
+//           }
+
+//           // Only create new reader if port is readable
+//           if (currentPort.readable) {
+//             try {
+//               const textDecoder = new TextDecoderStream();
+//               const readableStreamClosed = currentPort.readable.pipeTo(textDecoder.writable);
+//               reader = textDecoder.readable.getReader();
+
+//               console.log('✅ Serial reader created, reading real data from device...');
+
+//               // Read data from serial port
+//               while (keepReading) {
+//                 try {
+//                   const { value, done } = await reader.read();
+//                   if (done) {
+//                     console.log('⚠️ Serial stream ended');
+//                     setSerialOutput(prev => [
+//                       ...prev.slice(-50),
+//                       `[${new Date().toTimeString().split(' ')[0]}] [INFO] Serial stream ended`
+//                     ]);
+//                     break;
+//                   }
+
+//                   if (value) {
+//                     const timestamp = new Date().toTimeString().split(' ')[0];
+//                     const lines = value.split('\n').filter(line => line.trim());
+
+//                     if (lines.length > 0) {
+//                       setSerialOutput(prev => [
+//                         ...prev.slice(-50),
+//                         ...lines.map(line => `[${timestamp}] ${line.trim()}`)
+//                       ]);
+//                     }
+//                   }
+//                 } catch (error) {
+//                   console.error('Error reading serial data:', error);
+//                   if (error.message.includes('device has been lost') ||
+//                     error.message.includes('The device has been lost')) {
+//                     console.log('⚠️ Device disconnected');
+//                     setSerialOutput(prev => [
+//                       ...prev.slice(-50),
+//                       `[${new Date().toTimeString().split(' ')[0]}] [ERROR] Device disconnected`
+//                     ]);
+//                     break;
+//                   }
+//                 }
+//               }
+//             } catch (error) {
+//               console.error('Error creating serial reader:', error);
+//               setSerialOutput(prev => [
+//                 ...prev.slice(-50),
+//                 `[${new Date().toTimeString().split(' ')[0]}] [ERROR] Failed to create serial reader: ${error.message}`
+//               ]);
+//             }
+//           } else {
+//             console.log('Port not readable');
+//             setSerialOutput(prev => [
+//               ...prev.slice(-50),
+//               `[${new Date().toTimeString().split(' ')[0]}] [ERROR] Serial port is not readable`
+//             ]);
+//           }
+//         } else {
+//           console.log('Web Serial API not supported');
+//           setSerialOutput(prev => [
+//             ...prev.slice(-50),
+//             `[${new Date().toTimeString().split(' ')[0]}] [ERROR] Web Serial API not supported in this browser`,
+//             `[${new Date().toTimeString().split(' ')[0]}] [INFO] Please use Chrome, Edge, or Opera browser`
+//           ]);
+//         }
+//       } catch (error) {
+//         console.error('Error setting up serial communication:', error);
+//         setSerialOutput(prev => [
+//           ...prev.slice(-50),
+//           `[${new Date().toTimeString().split(' ')[0]}] [ERROR] Serial setup failed: ${error.message}`
+//         ]);
+//       }
+//     };
+
+//     // Fallback simulation function - only for demo purposes when no real device
+//     const startSimulation = () => {
+//       console.log('⚠️ Starting simulation mode (demo data only)');
+//       setSerialOutput(prev => [
+//         ...prev.slice(-50),
+//         `[${new Date().toTimeString().split(' ')[0]}] [INFO] ========================================`,
+//         `[${new Date().toTimeString().split(' ')[0]}] [INFO] SIMULATION MODE - Demo Data Only`,
+//         `[${new Date().toTimeString().split(' ')[0]}] [INFO] Connect a real device to see actual output`,
+//         `[${new Date().toTimeString().split(' ')[0]}] [INFO] ========================================`
+//       ]);
+
+//       let ledState = false;
+//       const interval = setInterval(() => {
+//         const timestamp = new Date().toTimeString().split(' ')[0];
+
+//         if (ledState) {
+//           setSerialOutput(prev => [
+//             ...prev.slice(-50),
+//             `[${timestamp}] [DEMO] LED OFF`
+//           ]);
+//         } else {
+//           setSerialOutput(prev => [
+//             ...prev.slice(-50),
+//             `[${timestamp}] [DEMO] LED ON`
+//           ]);
+//         }
+
+//         ledState = !ledState;
+
+//         if (Math.random() > 0.7) {
+//           const additionalMessages = [
+//             '[DEMO] Device initialized',
+//             '[DEMO] GPIO pin 2 set HIGH',
+//             '[DEMO] GPIO pin 2 set LOW',
+//             '[DEMO] Loop iteration completed',
+//             `[DEMO] Sensor reading: ${Math.floor(Math.random() * 100)}`,
+//             '[DEMO] Memory usage: 85%'
+//           ];
+//           const randomMessage = additionalMessages[Math.floor(Math.random() * additionalMessages.length)];
+//           const msgTimestamp = new Date().toTimeString().split(' ')[0];
+
+//           setSerialOutput(prev => [
+//             ...prev.slice(-50),
+//             `[${msgTimestamp}] ${randomMessage}`
+//           ]);
+//         }
+//       }, 1000);
+
+//       return () => clearInterval(interval);
+//     };
+
+//     readSerialData();
+
+//     return () => {
+//       keepReading = false;
+//       if (reader) {
+//         reader.cancel().catch(err => console.log('Reader cleanup:', err.message));
+//       }
+//       if (cleanupInterval) {
+//         cleanupInterval();
+//       }
+//       // Don't close the port on cleanup to maintain connection
+//       // Port will be closed when user explicitly disconnects
+//       console.log('Serial reader cleanup complete, port remains open');
+//     };
+//   }, [isConnectedToDevice]);
+
+
+//   // Listen for device connection events for action buttons and persist state
+//   useEffect(() => {
+//     console.log('Output component mounted');
+//     console.log('Initial device connected state:', isDeviceConnectedForActions);
+//     console.log('Initial device info:', selectedDeviceInfo);
+
+//     const handleDeviceConnect = (event) => {
+//       console.log('✅ Output: Device connect event received', event.detail);
+//       setIsDeviceConnectedForActions(true);
+//       localStorage.setItem('innoide:device-connected', 'true');
+
+//       if (event.detail) {
+//         setSelectedDeviceInfo(event.detail);
+//         localStorage.setItem('innoide:device-info', JSON.stringify(event.detail));
+//       }
+
+//       console.log('✅ Output: Device connection state updated to TRUE');
+//     };
+
+//     const handleDeviceDisconnect = () => {
+//       console.log('❌ Output: Device disconnect event received');
+//       setIsDeviceConnectedForActions(false);
+//       setSelectedDeviceInfo(null);
+//       localStorage.setItem('innoide:device-connected', 'false');
+//       localStorage.removeItem('innoide:device-info');
+//     };
+
+//     const handleDeviceFailed = () => {
+//       console.log('⚠️ Output: Device detection failed');
+//       setIsDeviceConnectedForActions(false);
+//       setSelectedDeviceInfo(null);
+//       localStorage.setItem('innoide:device-connected', 'false');
+//       localStorage.removeItem('innoide:device-info');
+//     };
+
+//     window.addEventListener('innoide:device-detect-complete', handleDeviceConnect);
+//     window.addEventListener('innoide:device-disconnect', handleDeviceDisconnect);
+//     window.addEventListener('innoide:device-detect-failed', handleDeviceFailed);
+
+//     return () => {
+//       window.removeEventListener('innoide:device-detect-complete', handleDeviceConnect);
+//       window.removeEventListener('innoide:device-disconnect', handleDeviceDisconnect);
+//       window.removeEventListener('innoide:device-detect-failed', handleDeviceFailed);
+//     };
+//   }, []);
+
+//   // Listen for physical device removal via Web Serial API
+//   useEffect(() => {
+//     if (!('serial' in navigator)) return;
+
+//     const handleHardwareDisconnect = (event) => {
+//       console.log('⚠️ Output: Hardware serial disconnect detected', event?.target);
+//       setIsConnectedToDevice(false);
+//       setIsDeviceConnectedForActions(false);
+//       setSelectedDeviceInfo(null);
+//       localStorage.setItem('innoide:device-connected', 'false');
+//       localStorage.removeItem('innoide:device-info');
+
+//       // Notify other components about disconnect
+//       window.dispatchEvent(new CustomEvent('innoide:device-disconnect'));
+//     };
+
+//     navigator.serial.addEventListener('disconnect', handleHardwareDisconnect);
+
+//     return () => {
+//       navigator.serial.removeEventListener('disconnect', handleHardwareDisconnect);
+//     };
+//   }, []);
+
+//   // Periodically verify that the saved device is still attached
+//   useEffect(() => {
+//     if (!('serial' in navigator)) return;
+//     if (!isDeviceConnectedForActions) return;
+
+//     let cancelled = false;
+//     let intervalId = null;
+
+//     const handleMissingDevice = () => {
+//       if (cancelled) return;
+//       console.log('⚠️ Output: Stored device no longer available, resetting state');
+//       setIsConnectedToDevice(false);
+//       setIsDeviceConnectedForActions(false);
+//       setSelectedDeviceInfo(null);
+//       localStorage.setItem('innoide:device-connected', 'false');
+//       localStorage.removeItem('innoide:device-info');
+//       window.dispatchEvent(new CustomEvent('innoide:device-disconnect'));
+//     };
+
+//     const checkPorts = async () => {
+//       try {
+//         const ports = await navigator.serial.getPorts();
+//         if (!ports.length) {
+//           handleMissingDevice();
+//           return;
+//         }
+
+//         const savedDeviceInfoRaw = localStorage.getItem('innoide:device-info');
+//         if (!savedDeviceInfoRaw) {
+//           handleMissingDevice();
+//           return;
+//         }
+
+//         let savedDeviceInfo;
+//         try {
+//           savedDeviceInfo = JSON.parse(savedDeviceInfoRaw);
+//         } catch (error) {
+//           console.warn('Failed to parse saved device info while verifying ports');
+//           handleMissingDevice();
+//           return;
+//         }
+
+//         if (savedDeviceInfo?.port?.usbVendorId && savedDeviceInfo?.port?.usbProductId) {
+//           const portInfos = await Promise.all(ports.map(port => port.getInfo?.() ?? {}));
+//           const matched = portInfos.some(info =>
+//             info?.usbVendorId === savedDeviceInfo.port.usbVendorId &&
+//             info?.usbProductId === savedDeviceInfo.port.usbProductId
+//           );
+
+//           if (!matched) {
+//             handleMissingDevice();
+//           }
+//         }
+//       } catch (error) {
+//         console.warn('Failed to verify serial ports:', error);
+//       }
+//     };
+
+//     checkPorts();
+//     intervalId = window.setInterval(checkPorts, 5000);
+
+//     const handleVisibility = () => {
+//       if (!document.hidden) {
+//         checkPorts();
+//       }
+//     };
+
+//     window.addEventListener('visibilitychange', handleVisibility);
+//     window.addEventListener('focus', handleVisibility);
+
+//     return () => {
+//       cancelled = true;
+//       if (intervalId) {
+//         clearInterval(intervalId);
+//       }
+//       window.removeEventListener('visibilitychange', handleVisibility);
+//       window.removeEventListener('focus', handleVisibility);
+//     };
+//   }, [isDeviceConnectedForActions]);
+
+//   const panelTitle = useMemo(() => {
+//     switch (activePanel) {
+//       case "serial":
+//         return "Serial Console";
+//       case "terminal":
+//         return "Terminal";
+//       default:
+//         return "Problem Output";
+//     }
+//   }, [activePanel]);
+
+//   const panelDescription = useMemo(() => {
+//     switch (activePanel) {
+//       case "serial":
+//         return "Monitor device logs and USART output in real time.";
+//       case "terminal":
+//         return "Run shell commands against the configured workspace";
+//       default:
+//         return "View compiler messages, build logs, and program output.";
+//     }
+//   }, [activePanel]);
+
+//   const responseStyle = {
+//     marginTop: "20px",
+//     padding: "10px",
+//     backgroundColor: colorMode === "dark" ? "#2D3748" : "#F7FAFC",
+//     color: colorMode === "dark" ? "#E2E8F0" : "#2D3748",
+//     borderRadius: "5px",
+//     border: `1px solid ${colorMode === "dark" ? "#4A5568" : "#CBD5E0"}`,
+//   };
+
+//   const appendOutputLine = (line) => {
+//     if (line === undefined || line === null) return;
+//     const text = typeof line === "string" ? line : JSON.stringify(line);
+//     setOutput((prevOutput) => [...prevOutput, text]);
+//   };
+
+//   const runCode = async ({ append, reason } = {}) => {
+//     if (!isDeviceConnectedForActions) {
+//       toast({
+//         title: "No Device Connected!",
+//         description: "Please connect a device before running code.",
+//         status: "error",
+//         duration: 6000,
+//       });
+//       return { ok: false, reason: "no-device" };
+//     }
+
+//     const sourceCode = editorRef?.current?.getValue?.() ?? "";
+
+//     if (!sourceCode) {
+//       toast({
+//         title: "Empty Code!",
+//         description: "Please write your code before running.",
+//         status: "error",
+//         duration: 6000,
+//       });
+//       return { ok: false, reason: "no-source" };
+//     }
+
+//     const effectiveLanguage =
+//       language && language !== "Select Language" ? language : "c";
+
+//     try {
+//       setIsLoading(true);
+//       setActivePanel("problem");
+//       setRunSummary({ status: "running", reason });
+//       if (!append) {
+//         setOutput([]);
+//       }
+
+//       const { run: result } = await executeCode(
+//         effectiveLanguage.toLowerCase(),
+//         sourceCode,
+//         userInput
+//       );
+
+//       const stdout = result?.output ?? "";
+//       const stderr = result?.stderr ?? "";
+//       const stdoutLines = stdout ? stdout.split("\n") : [];
+//       const stderrLines = stderr
+//         ? stderr.split("\n").map((line) => (line ? `stderr: ${line}` : line))
+//         : [];
+
+//       setOutput((prevOutput) =>
+//         append ? [...prevOutput, ...stdoutLines, ...stderrLines] : [...stdoutLines, ...stderrLines]
+//       );
+
+//       setResponse(stdout);
+//       const hadError = Boolean(stderr);
+//       setIsError(hadError);
+//       setRunSummary({
+//         status: hadError ? "error" : "success",
+//         reason,
+//       });
+
+//       if (stdoutLines.length === 0 && stderrLines.length === 0) {
+//         appendOutputLine("(program exited with no output)");
+//       }
+
+//       return {
+//         ok: true,
+//         result,
+//         stdout,
+//         stderr,
+//         reason,
+//       };
+//     } catch (error) {
+//       console.error(error);
+//       const message = error?.message || "Could not execute the code.";
+//       toast({
+//         title: "Error occurred while running.",
+//         description: message,
+//         status: "error",
+//         duration: 6000,
+//         isClosable: true,
+//       });
+//       setIsError(true);
+//       if (append) {
+//         appendOutputLine(`Error: ${message}`);
+//       } else {
+//         setOutput([`Error: ${message}`]);
+//       }
+//       setRunSummary({ status: "error", reason });
+
+//       return {
+//         ok: false,
+//         error,
+//         reason,
+//       };
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+//   // handle flash code with ESP-IDF workflow
+
+//   const handleCodeFlash = async () => {
+//     console.log('Flash button clicked. Device connected:', isDeviceConnectedForActions);
+//     console.log('Selected device info:', selectedDeviceInfo);
+
+//     if (!isDeviceConnectedForActions) {
+//       console.error('Flash blocked: No device connected');
+//       toast({
+//         title: "No Device Connected!",
+//         description: "Please connect a device before flashing.",
+//         status: "error",
+//         duration: 6000,
+//       });
+//       return { ok: false, reason: "no-device" };
+//     }
+
+//     onFlashStart?.();
+//     const sourceCode = editorRef?.current?.getValue?.() ?? "";
+
+//     if (!sourceCode) {
+//       toast({
+//         title: "No Source Code!",
+//         description: "Please write or upload the firmware before flashing.",
+//         status: "warning",
+//         duration: 6000,
+//       });
+//       return { ok: false, reason: "no-source" };
+//     }
+
+//     setIsLoading(true);
+//     setActivePanel("serial");
+//     setRunSummary({ status: "running", reason: "flash" });
+//     setOutput([]);
+
+//     // Clear and start serial output
+//     setSerialOutput([]);
+
+//     // Keep device connected during flash
+//     // Don't change isConnectedToDevice state to avoid disconnecting serial reader
+//     const wasConnected = isConnectedToDevice;
+//     if (!wasConnected) {
+//       setIsConnectedToDevice(true);
+//     }
+
+//     try {
+//       // Submit code to device API
+//       appendOutputLine("=== Submitting Code to Device ===");
+//       appendOutputLine("Connecting to device...");
+
+//       // Add initial serial output
+//       const timestamp = new Date().toTimeString().split(' ')[0];
+//       setSerialOutput(prev => [
+//         ...prev,
+//         `[${timestamp}] [INFO] Connecting to device...`,
+//         `[${timestamp}] [INFO] Submitting code for flashing...`
+//       ]);
+
+//       const result = await submitCodeToDevice(sourceCode, language || "esp32");
+
+//       if (result) {
+//         const message = "Code submitted successfully! Device is flashing...";
+//         setResponse(message);
+//         appendOutputLine(`\n✓ ${message}`);
+
+//         // Add success serial output
+//         const successTimestamp = new Date().toTimeString().split(' ')[0];
+//         setSerialOutput(prev => [
+//           ...prev,
+//           `[${successTimestamp}] [INFO] Code submitted successfully`,
+//           `[${successTimestamp}] [INFO] Flashing firmware to device...`,
+//           `[${successTimestamp}] [INFO] Device will reset and start running...`,
+//           `[${successTimestamp}] [INFO] Waiting for device output...`
+//         ]);
+
+//         setRunSummary({ status: "success", reason: "flash" });
+
+//         toast({
+//           title: "Flash Successful!",
+//           description: "Code submitted to device. Device will reset automatically.",
+//           status: "success",
+//           duration: 5000,
+//         });
+
+//         // Ensure device stays connected after flash
+//         console.log('✅ Flash complete, maintaining device connection');
+
+//         // Re-confirm device connection state
+//         localStorage.setItem('innoide:device-connected', 'true');
+
+//         onFlashComplete?.({ ok: true, message, result });
+//         return { ok: true, message, result };
+//       } else {
+//         throw new Error("Code submission failed");
+//       }
+//     } catch (error) {
+//       console.error("Flashing Error:", error);
+//       const message = error?.message || "Firmware flashing failed.";
+
+//       appendOutputLine(`\n✗ Flash error: ${message}`);
+
+//       // Add error to serial output
+//       const errorTimestamp = new Date().toTimeString().split(' ')[0];
+//       setSerialOutput(prev => [
+//         ...prev,
+//         `[${errorTimestamp}] [ERROR] Flash failed: ${message}`
+//       ]);
+
+//       setRunSummary({ status: "error", reason: "flash" });
+
+//       toast({
+//         title: "Flash Failed!",
+//         description: message,
+//         status: "error",
+//         duration: 6000,
+//         isClosable: true,
+//       });
+
+//       onFlashComplete?.({ ok: false, error, message });
+//       return { ok: false, error };
+//     } finally {
+//       setIsLoading(false);
+//       // Ensure device connection is maintained
+//       console.log('Flash operation complete, device connection state:', isDeviceConnectedForActions);
+//     }
+//   };
+
+//   // Handle ESP-IDF build only
+//   const handleBuildProject = async () => {
+//     if (!isDeviceConnectedForActions) {
+//       toast({
+//         title: "No Device Connected!",
+//         description: "Please connect a device before building.",
+//         status: "error",
+//         duration: 6000,
+//       });
+//       return { ok: false, reason: "no-device" };
+//     }
+
+//     const sourceCode = editorRef?.current?.getValue?.() ?? "";
+
+//     if (!sourceCode) {
+//       toast({
+//         title: "No Source Code!",
+//         description: "Please write code before building.",
+//         status: "warning",
+//         duration: 6000,
+//       });
+//       return { ok: false, reason: "no-source" };
+//     }
+
+//     setIsLoading(true);
+//     setActivePanel("problem");
+//     setRunSummary({ status: "running", reason: "build" });
+//     setOutput([]);
+
+//     try {
+//       appendOutputLine("=== ESP-IDF Build ===");
+//       appendOutputLine("Starting build process...");
+
+//       const result = await buildProject({
+//         projectPath: ".",
+//         target: "esp32",
+//         onProgress: (progress) => {
+//           // Progress updates
+//         },
+//         onLog: (message) => {
+//           appendOutputLine(message);
+//         },
+//       });
+
+//       if (result.success) {
+//         const message = "Build completed successfully!";
+//         setResponse(message);
+//         appendOutputLine(`\n✓ ${message}`);
+//         appendOutputLine(`Bootloader: ${result.binaries?.bootloader || 'N/A'}`);
+//         appendOutputLine(`Application: ${result.binaries?.application || 'N/A'}`);
+//         setRunSummary({ status: "success", reason: "build" });
+
+//         toast({
+//           title: "Build Successful!",
+//           description: message,
+//           status: "success",
+//           duration: 5000,
+//         });
+
+//         return { ok: true, message, result };
+//       } else {
+//         throw new Error("Build failed");
+//       }
+//     } catch (error) {
+//       console.error("Build Error:", error);
+//       const message = error?.message || "Build failed.";
+
+//       appendOutputLine(`\n✗ Build error: ${message}`);
+//       setRunSummary({ status: "error", reason: "build" });
+
+//       toast({
+//         title: "Build Failed!",
+//         description: message,
+//         status: "error",
+//         duration: 6000,
+//         isClosable: true,
+//       });
+
+//       return { ok: false, error };
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+//   useImperativeHandle(ref, () => ({
+//     runCode,
+//     flashCode: handleCodeFlash,
+//     buildProject: handleBuildProject,
+//     openPanel: handlePanelChange,
+//     setPanel: handlePanelChange,
+//     setUserInput,
+//     appendOutputLine,
+//     isRunning: () => isLoading,
+//     getStdout: () => response,
+//     getOutputLines: () => output.slice(),
+//   }));
+
+//   const statusColor = runSummary.status === "error"
+//     ? "red"
+//     : runSummary.status === "success"
+//       ? "green"
+//       : runSummary.status === "running"
+//         ? "blue"
+//         : "gray";
+
+//   const statusLabel = (() => {
+//     switch (runSummary.status) {
+//       case "running":
+//         return "Running";
+//       case "success":
+//         return "Success";
+//       case "error":
+//         return "Error";
+//       default:
+//         return "Idle";
+//     }
+//   })();
+
+//   return (
+//     <Box w="100%" p={4} borderRadius="md" {...rest}>
+//       {/* Device Status Badge */}
+//       {isDeviceConnectedForActions && selectedDeviceInfo ? (
+//         <Box mb={3} p={2} bg={colorMode === "dark" ? "green.900" : "green.50"} borderRadius="md" border="1px solid" borderColor="green.400">
+//           <HStack spacing={2}>
+//             <Badge colorScheme="green" fontSize="xs">✓ Connected</Badge>
+//             <Text fontSize="xs" fontWeight="semibold" color={colorMode === "dark" ? "green.200" : "green.700"}>
+//               {selectedDeviceInfo.deviceType || "Device"}
+//             </Text>
+//             {selectedDeviceInfo.memory && (
+//               <Text fontSize="xs" color={colorMode === "dark" ? "gray.400" : "gray.600"}>
+//                 • {selectedDeviceInfo.memory}
+//               </Text>
+//             )}
+//           </HStack>
+//         </Box>
+//       ) : (
+//         <Box mb={3} p={2} bg={colorMode === "dark" ? "orange.900" : "orange.50"} borderRadius="md" border="1px solid" borderColor="orange.400">
+//           <HStack spacing={2}>
+//             <Badge colorScheme="orange" fontSize="xs">⚠ Not Connected</Badge>
+//             <Text fontSize="xs" color={colorMode === "dark" ? "orange.200" : "orange.700"}>
+//               Click "Select Port" or "Detect" in Flash panel to connect device
+//             </Text>
+//           </HStack>
+//         </Box>
+//       )}
+
+//       <Box display="flex" alignItems="center" mb={4} gap={4} flexWrap="wrap">
+
+//         <Button
+//           loadingText="Flashing"
+//           spinnerPlacement="start"
+//           isLoading={isLoading && runSummary.reason === "flash"}
+//           size={"sm"}
+//           colorScheme="blue"
+//           variant={isLoading ? "solid" : "outline"}
+//           cursor="pointer"
+//           onClick={handleCodeFlash}
+//           title="Flash Code to Device"
+//         >
+//           Flash
+//         </Button>
+
+//         <Button
+//           loadingText="Running"
+//           spinnerPlacement="start"
+//           isLoading={isLoading && runSummary.reason !== "flash"}
+//           size="sm"
+//           colorScheme="green"
+//           variant={isLoading && runSummary.reason !== "flash" ? "solid" : "outline"}
+//           onClick={() => runCode({ append: false, reason: "manual" })}
+//           title="Run Code"
+//         >
+//           Run
+//         </Button>
+
+//         <Button
+//           loadingText="Building"
+//           spinnerPlacement="start"
+//           isLoading={isLoading && runSummary.reason === "build"}
+//           size="sm"
+//           colorScheme="blue"
+//           variant={isLoading && runSummary.reason === "build" ? "solid" : "outline"}
+//           onClick={handleBuildProject}
+//           title="Build Project (ESP-IDF)"
+//         >
+//           Build
+//         </Button>
+//         <Button
+//           size="sm"
+//           colorScheme="blue"
+//           variant={activePanel === "serial" ? "solid" : "outline"}
+//           onClick={() => handlePanelChange("serial")}
+//         >
+//           Serial Console
+//         </Button>
+//         <Button
+//           size="sm"
+//           colorScheme="blue"
+//           variant={activePanel === "terminal" ? "solid" : "outline"}
+//           onClick={() => handlePanelChange("terminal")}
+//         >
+//           Terminal
+//         </Button>
+//       </Box>
+
+//       <Box mb={3}>
+//         <Text fontSize="md" fontWeight="semibold">
+//           {panelTitle}
+//         </Text>
+//         <Text fontSize="sm" color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+//           {panelDescription}
+//         </Text>
+//       </Box>
+
+//       {activePanel === "problem" && <pre style={responseStyle}>{response || "Run or flash to see compiler output."}</pre>}
+//       {activePanel === "serial" && (
+//         <Box
+//           border="1px solid"
+//           borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
+//           borderRadius="md"
+//           p={3}
+//           minH="120px"
+//           bg={colorMode === "dark" ? "gray.900" : "white"}
+//           display="flex"
+//           flexDirection="column"
+//           gap={2}
+//         >
+//           <Box display="flex" justifyContent="space-between" alignItems="center">
+//             <Text fontSize="sm" fontWeight="semibold" color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+//               Serial Monitor
+//             </Text>
+//             <Box display="flex" gap={2}>
+//               <Button
+//                 size="xs"
+//                 colorScheme="gray"
+//                 variant="outline"
+//                 onClick={() => setSerialOutput([])}
+//               >
+//                 Clear
+//               </Button>
+//               <Button
+//                 size="xs"
+//                 colorScheme={isConnectedToDevice ? "red" : "green"}
+//                 onClick={() => setIsConnectedToDevice(!isConnectedToDevice)}
+//               >
+//                 {isConnectedToDevice ? "Disconnect" : "Connect"}
+//               </Button>
+//             </Box>
+//           </Box>
+//           <Box
+//             flex="1"
+//             overflowY="auto"
+//             maxH="300px"
+//             bg={colorMode === "dark" ? "gray.800" : "gray.50"}
+//             p={2}
+//             borderRadius="md"
+//             fontFamily="monospace"
+//             fontSize="sm"
+//             minH="80px"
+//           >
+//             {serialOutput.length === 0 ? (
+//               <Text color={colorMode === "dark" ? "gray.400" : "gray.500"}>
+//                 {isConnectedToDevice ? "Waiting for serial data..." : "Click 'Flash' button to upload code and monitor serial output"}
+//               </Text>
+//             ) : (
+//               serialOutput.map((line, index) => (
+//                 <Text
+//                   key={index}
+//                   color={
+//                     line.includes('[ERROR]') ? 'red.400' :
+//                       line.includes('[INFO]') ? 'blue.400' :
+//                         line.includes('[DEBUG]') ? 'yellow.400' :
+//                           line.includes('[DATA]') ? 'green.400' :
+//                             line.includes('LED ON') ? 'green.300' :
+//                               line.includes('LED OFF') ? 'gray.400' :
+//                                 colorMode === "dark" ? "gray.200" : "gray.700"
+//                   }
+//                   fontWeight={line.includes('LED') ? 'bold' : 'normal'}
+//                 >
+//                   {line}
+//                 </Text>
+//               ))
+//             )}
+//           </Box>
+//         </Box>
+//       )}
+//       {activePanel === "terminal" && (
+//         <Box
+//           border="1px solid"
+//           borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
+//           borderRadius="md"
+//           p={3}
+//           minH="120px"
+//           bg={colorMode === "dark" ? "gray.900" : "white"}
+//           display="flex"
+//           flexDirection="column"
+//           gap={2}
+//         >
+//           <Text fontSize="sm" fontWeight="semibold" color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+//             Terminal
+//           </Text>
+//           <Box
+//             flex="1"
+//             overflowY="auto"
+//             bg={colorMode === "dark" ? "gray.800" : "gray.50"}
+//             p={2}
+//             borderRadius="md"
+//             fontFamily="monospace"
+//             fontSize="sm"
+//             minH="60px"
+//           >
+//             {terminalOutput.map((line, index) => (
+//               <Text key={index} color={colorMode === "dark" ? "gray.200" : "gray.700"}>
+//                 {line}
+//               </Text>
+//             ))}
+//             {terminalOutput.length === 0 && (
+//               <Text color={colorMode === "dark" ? "gray.400" : "gray.500"}>
+//                 Type a command below to get started...
+//               </Text>
+//             )}
+//           </Box>
+//           <Box display="flex" gap={2}>
+//             <Input
+//               placeholder="Enter command..."
+//               value={terminalInput}
+//               onChange={(e) => setTerminalInput(e.target.value)}
+//               onKeyPress={(e) => {
+//                 if (e.key === 'Enter') {
+//                   handleTerminalCommand();
+//                 }
+//               }}
+//               size="sm"
+//               fontFamily="monospace"
+//             />
+//             <Button
+//               size="sm"
+//               colorScheme="blue"
+//               onClick={handleTerminalCommand}
+//             >
+//               Run
+//             </Button>
+//           </Box>
+//         </Box>
+//       )}
+
+//       {/* Input box for stdin is this section i have added here */}
+//       {/* <Box mb={4}>
+//         <Text fontSize="sm" mb={4}>
+//           Provide Input for Your Code:
+//         </Text>
+//         <Input
+//           placeholder="Type input here"
+//           value={userInput}
+//           onChange={(e) => setUserInput(e.target.value)}
+//         />
+//       </Box> */}
+
+//       {/* <Box
+//         as="hr"
+//         borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
+//         mb={4}
+//       /> */}
+
+//       {/* <Box
+//         width="100%"
+//         height="18vh"
+//         p={3}
+//         color={
+//           isError ? "red.400" : colorMode === "dark" ? "gray.300" : "gray.800"
+//         }
+//         bg={colorMode === "dark" ? "gray.900" : "#ffffff"}
+//         border="1px solid"
+//         borderColor={
+//           isError ? "red.500" : colorMode === "dark" ? "gray.700" : "gray.300"
+//         }
+//         borderRadius="md"
+//         overflowY="auto"
+//       >
+//         {output.length > 0
+//           ? output.map((line, i) => <Text key={i}>{line}</Text>)
+//           : 'Click "Run Code" to see the output here'}
+//       </Box> */}
+
+//     </Box>
+//   );
+// });
+
+// export default Output;
+
+
+import { useState } from "react";
 import {
   Box,
-  Badge,
   Text,
   Button,
   useColorMode,
@@ -17,421 +1150,23 @@ import {
   Radio,
   Stack,
   Input,
-  HStack,
 } from "@chakra-ui/react";
-import { executeCode, submitCodeToDevice } from "../api";
-import { buildProject, buildAndFlash } from "../utils/espIdfUtils";
+import { executeCode } from "../api";
+import OutputStatus from "./OutputStatus";
 
 import axios from "axios";
 
-const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart, ...rest }, ref) => {
+const Output = ({ editorRef, language }) => {
   const toast = useToast();
   const { colorMode } = useColorMode();
   const [output, setOutput] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [userInput, setUserInput] = useState("");
+  const [isRunClicked, setIsRunClicked] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [alignment, setAlignment] = useState("left");
+  const [userInput, setUserInput] = useState(""); // User input for stdin
   const [response, setResponse] = useState("");
-  const [activePanel, setActivePanel] = useState("problem");
-  const [runSummary, setRunSummary] = useState({ status: "idle", reason: "" });
-  const [terminalInput, setTerminalInput] = useState("");
-  const [terminalOutput, setTerminalOutput] = useState([]);
-  const [serialOutput, setSerialOutput] = useState([]);
-  const [isConnectedToDevice, setIsConnectedToDevice] = useState(false);
-
-  // Initialize device connection state from localStorage immediately
-  const [isDeviceConnectedForActions, setIsDeviceConnectedForActions] = useState(() => {
-    const savedState = localStorage.getItem('innoide:device-connected');
-    console.log('Initial device state from localStorage:', savedState);
-    return savedState === 'true';
-  });
-
-  const [selectedDeviceInfo, setSelectedDeviceInfo] = useState(() => {
-    const savedDeviceInfo = localStorage.getItem('innoide:device-info');
-    if (savedDeviceInfo) {
-      try {
-        return JSON.parse(savedDeviceInfo);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
-
-  const handlePanelChange = (panel) => {
-    setActivePanel(panel);
-  };
-
-
-  const handleTerminalCommand = () => {
-    if (!terminalInput.trim()) return;
-
-    // Add the command to terminal output
-    setTerminalOutput(prev => [
-      ...prev,
-      `$ ${terminalInput}`,
-      // Simulate command output
-      ...simulateCommandOutput(terminalInput)
-    ]);
-    setTerminalInput("");
-  };
-
-  const simulateCommandOutput = (command) => {
-    const cmd = command.toLowerCase().trim();
-
-    if (cmd === 'help') {
-      return [
-        'Available commands:',
-        '  help - Show this help message',
-        '  ls - List files',
-        '  pwd - Show current directory',
-        '  date - Show current date',
-        '  clear - Clear terminal',
-        '  echo <text> - Echo text back'
-      ];
-    } else if (cmd === 'ls') {
-      return ['main.c', 'Makefile', 'README.md', 'src/', 'build/'];
-    } else if (cmd === 'pwd') {
-      return ['/workspace/project'];
-    } else if (cmd === 'date') {
-      return [new Date().toString()];
-    } else if (cmd === 'clear') {
-      setTerminalOutput([]);
-      return [];
-    } else if (cmd.startsWith('echo ')) {
-      return [cmd.substring(5)];
-    } else {
-      return [`bash: ${cmd}: command not found`];
-    }
-  };
-
-  // Read real serial output from connected device using Web Serial API
-  useEffect(() => {
-    if (!isConnectedToDevice) return;
-
-    let reader;
-    let keepReading = true;
-    let currentPort = null;
-
-    const readSerialData = async () => {
-      // Check if we have a serial port from the device connection
-      const deviceInfoStr = localStorage.getItem('innoide:device-info');
-      if (!deviceInfoStr) {
-        console.log('No device info found, using simulation mode');
-        startSimulation();
-        return;
-      }
-
-      try {
-        const deviceInfo = JSON.parse(deviceInfoStr);
-
-        // If simulated device, use simulation
-        if (deviceInfo.isSimulated) {
-          console.log('Simulated device detected, using simulation mode');
-          startSimulation();
-          return;
-        }
-
-        // Try to get the actual serial port
-        if ('serial' in navigator) {
-          const ports = await navigator.serial.getPorts();
-          if (ports.length === 0) {
-            console.log('No serial ports available, using simulation mode');
-            startSimulation();
-            return;
-          }
-
-          currentPort = ports[0]; // Use first available port
-
-          // Open port if not already open
-          if (!currentPort.readable) {
-            try {
-              await currentPort.open({ baudRate: 115200 });
-              console.log('✅ Serial port opened successfully');
-            } catch (openError) {
-              if (openError.message.includes('already open')) {
-                console.log('⚠️ Port already open, continuing...');
-              } else {
-                throw openError;
-              }
-            }
-          }
-
-          // Only create new reader if port is readable
-          if (currentPort.readable) {
-            const textDecoder = new TextDecoderStream();
-            const readableStreamClosed = currentPort.readable.pipeTo(textDecoder.writable);
-            reader = textDecoder.readable.getReader();
-
-            console.log('✅ Serial reader created, reading real data...');
-
-            // Read data from serial port
-            while (keepReading) {
-              try {
-                const { value, done } = await reader.read();
-                if (done) {
-                  console.log('⚠️ Serial stream ended, attempting reconnection...');
-                  break;
-                }
-
-                if (value) {
-                  const timestamp = new Date().toTimeString().split(' ')[0];
-                  const lines = value.split('\n').filter(line => line.trim());
-
-                  setSerialOutput(prev => [
-                    ...prev.slice(-50),
-                    ...lines.map(line => `[${timestamp}] ${line.trim()}`)
-                  ]);
-                }
-              } catch (error) {
-                console.error('Error reading serial data:', error);
-                // Don't break immediately, might be temporary
-                if (error.message.includes('device has been lost')) {
-                  console.log('⚠️ Device disconnected');
-                  break;
-                }
-              }
-            }
-          } else {
-            console.log('Port not readable, using simulation mode');
-            startSimulation();
-          }
-        } else {
-          console.log('Web Serial API not supported, using simulation mode');
-          startSimulation();
-        }
-      } catch (error) {
-        console.error('Error setting up serial communication:', error);
-        console.log('Falling back to simulation mode');
-        startSimulation();
-      }
-    };
-
-    // Fallback simulation function
-    const startSimulation = () => {
-      let ledState = false;
-      const interval = setInterval(() => {
-        const timestamp = new Date().toTimeString().split(' ')[0];
-
-        if (ledState) {
-          setSerialOutput(prev => [
-            ...prev.slice(-50),
-            `[${timestamp}] LED OFF`
-          ]);
-        } else {
-          setSerialOutput(prev => [
-            ...prev.slice(-50),
-            `[${timestamp}] LED ON`
-          ]);
-        }
-
-        ledState = !ledState;
-
-        if (Math.random() > 0.7) {
-          const additionalMessages = [
-            '[INFO] Device initialized',
-            '[DEBUG] GPIO pin 2 set HIGH',
-            '[DEBUG] GPIO pin 2 set LOW',
-            '[INFO] Loop iteration completed',
-            `[DATA] Sensor reading: ${Math.floor(Math.random() * 100)}`,
-            '[DEBUG] Memory usage: 85%'
-          ];
-          const randomMessage = additionalMessages[Math.floor(Math.random() * additionalMessages.length)];
-          const msgTimestamp = new Date().toTimeString().split(' ')[0];
-
-          setSerialOutput(prev => [
-            ...prev.slice(-50),
-            `[${msgTimestamp}] ${randomMessage}`
-          ]);
-        }
-      }, 1000);
-
-      return () => clearInterval(interval);
-    };
-
-    readSerialData();
-
-    return () => {
-      keepReading = false;
-      if (reader) {
-        reader.cancel().catch(err => console.log('Reader cleanup:', err.message));
-      }
-      // Don't close the port on cleanup to maintain connection
-      // Port will be closed when user explicitly disconnects
-      console.log('Serial reader cleanup complete, port remains open');
-    };
-  }, [isConnectedToDevice]);
-
-  // Listen for device connection events for action buttons and persist state
-  useEffect(() => {
-    console.log('Output component mounted');
-    console.log('Initial device connected state:', isDeviceConnectedForActions);
-    console.log('Initial device info:', selectedDeviceInfo);
-
-    const handleDeviceConnect = (event) => {
-      console.log('✅ Output: Device connect event received', event.detail);
-      setIsDeviceConnectedForActions(true);
-      localStorage.setItem('innoide:device-connected', 'true');
-
-      if (event.detail) {
-        setSelectedDeviceInfo(event.detail);
-        localStorage.setItem('innoide:device-info', JSON.stringify(event.detail));
-      }
-
-      console.log('✅ Output: Device connection state updated to TRUE');
-    };
-
-    const handleDeviceDisconnect = () => {
-      console.log('❌ Output: Device disconnect event received');
-      setIsDeviceConnectedForActions(false);
-      setSelectedDeviceInfo(null);
-      localStorage.setItem('innoide:device-connected', 'false');
-      localStorage.removeItem('innoide:device-info');
-    };
-
-    const handleDeviceFailed = () => {
-      console.log('⚠️ Output: Device detection failed');
-      setIsDeviceConnectedForActions(false);
-      setSelectedDeviceInfo(null);
-      localStorage.setItem('innoide:device-connected', 'false');
-      localStorage.removeItem('innoide:device-info');
-    };
-
-    window.addEventListener('innoide:device-detect-complete', handleDeviceConnect);
-    window.addEventListener('innoide:device-disconnect', handleDeviceDisconnect);
-    window.addEventListener('innoide:device-detect-failed', handleDeviceFailed);
-
-    return () => {
-      window.removeEventListener('innoide:device-detect-complete', handleDeviceConnect);
-      window.removeEventListener('innoide:device-disconnect', handleDeviceDisconnect);
-      window.removeEventListener('innoide:device-detect-failed', handleDeviceFailed);
-    };
-  }, []);
-
-  // Listen for physical device removal via Web Serial API
-  useEffect(() => {
-    if (!('serial' in navigator)) return;
-
-    const handleHardwareDisconnect = (event) => {
-      console.log('⚠️ Output: Hardware serial disconnect detected', event?.target);
-      setIsConnectedToDevice(false);
-      setIsDeviceConnectedForActions(false);
-      setSelectedDeviceInfo(null);
-      localStorage.setItem('innoide:device-connected', 'false');
-      localStorage.removeItem('innoide:device-info');
-
-      // Notify other components about disconnect
-      window.dispatchEvent(new CustomEvent('innoide:device-disconnect'));
-    };
-
-    navigator.serial.addEventListener('disconnect', handleHardwareDisconnect);
-
-    return () => {
-      navigator.serial.removeEventListener('disconnect', handleHardwareDisconnect);
-    };
-  }, []);
-
-  // Periodically verify that the saved device is still attached
-  useEffect(() => {
-    if (!('serial' in navigator)) return;
-    if (!isDeviceConnectedForActions) return;
-
-    let cancelled = false;
-    let intervalId = null;
-
-    const handleMissingDevice = () => {
-      if (cancelled) return;
-      console.log('⚠️ Output: Stored device no longer available, resetting state');
-      setIsConnectedToDevice(false);
-      setIsDeviceConnectedForActions(false);
-      setSelectedDeviceInfo(null);
-      localStorage.setItem('innoide:device-connected', 'false');
-      localStorage.removeItem('innoide:device-info');
-      window.dispatchEvent(new CustomEvent('innoide:device-disconnect'));
-    };
-
-    const checkPorts = async () => {
-      try {
-        const ports = await navigator.serial.getPorts();
-        if (!ports.length) {
-          handleMissingDevice();
-          return;
-        }
-
-        const savedDeviceInfoRaw = localStorage.getItem('innoide:device-info');
-        if (!savedDeviceInfoRaw) {
-          handleMissingDevice();
-          return;
-        }
-
-        let savedDeviceInfo;
-        try {
-          savedDeviceInfo = JSON.parse(savedDeviceInfoRaw);
-        } catch (error) {
-          console.warn('Failed to parse saved device info while verifying ports');
-          handleMissingDevice();
-          return;
-        }
-
-        if (savedDeviceInfo?.port?.usbVendorId && savedDeviceInfo?.port?.usbProductId) {
-          const portInfos = await Promise.all(ports.map(port => port.getInfo?.() ?? {}));
-          const matched = portInfos.some(info =>
-            info?.usbVendorId === savedDeviceInfo.port.usbVendorId &&
-            info?.usbProductId === savedDeviceInfo.port.usbProductId
-          );
-
-          if (!matched) {
-            handleMissingDevice();
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to verify serial ports:', error);
-      }
-    };
-
-    checkPorts();
-    intervalId = window.setInterval(checkPorts, 5000);
-
-    const handleVisibility = () => {
-      if (!document.hidden) {
-        checkPorts();
-      }
-    };
-
-    window.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('focus', handleVisibility);
-
-    return () => {
-      cancelled = true;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      window.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('focus', handleVisibility);
-    };
-  }, [isDeviceConnectedForActions]);
-
-  const panelTitle = useMemo(() => {
-    switch (activePanel) {
-      case "serial":
-        return "Serial Console";
-      case "terminal":
-        return "Terminal";
-      default:
-        return "Problem Output";
-    }
-  }, [activePanel]);
-
-  const panelDescription = useMemo(() => {
-    switch (activePanel) {
-      case "serial":
-        return "Monitor device logs and USART output in real time.";
-      case "terminal":
-        return "Run shell commands against the configured workspace";
-      default:
-        return "View compiler messages, build logs, and program output.";
-    }
-  }, [activePanel]);
 
   const responseStyle = {
     marginTop: "20px",
@@ -442,582 +1177,152 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
     border: `1px solid ${colorMode === "dark" ? "#4A5568" : "#CBD5E0"}`,
   };
 
-  const appendOutputLine = (line) => {
-    if (line === undefined || line === null) return;
-    const text = typeof line === "string" ? line : JSON.stringify(line);
-    setOutput((prevOutput) => [...prevOutput, text]);
-  };
-
-  const runCode = async ({ append, reason } = {}) => {
-    if (!isDeviceConnectedForActions) {
-      toast({
-        title: "No Device Connected!",
-        description: "Please connect a device before running code.",
-        status: "error",
-        duration: 6000,
-      });
-      return { ok: false, reason: "no-device" };
-    }
-
-    const sourceCode = editorRef?.current?.getValue?.() ?? "";
-
+  const runCode = async () => {
+    const sourceCode = editorRef.current.getValue();
     if (!sourceCode) {
       toast({
-        title: "Empty Code!",
-        description: "Please write your code before running.",
-        status: "error",
-        duration: 6000,
+        title: "No code provided.",
+        description: "Please write some code to execute.",
+        status: "warning",
+        duration: 3000,
       });
-      return { ok: false, reason: "no-source" };
+      return;
     }
-
-    const effectiveLanguage =
-      language && language !== "Select Language" ? language : "c";
 
     try {
       setIsLoading(true);
-      setActivePanel("problem");
-      setRunSummary({ status: "running", reason });
-      if (!append) {
-        setOutput([]);
-      }
-
-      const { run: result } = await executeCode(
-        effectiveLanguage.toLowerCase(),
-        sourceCode,
-        userInput
-      );
-
-      const stdout = result?.output ?? "";
-      const stderr = result?.stderr ?? "";
-      const stdoutLines = stdout ? stdout.split("\n") : [];
-      const stderrLines = stderr
-        ? stderr.split("\n").map((line) => (line ? `stderr: ${line}` : line))
-        : [];
-
-      setOutput((prevOutput) =>
-        append ? [...prevOutput, ...stdoutLines, ...stderrLines] : [...stdoutLines, ...stderrLines]
-      );
-
-      setResponse(stdout);
-      const hadError = Boolean(stderr);
-      setIsError(hadError);
-      setRunSummary({
-        status: hadError ? "error" : "success",
-        reason,
-      });
-
-      if (stdoutLines.length === 0 && stderrLines.length === 0) {
-        appendOutputLine("(program exited with no output)");
-      }
-
-      return {
-        ok: true,
-        result,
-        stdout,
-        stderr,
-        reason,
-      };
+      const { run: result } = await executeCode("c", sourceCode, userInput); // Pass user input
+      setOutput((prevOutput) => [...prevOutput, ...result.output.split("\n")]); // Append output
+      setIsError(!!result.stderr);
     } catch (error) {
       console.error(error);
-      const message = error?.message || "Could not execute the code.";
       toast({
-        title: "Error occurred while running.",
-        description: message,
+        title: "Error occurred.",
+        description: error.message || "Could not execute the code.",
         status: "error",
         duration: 6000,
-        isClosable: true,
       });
-      setIsError(true);
-      if (append) {
-        appendOutputLine(`Error: ${message}`);
-      } else {
-        setOutput([`Error: ${message}`]);
-      }
-      setRunSummary({ status: "error", reason });
-
-      return {
-        ok: false,
-        error,
-        reason,
-      };
     } finally {
       setIsLoading(false);
     }
   };
 
-  // handle flash code with ESP-IDF workflow
+  // handle flash code
 
   const handleCodeFlash = async () => {
-    console.log('Flash button clicked. Device connected:', isDeviceConnectedForActions);
-    console.log('Selected device info:', selectedDeviceInfo);
+    setIsLoading(true);
+    const sourceCode = editorRef.current.getValue();
 
-    if (!isDeviceConnectedForActions) {
-      console.error('Flash blocked: No device connected');
-      toast({
-        title: "No Device Connected!",
-        description: "Please connect a device before flashing.",
-        status: "error",
-        duration: 6000,
-      });
-      return { ok: false, reason: "no-device" };
-    }
-
-    onFlashStart?.();
-    const sourceCode = editorRef?.current?.getValue?.() ?? "";
+    console.log(sourceCode);
 
     if (!sourceCode) {
-      toast({
-        title: "No Source Code!",
-        description: "Please write or upload the firmware before flashing.",
-        status: "warning",
-        duration: 6000,
-      });
-      return { ok: false, reason: "no-source" };
-    }
-
-    setIsLoading(true);
-    setActivePanel("serial");
-    setRunSummary({ status: "running", reason: "flash" });
-    setOutput([]);
-
-    // Clear and start serial output
-    setSerialOutput([]);
-
-    // Keep device connected during flash
-    // Don't change isConnectedToDevice state to avoid disconnecting serial reader
-    const wasConnected = isConnectedToDevice;
-    if (!wasConnected) {
-      setIsConnectedToDevice(true);
+      alert(
+        "⚠️ No source code detected.\nPlease write or upload the firmware before flashing."
+      );
+      setIsLoading(false);
+      return;
     }
 
     try {
-      // Submit code to device API
-      appendOutputLine("=== Submitting Code to Device ===");
-      appendOutputLine("Connecting to device...");
+      const { data } = await axios.post(
+        "https://admin.innotrat.in/submit-code",
+        { code: sourceCode },
+        { headers: { "Content-Type": "application/json" } }
+      );
 
-      // Add initial serial output
-      const timestamp = new Date().toTimeString().split(' ')[0];
-      setSerialOutput(prev => [
-        ...prev,
-        `[${timestamp}] [INFO] Connecting to device...`,
-        `[${timestamp}] [INFO] Submitting code for flashing...`
-      ]);
+      setResponse(data.message);
 
-      const result = await submitCodeToDevice(sourceCode, language || "esp32");
-
-      if (result) {
-        const message = "Code submitted successfully! Device is flashing...";
-        setResponse(message);
-        appendOutputLine(`\n✓ ${message}`);
-
-        // Add success serial output
-        const successTimestamp = new Date().toTimeString().split(' ')[0];
-        setSerialOutput(prev => [
-          ...prev,
-          `[${successTimestamp}] [INFO] Code submitted successfully`,
-          `[${successTimestamp}] [INFO] Flashing firmware to device...`,
-          `[${successTimestamp}] [INFO] Device will reset and start running...`,
-          `[${successTimestamp}] [INFO] Waiting for device output...`
-        ]);
-
-        setRunSummary({ status: "success", reason: "flash" });
-
-        toast({
-          title: "Flash Successful!",
-          description: "Code submitted to device. Device will reset automatically.",
-          status: "success",
-          duration: 5000,
-        });
-
-        // Ensure device stays connected after flash
-        console.log('✅ Flash complete, maintaining device connection');
-
-        // Re-confirm device connection state
-        localStorage.setItem('innoide:device-connected', 'true');
-
-        onFlashComplete?.({ ok: true, message, result });
-        return { ok: true, message, result };
-      } else {
-        throw new Error("Code submission failed");
-      }
+      alert(
+        `✅ Firmware successfully flashed!\nDevice Response: ${data.message}`
+      );
     } catch (error) {
       console.error("Flashing Error:", error);
-      const message = error?.message || "Firmware flashing failed.";
-
-      appendOutputLine(`\n✗ Flash error: ${message}`);
-
-      // Add error to serial output
-      const errorTimestamp = new Date().toTimeString().split(' ')[0];
-      setSerialOutput(prev => [
-        ...prev,
-        `[${errorTimestamp}] [ERROR] Flash failed: ${message}`
-      ]);
-
-      setRunSummary({ status: "error", reason: "flash" });
-
-      toast({
-        title: "Flash Failed!",
-        description: message,
-        status: "error",
-        duration: 6000,
-        isClosable: true,
-      });
-
-      onFlashComplete?.({ ok: false, error, message });
-      return { ok: false, error };
+      alert(
+        "❌ Firmware flashing failed!\nPlease check your connection, code syntax, and device status."
+      );
     } finally {
-      setIsLoading(false);
-      // Ensure device connection is maintained
-      console.log('Flash operation complete, device connection state:', isDeviceConnectedForActions);
+      setIsLoading(false); // Ensure button re-enables after request
     }
   };
 
-  // Handle ESP-IDF build only
-  const handleBuildProject = async () => {
-    if (!isDeviceConnectedForActions) {
-      toast({
-        title: "No Device Connected!",
-        description: "Please connect a device before building.",
-        status: "error",
-        duration: 6000,
-      });
-      return { ok: false, reason: "no-device" };
-    }
-
-    const sourceCode = editorRef?.current?.getValue?.() ?? "";
-
-    if (!sourceCode) {
-      toast({
-        title: "No Source Code!",
-        description: "Please write code before building.",
-        status: "warning",
-        duration: 6000,
-      });
-      return { ok: false, reason: "no-source" };
-    }
-
-    setIsLoading(true);
-    setActivePanel("problem");
-    setRunSummary({ status: "running", reason: "build" });
-    setOutput([]);
-
-    try {
-      appendOutputLine("=== ESP-IDF Build ===");
-      appendOutputLine("Starting build process...");
-
-      const result = await buildProject({
-        projectPath: ".",
-        target: "esp32",
-        onProgress: (progress) => {
-          // Progress updates
-        },
-        onLog: (message) => {
-          appendOutputLine(message);
-        },
-      });
-
-      if (result.success) {
-        const message = "Build completed successfully!";
-        setResponse(message);
-        appendOutputLine(`\n✓ ${message}`);
-        appendOutputLine(`Bootloader: ${result.binaries?.bootloader || 'N/A'}`);
-        appendOutputLine(`Application: ${result.binaries?.application || 'N/A'}`);
-        setRunSummary({ status: "success", reason: "build" });
-
-        toast({
-          title: "Build Successful!",
-          description: message,
-          status: "success",
-          duration: 5000,
-        });
-
-        return { ok: true, message, result };
-      } else {
-        throw new Error("Build failed");
-      }
-    } catch (error) {
-      console.error("Build Error:", error);
-      const message = error?.message || "Build failed.";
-
-      appendOutputLine(`\n✗ Build error: ${message}`);
-      setRunSummary({ status: "error", reason: "build" });
-
-      toast({
-        title: "Build Failed!",
-        description: message,
-        status: "error",
-        duration: 6000,
-        isClosable: true,
-      });
-
-      return { ok: false, error };
-    } finally {
-      setIsLoading(false);
-    }
+  const handleRunClick = () => {
+    setIsRunClicked(true);
+    runCode();
   };
 
-  useImperativeHandle(ref, () => ({
-    runCode,
-    flashCode: handleCodeFlash,
-    buildProject: handleBuildProject,
-    openPanel: handlePanelChange,
-    setPanel: handlePanelChange,
-    setUserInput,
-    appendOutputLine,
-    isRunning: () => isLoading,
-    getStdout: () => response,
-    getOutputLines: () => output.slice(),
-  }));
+  const openModal = () => {
+    setIsModalOpen(true);
+  };
 
-  const statusColor = runSummary.status === "error"
-    ? "red"
-    : runSummary.status === "success"
-      ? "green"
-      : runSummary.status === "running"
-        ? "blue"
-        : "gray";
-
-  const statusLabel = (() => {
-    switch (runSummary.status) {
-      case "running":
-        return "Running";
-      case "success":
-        return "Success";
-      case "error":
-        return "Error";
-      default:
-        return "Idle";
-    }
-  })();
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
 
   return (
-    <Box w="100%" p={4} borderRadius="md" {...rest}>
-      {/* Device Status Badge */}
-      {isDeviceConnectedForActions && selectedDeviceInfo ? (
-        <Box mb={3} p={2} bg={colorMode === "dark" ? "green.900" : "green.50"} borderRadius="md" border="1px solid" borderColor="green.400">
-          <HStack spacing={2}>
-            <Badge colorScheme="green" fontSize="xs">✓ Connected</Badge>
-            <Text fontSize="xs" fontWeight="semibold" color={colorMode === "dark" ? "green.200" : "green.700"}>
-              {selectedDeviceInfo.deviceType || "Device"}
-            </Text>
-            {selectedDeviceInfo.memory && (
-              <Text fontSize="xs" color={colorMode === "dark" ? "gray.400" : "gray.600"}>
-                • {selectedDeviceInfo.memory}
-              </Text>
-            )}
-          </HStack>
-        </Box>
-      ) : (
-        <Box mb={3} p={2} bg={colorMode === "dark" ? "orange.900" : "orange.50"} borderRadius="md" border="1px solid" borderColor="orange.400">
-          <HStack spacing={2}>
-            <Badge colorScheme="orange" fontSize="xs">⚠ Not Connected</Badge>
-            <Text fontSize="xs" color={colorMode === "dark" ? "orange.200" : "orange.700"}>
-              Click "Select Port" or "Detect" in Flash panel to connect device
-            </Text>
-          </HStack>
-        </Box>
-      )}
-
-      <Box display="flex" alignItems="center" mb={4} gap={4} flexWrap="wrap">
+    <Box w="100%" p={4} borderRadius="md">
+      <Box display="flex" alignItems="center" mb={4} gap={4}>
+        {/* Add Hamburger Icon Button for Alignment by me  */}
+        <Button
+          size="sm"
+          colorScheme="blue"
+          variant="outline"
+          onClick={openModal}
+          // mr={4}
+        >
+          &#9776;
+        </Button>
 
         <Button
           loadingText="Flashing"
           spinnerPlacement="start"
-          isLoading={isLoading && runSummary.reason === "flash"}
+          isLoading={isLoading}
           size={"sm"}
           colorScheme="blue"
           variant={isLoading ? "solid" : "outline"}
           cursor="pointer"
           onClick={handleCodeFlash}
-          title="Flash Code to Device"
         >
           Flash
         </Button>
 
-        <Button
-          loadingText="Running"
-          spinnerPlacement="start"
-          isLoading={isLoading && runSummary.reason !== "flash"}
-          size="sm"
-          colorScheme="green"
-          variant={isLoading && runSummary.reason !== "flash" ? "solid" : "outline"}
-          onClick={() => runCode({ append: false, reason: "manual" })}
-          title="Run Code"
+        {/* <Text
+          fontWeight="bold"
+          cursor="pointer"
+          onClick={handleRunClick}
+          textDecoration={isRunClicked ? "underline" : "none"}
+          color="green.500"
+          mr={4}
         >
-          Run
-        </Button>
+          Run Code
+        </Text> */}
 
         <Button
-          loadingText="Building"
-          spinnerPlacement="start"
-          isLoading={isLoading && runSummary.reason === "build"}
           size="sm"
           colorScheme="blue"
-          variant={isLoading && runSummary.reason === "build" ? "solid" : "outline"}
-          onClick={handleBuildProject}
-          title="Build Project (ESP-IDF)"
+          variant="outline"
+          onClick={() => console.log("Problem Output clicked")}
         >
-          Build
+          Problem Output
         </Button>
         <Button
           size="sm"
           colorScheme="blue"
-          variant={activePanel === "serial" ? "solid" : "outline"}
-          onClick={() => handlePanelChange("serial")}
+          variant="outline"
+          onClick={() => console.log("Serial Console clicked")}
         >
           Serial Console
         </Button>
         <Button
           size="sm"
           colorScheme="blue"
-          variant={activePanel === "terminal" ? "solid" : "outline"}
-          onClick={() => handlePanelChange("terminal")}
+          variant="outline"
+          onClick={() => console.log("Terminal clicked")}
         >
           Terminal
         </Button>
       </Box>
 
-      <Box mb={3}>
-        <Text fontSize="md" fontWeight="semibold">
-          {panelTitle}
-        </Text>
-        <Text fontSize="sm" color={colorMode === "dark" ? "gray.300" : "gray.600"}>
-          {panelDescription}
-        </Text>
-      </Box>
-
-      {activePanel === "problem" && <pre style={responseStyle}>{response || "Run or flash to see compiler output."}</pre>}
-      {activePanel === "serial" && (
-        <Box
-          border="1px solid"
-          borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
-          borderRadius="md"
-          p={3}
-          minH="120px"
-          bg={colorMode === "dark" ? "gray.900" : "white"}
-          display="flex"
-          flexDirection="column"
-          gap={2}
-        >
-          <Box display="flex" justifyContent="space-between" alignItems="center">
-            <Text fontSize="sm" fontWeight="semibold" color={colorMode === "dark" ? "gray.300" : "gray.600"}>
-              Serial Monitor
-            </Text>
-            <Box display="flex" gap={2}>
-              <Button
-                size="xs"
-                colorScheme="gray"
-                variant="outline"
-                onClick={() => setSerialOutput([])}
-              >
-                Clear
-              </Button>
-              <Button
-                size="xs"
-                colorScheme={isConnectedToDevice ? "red" : "green"}
-                onClick={() => setIsConnectedToDevice(!isConnectedToDevice)}
-              >
-                {isConnectedToDevice ? "Disconnect" : "Connect"}
-              </Button>
-            </Box>
-          </Box>
-          <Box
-            flex="1"
-            overflowY="auto"
-            maxH="300px"
-            bg={colorMode === "dark" ? "gray.800" : "gray.50"}
-            p={2}
-            borderRadius="md"
-            fontFamily="monospace"
-            fontSize="sm"
-            minH="80px"
-          >
-            {serialOutput.length === 0 ? (
-              <Text color={colorMode === "dark" ? "gray.400" : "gray.500"}>
-                {isConnectedToDevice ? "Waiting for serial data..." : "Click 'Flash' button to upload code and monitor serial output"}
-              </Text>
-            ) : (
-              serialOutput.map((line, index) => (
-                <Text
-                  key={index}
-                  color={
-                    line.includes('[ERROR]') ? 'red.400' :
-                      line.includes('[INFO]') ? 'blue.400' :
-                        line.includes('[DEBUG]') ? 'yellow.400' :
-                          line.includes('[DATA]') ? 'green.400' :
-                            line.includes('LED ON') ? 'green.300' :
-                              line.includes('LED OFF') ? 'gray.400' :
-                                colorMode === "dark" ? "gray.200" : "gray.700"
-                  }
-                  fontWeight={line.includes('LED') ? 'bold' : 'normal'}
-                >
-                  {line}
-                </Text>
-              ))
-            )}
-          </Box>
-        </Box>
-      )}
-      {activePanel === "terminal" && (
-        <Box
-          border="1px solid"
-          borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
-          borderRadius="md"
-          p={3}
-          minH="120px"
-          bg={colorMode === "dark" ? "gray.900" : "white"}
-          display="flex"
-          flexDirection="column"
-          gap={2}
-        >
-          <Text fontSize="sm" fontWeight="semibold" color={colorMode === "dark" ? "gray.300" : "gray.600"}>
-            Terminal
-          </Text>
-          <Box
-            flex="1"
-            overflowY="auto"
-            bg={colorMode === "dark" ? "gray.800" : "gray.50"}
-            p={2}
-            borderRadius="md"
-            fontFamily="monospace"
-            fontSize="sm"
-            minH="60px"
-          >
-            {terminalOutput.map((line, index) => (
-              <Text key={index} color={colorMode === "dark" ? "gray.200" : "gray.700"}>
-                {line}
-              </Text>
-            ))}
-            {terminalOutput.length === 0 && (
-              <Text color={colorMode === "dark" ? "gray.400" : "gray.500"}>
-                Type a command below to get started...
-              </Text>
-            )}
-          </Box>
-          <Box display="flex" gap={2}>
-            <Input
-              placeholder="Enter command..."
-              value={terminalInput}
-              onChange={(e) => setTerminalInput(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleTerminalCommand();
-                }
-              }}
-              size="sm"
-              fontFamily="monospace"
-            />
-            <Button
-              size="sm"
-              colorScheme="blue"
-              onClick={handleTerminalCommand}
-            >
-              Run
-            </Button>
-          </Box>
-        </Box>
-      )}
+      <pre style={responseStyle}>{response}</pre>
 
       {/* Input box for stdin is this section i have added here */}
       {/* <Box mb={4}>
@@ -1057,8 +1362,35 @@ const Output = forwardRef(({ editorRef, language, onFlashComplete, onFlashStart,
           : 'Click "Run Code" to see the output here'}
       </Box> */}
 
+      {/* <OutputStatus errorLine={{ line: 11, row: 2 }} /> */}
+
+      <Modal isOpen={isModalOpen} onClose={closeModal}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Choose Panel Alignment</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <RadioGroup onChange={setAlignment} value={alignment}>
+              <Stack direction="column">
+                <Radio value="left">Left</Radio>
+                <Radio value="right">Right</Radio>
+                <Radio value="top">Top</Radio>
+                <Radio value="bottom">Bottom</Radio>
+              </Stack>
+            </RadioGroup>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" mr={3} onClick={closeModal}>
+              Apply
+            </Button>
+            <Button variant="ghost" onClick={closeModal}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Box>
   );
-});
+};
 
 export default Output;

@@ -81,6 +81,15 @@ const ScientificCalculator = ({ onSaveEquation }) => {
         case 'tanh':
           result = Math.tanh(value);
           break;
+        case 'sec':
+          result = 1 / Math.cos(isRadians ? value : toRadians(value));
+          break;
+        case 'csc':
+          result = 1 / Math.sin(isRadians ? value : toRadians(value));
+          break;
+        case 'cot':
+          result = 1 / Math.tan(isRadians ? value : toRadians(value));
+          break;
         case 'log':
           result = Math.log10(value);
           break;
@@ -306,17 +315,23 @@ const ScientificCalculator = ({ onSaveEquation }) => {
   const handleCalculus = (operation) => {
     try {
       if (operation === 'derivative') {
-        const expr = prompt('Enter function (use x as variable):', 'x^2');
+        const expr = prompt(
+          'Enter function f(x) to differentiate:\n\nExamples:\n- x^2\n- sin(x)\n- x^3 + 2*x\n- exp(x)\n\nUse x as variable:',
+          'x^2'
+        );
         if (!expr) return;
 
-        const x = prompt('Enter x value:', '1');
+        const x = prompt('Enter x value to evaluate derivative at:', '1');
         if (x === null) return;
 
         const result = calculateDerivative(expr, x);
         setExpression(`d/dx(${expr}) at x=${x}`);
         setDisplay(result.toString());
       } else if (operation === 'integral') {
-        const expr = prompt('Enter function (use x as variable):', 'x^2');
+        const expr = prompt(
+          'Enter function f(x) to integrate:\n\nExamples:\n- x^2\n- sin(x)\n- x^3 + 2*x\n- exp(x)\n\nUse x as variable:',
+          'x^2'
+        );
         if (!expr) return;
 
         const a = prompt('Enter lower limit (a):', '0');
@@ -392,7 +407,7 @@ const ScientificCalculator = ({ onSaveEquation }) => {
       </div>
 
       <div className="calculator-buttons">
-        {/* Row 1: Memory buttons */}
+        {/* Row 1: Memory and clear buttons */}
         <button onClick={() => handleMemory('MC')} className="btn-memory">MC</button>
         <button onClick={() => handleMemory('MR')} className="btn-memory">MR</button>
         <button onClick={() => handleMemory('M+')} className="btn-memory">M+</button>
@@ -402,62 +417,63 @@ const ScientificCalculator = ({ onSaveEquation }) => {
         <button onClick={handleClearEntry} className="btn-clear">CE</button>
         <button onClick={handleBackspace} className="btn-operator">⌫</button>
 
-        {/* Row 2: Calculus buttons */}
-        <button onClick={() => handleCalculus('derivative')} className="btn-calculus" title="Derivative">d/dx</button>
-        <button onClick={() => handleCalculus('integral')} className="btn-calculus" title="Definite Integral">∫</button>
-
-        {/* Row 2: Trigonometric functions */}
-        <button onClick={() => handleScientific('sin')} className="btn-function">sin</button>
-        <button onClick={() => handleScientific('cos')} className="btn-function">cos</button>
-        <button onClick={() => handleScientific('tan')} className="btn-function">tan</button>
+        {/* Row 2: Calculus buttons prominently displayed */}
+        <button onClick={() => handleCalculus('derivative')} className="btn-calculus" title="Derivative (Numerical)">d/dx</button>
+        <button onClick={() => handleCalculus('integral')} className="btn-calculus" title="Definite Integral">∫dx</button>
         <button onClick={() => handleScientific('sqrt')} className="btn-function">√</button>
         <button onClick={() => handleScientific('square')} className="btn-function">x²</button>
         <button onClick={() => handleScientific('cube')} className="btn-function">x³</button>
         <button onClick={() => handleScientific('pow')} className="btn-function">xʸ</button>
+        <button onClick={() => handleScientific('factorial')} className="btn-function">n!</button>
         <button onClick={() => handleOperator('/')} className="btn-operator">÷</button>
 
-        {/* Row 3: Inverse trig functions */}
+        {/* Row 3: Basic Trigonometric functions */}
+        <button onClick={() => handleScientific('sin')} className="btn-function">sin</button>
+        <button onClick={() => handleScientific('cos')} className="btn-function">cos</button>
+        <button onClick={() => handleScientific('tan')} className="btn-function">tan</button>
+        <button onClick={() => handleScientific('sec')} className="btn-function">sec</button>
+        <button onClick={() => handleScientific('csc')} className="btn-function">csc</button>
+        <button onClick={() => handleScientific('cot')} className="btn-function">cot</button>
+        <button onClick={() => handleConstant('pi')} className="btn-function">π</button>
+        <button onClick={() => handleOperator('*')} className="btn-operator">×</button>
+
+        {/* Row 4: Inverse trig functions */}
         <button onClick={() => handleScientific('asin')} className="btn-function">sin⁻¹</button>
         <button onClick={() => handleScientific('acos')} className="btn-function">cos⁻¹</button>
         <button onClick={() => handleScientific('atan')} className="btn-function">tan⁻¹</button>
         <button onClick={() => handleScientific('log')} className="btn-function">log</button>
         <button onClick={() => handleScientific('ln')} className="btn-function">ln</button>
         <button onClick={() => handleScientific('exp')} className="btn-function">eˣ</button>
-        <button onClick={() => handleConstant('pi')} className="btn-function">π</button>
-        <button onClick={() => handleOperator('*')} className="btn-operator">×</button>
+        <button onClick={() => handleConstant('e')} className="btn-function">e</button>
+        <button onClick={() => handleOperator('-')} className="btn-operator">−</button>
 
-        {/* Row 4: Hyperbolic functions */}
+        {/* Row 5: Hyperbolic functions */}
         <button onClick={() => handleScientific('sinh')} className="btn-function">sinh</button>
         <button onClick={() => handleScientific('cosh')} className="btn-function">cosh</button>
         <button onClick={() => handleScientific('tanh')} className="btn-function">tanh</button>
-        <button onClick={() => handleScientific('factorial')} className="btn-function">n!</button>
         <button onClick={() => handleScientific('abs')} className="btn-function">|x|</button>
-        <button onClick={() => handleConstant('e')} className="btn-function">e</button>
         <button onClick={() => handleScientific('reciprocal')} className="btn-function">1/x</button>
-        <button onClick={() => handleOperator('-')} className="btn-operator">−</button>
-
-        {/* Row 5: Numbers 7-9 */}
-        <button onClick={() => handleNumber('7')} className="btn-number">7</button>
-        <button onClick={() => handleNumber('8')} className="btn-number">8</button>
-        <button onClick={() => handleNumber('9')} className="btn-number">9</button>
         <button onClick={() => handleScientific('percent')} className="btn-operator">%</button>
-        <button onClick={() => handleNumber('(')} className="btn-operator">(</button>
-        <button onClick={() => handleNumber(')')} className="btn-operator">)</button>
         <button onClick={() => handleScientific('negate')} className="btn-operator">±</button>
         <button onClick={() => handleOperator('+')} className="btn-operator">+</button>
 
-        {/* Row 6: Numbers 4-6 */}
+        {/* Row 6: Numbers 7-9 */}
+        <button onClick={() => handleNumber('7')} className="btn-number">7</button>
+        <button onClick={() => handleNumber('8')} className="btn-number">8</button>
+        <button onClick={() => handleNumber('9')} className="btn-number">9</button>
+        <button onClick={() => handleNumber('(')} className="btn-operator">(</button>
+        <button onClick={() => handleNumber(')')} className="btn-operator">)</button>
         <button onClick={() => handleNumber('4')} className="btn-number">4</button>
         <button onClick={() => handleNumber('5')} className="btn-number">5</button>
         <button onClick={() => handleNumber('6')} className="btn-number">6</button>
-        <button onClick={handleDecimal} className="btn-number">.</button>
-        <button onClick={() => handleNumber('0')} className="btn-number btn-zero">0</button>
-        <button onClick={handleEquals} className="btn-equals">=</button>
 
-        {/* Row 7: Numbers 1-3 */}
+        {/* Row 7: Numbers 1-3 and 0 */}
         <button onClick={() => handleNumber('1')} className="btn-number">1</button>
         <button onClick={() => handleNumber('2')} className="btn-number">2</button>
         <button onClick={() => handleNumber('3')} className="btn-number">3</button>
+        <button onClick={handleDecimal} className="btn-number">.</button>
+        <button onClick={() => handleNumber('0')} className="btn-number btn-zero">0</button>
+        <button onClick={handleEquals} className="btn-equals">=</button>
       </div>
 
       <div className="calculator-footer">

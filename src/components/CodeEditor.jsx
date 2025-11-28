@@ -314,9 +314,50 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
     if (typeof flashRunner === "function") {
       setIsFlashing(true);
-      await flashRunner();
+
+      try {
+        // Get the current code from the active tab
+        const activeTabData = tabs.find((tab) => tab.id === activeTab);
+        const code = activeTabData?.content || "";
+
+        if (code.trim()) {
+          // Submit code to API before flashing
+          try {
+            const res = await fetch('https://admin.innotrat.in/submit-code', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ code })
+            });
+
+            const result = await res.json();
+            console.log('Code submitted to server:', result.message);
+
+            toast({
+              title: "Code Submitted",
+              description: result.message || "Code submitted successfully to server",
+              status: "success",
+              duration: 3000,
+            });
+          } catch (apiError) {
+            console.error('Error submitting code to server:', apiError);
+            toast({
+              title: "API Warning",
+              description: "Failed to submit code to server, but continuing with flash...",
+              status: "warning",
+              duration: 3000,
+            });
+          }
+        }
+
+        // Proceed with normal flash operation
+        await flashRunner();
+      } catch (error) {
+        console.error('Flash error:', error);
+      } finally {
+        setIsFlashing(false);
+      }
     }
-  }, []);
+  }, [tabs, activeTab, toast]);
 
   const handleEraseClick = useCallback(() => {
     setEraseOpen(true);

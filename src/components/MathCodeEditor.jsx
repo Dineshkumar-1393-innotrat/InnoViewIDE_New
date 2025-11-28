@@ -711,13 +711,13 @@ ${equation.expression}
             >
                 <Flex flex="1" gap={6} overflow="hidden" align="stretch">
                     <Box
-                        w={{ base: "380px", lg: "420px" }}
+                        w={{ base: "300px", lg: "340px" }}
                         bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
                         border="1px solid"
                         borderColor={colorMode === "dark" ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.08)"}
                         borderRadius="2xl"
                         boxShadow={colorMode === "dark" ? "0 30px 60px rgba(8,15,32,0.55)" : "0 24px 56px rgba(15,23,42,0.08)"}
-                        p={5}
+                        p={3}
                         display="flex"
                         flexDirection="column"
                         backdropFilter="blur(16px)"
