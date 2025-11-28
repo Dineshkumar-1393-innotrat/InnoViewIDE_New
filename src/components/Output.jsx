@@ -1364,31 +1364,31 @@ const Output = ({ editorRef, language }) => {
 
       {/* <OutputStatus errorLine={{ line: 11, row: 2 }} /> */}
 
-      <Modal isOpen={isModalOpen} onClose={closeModal}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Choose Panel Alignment</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <RadioGroup onChange={setAlignment} value={alignment}>
-              <Stack direction="column">
-                <Radio value="left">Left</Radio>
-                <Radio value="right">Right</Radio>
-                <Radio value="top">Top</Radio>
-                <Radio value="bottom">Bottom</Radio>
-              </Stack>
-            </RadioGroup>
-          </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={closeModal}>
-              Apply
-            </Button>
-            <Button variant="ghost" onClick={closeModal}>
-              Cancel
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      {/* <Modal isOpen={isModalOpen} onClose={closeModal}> */}
+        {/* <ModalOverlay /> */}
+        {/* <ModalContent> */}
+          {/* <ModalHeader>Choose Panel Alignment</ModalHeader> */}
+          {/* <ModalCloseButton /> */}
+          {/* <ModalBody> */}
+            {/* <RadioGroup onChange={setAlignment} value={alignment}> */}
+              {/* <Stack direction="column"> */}
+                {/* <Radio value="left">Left</Radio> */}
+                {/* <Radio value="right">Right</Radio> */}
+                {/* <Radio value="top">Top</Radio> */}
+                {/* <Radio value="bottom">Bottom</Radio> */}
+              {/* </Stack> */}
+            {/* </RadioGroup> */}
+          {/* </ModalBody> */}
+          {/* <ModalFooter> */}
+            {/* <Button colorScheme="blue" mr={3} onClick={closeModal}> */}
+              {/* Apply */}
+            {/* </Button> */}
+            {/* <Button variant="ghost" onClick={closeModal}> */}
+              {/* Cancel */}
+            {/* </Button> */}
+          {/* </ModalFooter> */}
+        {/* </ModalContent> */}
+      {/* </Modal> */}
     </Box>
   );
 };
