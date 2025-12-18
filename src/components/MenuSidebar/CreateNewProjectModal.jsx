@@ -79,85 +79,259 @@ const CreateNewProjectModal = ({
   };
 
   //   handle create project
+  // const handleCreateProject = async (
+  //   fileSystem,
+  //   type,
+  //   userId,
+  //   projectName,
+  //   projectType,
+  //   boardType,
+  //   features
+  // ) => {
+  //   try {
+  //     // First API request to create a product
+  //     const response = await axios.post("https://eureka.innotrat.in/product", {
+  //       name: projectName,
+  //       userId,
+  //     });
+
+  //     console.log("Product Response:", response.data); // Debugging
+
+  //     const productId = response.data.productID;
+  //     if (!productId) throw new Error("Product ID not received.");
+
+  //     alert(`${projectName} project created successfully`);
+
+  //     // Second API request to create a file/folder
+  //     const { data } = await axios.post(
+  //       "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //       {
+  //         parentId: fileSystem?._id,
+  //         name: projectName,
+  //         type,
+  //         userId,
+  //         // productId,
+  //         projectType,
+  //         boardType,
+  //         features,
+  //       }
+  //     );
+
+  //     console.log("Created File/Folder Response:", data); // Debugging
+
+  //     setActiveProductId(data?.file?.productId);
+  //     setActiveProjectId(data?.file?._id);
+  //     setActiveProductName(data?.file?.name);
+  //     setActiveProjectName(data?.file?.name);
+
+  //     await axios.post(
+  //       "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //       {
+  //         parentId: data?.file?._id,
+  //         name: "simulation.c",
+  //         type: "file",
+  //         userId,
+  //       }
+  //     );
+
+  //     console.log("default file created successfully!");
+
+  //     // Refresh the file system if creation was successful
+  //     if (data.success) {
+  //       fetchFileSystem(userId, setFileSystem, buildTree);
+  //     } else {
+  //       throw new Error("File/Folder creation failed.");
+  //     }
+
+  //     // Navigate based on selected feature
+  //     const routeMap = {
+  //       writeCode: "/editor",
+  //       flowChart: "/FlowchartTest",
+  //       blockDiagram: "/BlockDiagram",
+  //       simulation: "/simulation",
+  //     };
+
+  //     navigate(routeMap[feature] || "/editor");
+
+  //     onClose();
+  //   } catch (error) {
+  //     console.error("Error creating project:", error?.response?.data?.message);
+  //     alert(
+  //       error.response?.data?.message || error.message || "An error occurred."
+  //     );
+  //   }
+  // };
+
+  // const handleCreateProject = async (
+  //   parentFileSystem,
+  //   type,
+  //   userId,
+  //   projectName,
+  //   projectType,
+  //   boardType,
+  //   feature
+  // ) => {
+  //   try {
+  //     // Single API call: create folder/file & project metadata
+  //     const { data } = await axios.post(
+  //       "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //       {
+  //         parentId: parentFileSystem?._id,
+  //         name: projectName,
+  //         type, // "folder" (or "file")
+  //         userId,
+  //         projectType,
+  //         boardType,
+  //         features: feature, // matches example payload you showed
+  //       }
+  //     );
+
+  //     console.log("Created File/Folder Response:", data);
+
+  //     if (!data?.success || !data?.file) {
+  //       throw new Error("File/Folder creation failed or returned no file.");
+  //     }
+
+  //     const createdFile = data.file;
+
+  //     // Set active ids/names — productId might be undefined if backend doesn't return it
+  //     setActiveProductId(createdFile?.productId ?? null);
+  //     setActiveProjectId(createdFile?._id ?? null);
+  //     setActiveProductName(createdFile?.name ?? projectName);
+  //     setActiveProjectName(createdFile?.name ?? projectName);
+
+  //     // Create default file inside the new folder (simulation.c)
+  //     // Only attempt when the created entity is a folder
+  //     if (createdFile && createdFile._id && type === "folder") {
+  //       try {
+  //         await axios.post(
+  //           "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //           {
+  //             parentId: createdFile._id,
+  //             name: "simulation.c",
+  //             type: "file",
+  //             userId,
+  //           }
+  //         );
+  //         console.log("default file created successfully!");
+  //       } catch (e) {
+  //         // non-fatal, but log it
+  //         console.warn("Default file creation failed:", e);
+  //       }
+  //     }
+
+  //     // Refresh the file system
+  //     fetchFileSystem(userId, setFileSystem, buildTree);
+
+  //     // Navigate by selected feature
+  //     const routeMap = {
+  //       writeCode: "/editor",
+  //       flowChart: "/FlowchartTest",
+  //       blockDiagram: "/BlockDiagram",
+  //       simulation: "/simulation",
+  //     };
+  //     navigate(routeMap[feature] || "/editor");
+
+  //     onClose();
+  //   } catch (error) {
+  //     console.error("Error creating project:", error?.response?.data || error);
+  //     alert(
+  //       error?.response?.data?.message || error?.message || "An error occurred."
+  //     );
+  //   }
+  // };
+
   const handleCreateProject = async (
-    fileSystem,
+    parentFileSystem,
     type,
     userId,
     projectName,
     projectType,
     boardType,
-    features
+    feature
   ) => {
     try {
-      // First API request to create a product
-      const response = await axios.post("https://eureka.innotrat.in/product", {
-        name: projectName,
-        userId,
-      });
-
-      console.log("Product Response:", response.data); // Debugging
-
-      const productId = response.data.productID;
-      if (!productId) throw new Error("Product ID not received.");
-
-      alert(`${projectName} project created successfully`);
-
-      // Second API request to create a file/folder
+      // Single API call: create folder/file & project metadata
       const { data } = await axios.post(
         "https://eureka.innotrat.in/api/v1/createFileAndFolder",
         {
-          parentId: fileSystem?._id,
+          parentId: parentFileSystem?._id,
           name: projectName,
-          type,
+          type, // "folder" (or "file")
           userId,
-          productId,
           projectType,
           boardType,
-          features,
+          features: feature, // matches example payload you showed
         }
       );
 
-      console.log("Created File/Folder Response:", data); // Debugging
+      console.log("Created File/Folder Response:", data);
 
-      setActiveProductId(data?.file?.productId);
-      setActiveProjectId(data?.file?._id);
-      setActiveProductName(data?.file?.name);
-      setActiveProjectName(data?.file?.name);
-
-      await axios.post(
-        "https://eureka.innotrat.in/api/v1/createFileAndFolder",
-        {
-          parentId: data?.file?._id,
-          name: "simulation.c",
-          type: "file",
-          userId,
-        }
-      );
-
-      console.log("default file created successfully!");
-
-      // Refresh the file system if creation was successful
-      if (data.success) {
-        fetchFileSystem(userId, setFileSystem, buildTree);
-      } else {
-        throw new Error("File/Folder creation failed.");
+      if (!data?.success || !data?.file) {
+        throw new Error("File/Folder creation failed or returned no file.");
       }
 
-      // Navigate based on selected feature
+      const createdFile = data.file;
+
+      // Set active ids/names — productId might be undefined if backend doesn't return it
+      setActiveProductId(createdFile?.productId ?? null);
+      setActiveProjectId(createdFile?._id ?? null);
+      setActiveProductName(createdFile?.name ?? projectName);
+      setActiveProjectName(createdFile?.name ?? projectName);
+
+      // --- STORE in localStorage (recommended: one JSON object) ---
+      // Key: "activeProject"
+      // Value: { id: "<_id>", name: "<name>", path: "<path>" (optional) }
+      try {
+        const projectToStore = {
+          id: createdFile?._id ?? null,
+          name: createdFile?.name ?? projectName,
+          path: createdFile?.path ?? null,
+          productId: createdFile?.productId ?? null,
+          createdAt: createdFile?.createdAt ?? null,
+        };
+        localStorage.setItem("activeProjectId", projectToStore.id);
+      } catch (lsErr) {
+        console.warn("Failed to save project to localStorage:", lsErr);
+      }
+
+      // Create default file inside the new folder (simulation.c)
+      // Only attempt when the created entity is a folder
+      if (createdFile && createdFile._id && type === "folder") {
+        try {
+          await axios.post(
+            "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+            {
+              parentId: createdFile._id,
+              name: "simulation.c",
+              type: "file",
+              userId,
+            }
+          );
+          console.log("default file created successfully!");
+        } catch (e) {
+          // non-fatal, but log it
+          console.warn("Default file creation failed:", e);
+        }
+      }
+
+      // Refresh the file system
+      fetchFileSystem(userId, setFileSystem, buildTree);
+
+      // Navigate by selected feature
       const routeMap = {
         writeCode: "/editor",
         flowChart: "/FlowchartTest",
         blockDiagram: "/BlockDiagram",
         simulation: "/simulation",
       };
-
       navigate(routeMap[feature] || "/editor");
 
       onClose();
     } catch (error) {
-      console.error("Error creating project:", error?.response?.data?.message);
+      console.error("Error creating project:", error?.response?.data || error);
       alert(
-        error.response?.data?.message || error.message || "An error occurred."
+        error?.response?.data?.message || error?.message || "An error occurred."
       );
     }
   };
@@ -196,6 +370,7 @@ const CreateNewProjectModal = ({
               <Stack direction="row">
                 <Radio value="STM32 U5">STM32 U5</Radio>
                 <Radio value="NRF52840">NRF52840</Radio>
+                {/* <Radio value="STM32">STM32</Radio> */}
               </Stack>
             </RadioGroup>
           </FormControl>
@@ -217,7 +392,7 @@ const CreateNewProjectModal = ({
           <Button variant="outline" mr={3} onClick={onClose}>
             Cancel
           </Button>
-          <Button
+          {/* <Button
             colorScheme="blue"
             onClick={async () => {
               try {
@@ -235,6 +410,27 @@ const CreateNewProjectModal = ({
               }
             }}
             isDisabled={!projectName.trim()}
+          >
+            Create
+          </Button> */}
+
+          <Button
+            colorScheme="blue"
+            onClick={async () => {
+              try {
+                await handleCreateProject(
+                  fileSystem, // parent (folder) object
+                  folder, // type (e.g. "folder")
+                  userId,
+                  projectName,
+                  projectType,
+                  boardType,
+                  feature // string like "writeCode", "flowChart", etc.
+                );
+              } catch (error) {
+                console.error("Create project error:", error);
+              }
+            }}
           >
             Create
           </Button>

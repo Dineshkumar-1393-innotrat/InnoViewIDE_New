@@ -46,6 +46,7 @@ import { useCanvasFileIntegration } from '../hooks/useCanvasFileIntegration';
 import { WorkspaceTabsProvider, useWorkspaceTabs } from '../hooks/useWorkspaceTabs';
 import DefineProductButton from './shared/DefineProductButton';
 import { useNavigate } from 'react-router-dom';
+import { useReactFlowAutoSave } from '../hooks/useCanvasAutoSave';
 
 // Simple id helpers
 let nodeId = 1;
@@ -1590,13 +1591,39 @@ function DiagramEditor() {
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const rf = useReactFlow();
   const canvasIntegration = useCanvasFileIntegration('Block Diagram');
+
+  // Canvas auto-save for state persistence
+  const {
+    isSaving: isCanvasSaving,
+    lastSaveTime: canvasLastSaveTime,
+    isLoaded: canvasIsLoaded,
+    saveNow: saveCanvasNow,
+    scheduleSave: scheduleCanvasSave,
+  } = useReactFlowAutoSave(nodes, edges, setNodes, setEdges, rf, {
+    screenPath: "/BlockDiagram",
+    saveDelay: 1500,
+    onSave: (state) => console.log("[BlockDiagram] Canvas auto-saved:", state.nodes?.length, "nodes"),
+    onLoad: (state) => {
+      console.log("[BlockDiagram] Canvas state restored:", state.nodes?.length, "nodes");
+      // Sync loaded state to active tab if tab is empty
+      if (state && (state.nodes?.length > 0)) {
+        // We can't access activeTab directly here due to closure, but checking it in effect is better?
+        // Actually, we can just trigger a sync action or let the effect handle it?
+        // Best to leave this simple logging for now and rely on the skip-restore logic.
+      }
+    },
+    onError: (error) => console.error("[BlockDiagram] Canvas auto-save error:", error),
+  });
+
   const historyRef = useRef({ entries: [], index: -1 });
   const { isSidebarOpen, isMobile, toggleSidebar, closeSidebar } = useResponsiveSidebar();
   const nodesRef = useRef([]);
   const edgesRef = useRef([]);
   const debounceRef = useRef(null);
+  
   const hydratingRef = useRef(false);
   const lastSnapshotRef = useRef('');
+  const lastActiveTabIdRef = useRef(null);
 
   // Add auto-save tabs functionality
   const {
@@ -1662,6 +1689,78 @@ function DiagramEditor() {
   const navigate = useNavigate();
   const { user, activeProjectId, activeProjectName, setActiveProjectId } = useProject?.() ?? {};
   const userId = user?.userId || user?._id || user?.id;
+
+  // Sync canvas state with workspace tabs on tab switch
+  // PART 1: Save state before switching (via event)
+  useEffect(() => {
+    const handleBeforeTabSwitch = () => {
+      // Save current canvas state to active tab before switching
+      if (updateActiveTabState) {
+        console.log('[BlockDiagram] Saving canvas state before tab switch');
+        updateActiveTabState(
+          (prev) => ({
+            ...prev,
+            nodes: nodesRef.current,
+            edges: edgesRef.current,
+            viewport: rf.getViewport(),
+          }),
+          { markDirty: true, scheduleSave: true }
+        );
+        // Also force save to localStorage as backup
+        saveCanvasNow();
+      }
+    };
+
+    window.addEventListener('workspace:before-tab-switch', handleBeforeTabSwitch);
+
+    return () => {
+      window.removeEventListener('workspace:before-tab-switch', handleBeforeTabSwitch);
+    };
+  }, [updateActiveTabState, rf, saveCanvasNow]);
+
+  // PART 2: Restore state when active tab changes
+  useEffect(() => {
+    if (activeTab) {
+      const isInitialMount = lastActiveTabIdRef.current === null;
+      const isTabSwitch = lastActiveTabIdRef.current !== activeTab.id;
+
+      lastActiveTabIdRef.current = activeTab.id;
+
+      // If initial mount and tab is empty, SKIP restore to allow AutoSave to load data
+      if (isInitialMount) {
+        const isEmpty = !activeTab.state || !activeTab.state.nodes || activeTab.state.nodes.length === 0;
+        if (isEmpty) {
+          console.log('[BlockDiagram] Initial mount with empty tab - Skipping restore to let AutoSave load');
+          return;
+        }
+      }
+
+      // Only restore if it's a switch or initial mount (non-empty)
+      // We check activeTab.state existence too
+      if ((isTabSwitch || isInitialMount) && activeTab.state) {
+        console.log('[BlockDiagram] Active tab changed, restoring canvas state:', activeTab.name);
+
+        // Stop rendering/auto-saving while we restore
+        // Optional: clear canvas first if needed
+
+
+        const newState = activeTab.state;
+        if (newState.nodes) {
+          setNodes(newState.nodes);
+          nodesRef.current = newState.nodes;
+        }
+        if (newState.edges) {
+          setEdges(newState.edges);
+          edgesRef.current = newState.edges;
+        }
+        if (newState.viewport && rf) {
+          setTimeout(() => {
+            rf.setViewport(newState.viewport);
+          }, 50);
+        }
+      }
+    }
+  }, [activeTab, setNodes, setEdges, rf]);
 
   // Canvas file integration
   // Check for existing projects and manage project state
@@ -1760,9 +1859,12 @@ function DiagramEditor() {
     };
     const next = routes[tab];
     if (next) {
+      // Force save canvas state before navigating
+      console.log('[BlockDiagram] Saving canvas before tab switch...');
+      saveCanvasNow();
       navigate(next);
     }
-  }, [navigate]);
+  }, [navigate, saveCanvasNow]);
 
   const onConnect = useCallback(
     (params) =>
@@ -1812,7 +1914,7 @@ function DiagramEditor() {
           position: { x, y }, // Position at the edge midpoint
           data: { label: 'Junction', size: 2 }, // Very small size to look like a point/hidden
           // Adjust position to center the node (size is 2)
-          position: { x: x - 1, y: y - 1 },
+       //   position: { x: x - 1, y: y - 1 },
         };
 
         // Create new edges

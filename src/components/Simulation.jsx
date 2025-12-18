@@ -983,7 +983,13 @@
 
 // Simulation code given by siva
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Rnd } from "react-rnd";
@@ -1025,6 +1031,8 @@ import Connectorfour from "../images/connectorzonefour.svg";
 import Connectorfive from "../images/connectorzonefive.svg";
 import SimulationOne from "./SimulationOne";
 import { useAutoSaveTabs } from "../hooks/useAutoSaveTabs";
+import { useSimulationAutoSave, useGlobalAutoSave } from "../hooks/useAutoSave";
+import { autoSaveManager } from "../utils/autoSaveManager";
 import Phsensor from "../images/phsensor.svg";
 import Moisturesensor from "../images/moisturesensor.svg";
 import Lightsensor from "../images/lightsensor.svg";
@@ -1174,15 +1182,15 @@ const symbolsData = [
   },
 ];
 
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector } from "react-redux";
 import {
   setDroppedItems,
   addDroppedItem,
   updateDroppedItem,
   removeDroppedItem,
   setConnections,
-  addConnection
-} from '../store/slices/simulationSlice';
+  addConnection,
+} from "../store/slices/simulationSlice";
 
 // ... existing imports
 
@@ -1190,7 +1198,7 @@ const BlockDiagram = () => {
   const dispatch = useDispatch();
   // Use Redux state for droppedItems and connections
   const droppedItems = useSelector((state) => state.simulation.droppedItems);
-  const connections = useSelector((state) => state.simulation.connections); // This might need to be an array in Redux, but Set in component. 
+  const connections = useSelector((state) => state.simulation.connections); // This might need to be an array in Redux, but Set in component.
   // Redux can't store Sets. We need to convert between them or use Array in Redux.
   // My slice defined connections as array.
   // In component it was `useState(new Set())`.
@@ -1216,14 +1224,105 @@ const BlockDiagram = () => {
     saveTab,
     saveAsset,
     getActiveTab,
-    getFolderInfo
-  } = useAutoSaveTabs([
-    { id: 1, name: "simulation.c", content: "// Simulation code\n", dirty: false }
-  ], {
-    maxTabs: 5,
-    defaultTabName: "simulation",
-    defaultContent: "// Simulation code\n"
+    getFolderInfo,
+  } = useAutoSaveTabs(
+    [
+      {
+        id: 1,
+        name: "simulation.c",
+        content: "// Simulation code\n",
+        dirty: false,
+      },
+    ],
+    {
+      maxTabs: 5,
+      defaultTabName: "simulation",
+      defaultContent: "// Simulation code\n",
+    },
+  );
+
+  // Enhanced auto-save for simulation canvas state
+  const {
+    isSaving: isAutoSaving,
+    lastSaveTime: lastAutoSaveTime,
+    saveNow: saveSimulationNow,
+    scheduleSave: scheduleSimulationSave,
+    isLoaded: isAutoSaveLoaded,
+  } = useSimulationAutoSave(droppedItems, connections, {
+    screenKey: "/simulation",
+    autoSaveDelay: 2000,
+    priority: 3,
+    onSave: (data) => {
+      console.log("[Simulation] Auto-saved canvas state:", data);
+    },
+    onLoad: (loadedData) => {
+      console.log("[Simulation] Loading saved canvas state:", loadedData);
+      // Restore canvas state from auto-save
+      if (loadedData) {
+        if (loadedData.droppedItems && loadedData.droppedItems.length > 0) {
+          dispatch(setDroppedItems(loadedData.droppedItems));
+        }
+        if (loadedData.connections && loadedData.connections.length > 0) {
+          dispatch(setConnections(loadedData.connections));
+        }
+      }
+    },
+    onError: (error) => {
+      console.error("[Simulation] Auto-save error:", error);
+    },
   });
+
+  const { saveAll: saveAllScreens } = useGlobalAutoSave();
+
+  // Save canvas state when droppedItems or connections change
+  useEffect(() => {
+    if (droppedItems.length > 0 || connections.length > 0) {
+      scheduleSimulationSave();
+    }
+  }, [droppedItems, connections, scheduleSimulationSave]);
+
+  // Save before navigating away
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveSimulationNow();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        saveSimulationNow();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      // Save when unmounting (navigating away)
+      saveSimulationNow();
+    };
+  }, [saveSimulationNow]);
+
+  // Register simulation canvas save strategy with auto-save manager
+  useEffect(() => {
+    const saveFunction = () => ({
+      droppedItems,
+      connections: Array.isArray(connections) ? connections : [],
+      timestamp: Date.now(),
+      activeTab,
+      tabs,
+    });
+
+    autoSaveManager.registerSaveStrategy("simulation:canvas", saveFunction, {
+      priority: 3,
+      skipEmpty: false,
+    });
+
+    return () => {
+      autoSaveManager.unregisterSaveStrategy("simulation:canvas");
+    };
+  }, [droppedItems, connections, activeTab, tabs]);
 
   const [openCategories, setOpenCategories] = useState({}); // Moved here
   const [searchQuery, setSearchQuery] = useState("");
@@ -1239,7 +1338,16 @@ const BlockDiagram = () => {
   const [fileSystem, setFileSystem] = useState({});
   const [diagramId, setDiagramId] = useState(null);
   const handleTabChange = useCallback(
-    (tab) => {
+    async (tab) => {
+      // Save current simulation state before navigating
+      try {
+        await saveSimulationNow();
+        await saveAllScreens();
+        console.log("[Simulation] Saved state before tab change to:", tab);
+      } catch (error) {
+        console.error("[Simulation] Failed to save before tab change:", error);
+      }
+
       const routes = {
         Simulation: "/simulation",
         Flowchart: "/FlowchartTest",
@@ -1252,7 +1360,7 @@ const BlockDiagram = () => {
         navigate(next);
       }
     },
-    [navigate]
+    [navigate],
   );
 
   const {
@@ -1291,7 +1399,7 @@ const BlockDiagram = () => {
               ...diagram.symbol,
               src: decodeURIComponent(diagram.symbol.src),
             },
-          })
+          }),
         );
 
         console.log("Decoded simulation diagrams:", fetchedDiagrams);
@@ -1334,7 +1442,7 @@ const BlockDiagram = () => {
 
       if (!isFetched && data.length === 0) {
         console.warn(
-          "Skipping save: Default empty state should not be auto-saved."
+          "Skipping save: Default empty state should not be auto-saved.",
         );
         return;
       }
@@ -1374,7 +1482,7 @@ const BlockDiagram = () => {
       if (existingDiagramId) {
         const response = await axios.put(
           `${baseURL}/api/v1/updateStoredSimulationDiagramData/${existingDiagramId}`,
-          payload
+          payload,
         );
 
         console.log(response.data);
@@ -1382,7 +1490,7 @@ const BlockDiagram = () => {
       } else {
         await axios.post(
           `${baseURL}/api/v1/storeSimulationDiagramData`,
-          payload
+          payload,
         );
         console.log("Simulation diagram saved successfully!");
       }
@@ -1436,7 +1544,9 @@ const BlockDiagram = () => {
           // Since we are moving to IDs, let's try to use ID if available.
           // But activeSymbol is an INDEX in the current logic.
           // We need to filter by index.
-          const newItems = droppedItems.filter((_, index) => index !== activeSymbol);
+          const newItems = droppedItems.filter(
+            (_, index) => index !== activeSymbol,
+          );
           dispatch(setDroppedItems(newItems));
         }
         setActiveSymbol(null); // Reset active symbol after deletion
@@ -1482,7 +1592,7 @@ const BlockDiagram = () => {
     return symbolsData
       .map((section) => {
         const filteredItems = section.items.filter((item) =>
-          item.name.toLowerCase().includes(query)
+          item.name.toLowerCase().includes(query),
         );
         return filteredItems.length
           ? { ...section, items: filteredItems }
@@ -1513,7 +1623,9 @@ const BlockDiagram = () => {
 
   const handleDelete = () => {
     if (contextMenu) {
-      const newItems = droppedItems.filter((_, index) => index !== contextMenu.symbolIndex);
+      const newItems = droppedItems.filter(
+        (_, index) => index !== contextMenu.symbolIndex,
+      );
       dispatch(setDroppedItems(newItems));
       setContextMenu(null);
       setActiveSymbol(null);
@@ -1538,13 +1650,14 @@ const BlockDiagram = () => {
       const centerY2 = item.y + item.height / 2;
 
       const distance = Math.sqrt(
-        Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2)
+        Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2),
       );
 
       // If close enough, snap to a position that aligns centers or edges
       // For "magnetic" feel, let's pull it towards the other component but keep a small gap or align centers
       // Here we implement a simple "gravity" pull towards the center if within threshold
-      if (distance < SNAP_THRESHOLD + 100) { // Increased range for "pull"
+      if (distance < SNAP_THRESHOLD + 100) {
+        // Increased range for "pull"
         // Calculate vector to target
         const dx = centerX2 - centerX1;
         const dy = centerY2 - centerY1;
@@ -1566,14 +1679,15 @@ const BlockDiagram = () => {
   };
 
   // Check if two components are close enough to be considered "connected"
-  const checkProximity = (item1, item2, threshold = 150) => { // Increased threshold
+  const checkProximity = (item1, item2, threshold = 150) => {
+    // Increased threshold
     const centerX1 = item1.x + item1.width / 2;
     const centerY1 = item1.y + item1.height / 2;
     const centerX2 = item2.x + item2.width / 2;
     const centerY2 = item2.y + item2.height / 2;
 
     const distance = Math.sqrt(
-      Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2)
+      Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2),
     );
 
     return distance <= threshold;
@@ -1582,16 +1696,22 @@ const BlockDiagram = () => {
   // Handle connection detection and notification
   // Handle connection detection and notification
   const handleConnectionDetection = (movedItem) => {
-    console.log('🔍 Checking connections for component:', movedItem.id);
-    console.log('Current position:', { x: movedItem.x, y: movedItem.y });
-    console.log('Total components:', droppedItems.length);
+    console.log("🔍 Checking connections for component:", movedItem.id);
+    console.log("Current position:", { x: movedItem.x, y: movedItem.y });
+    console.log("Total components:", droppedItems.length);
 
     droppedItems.forEach((item) => {
       if (item.id === movedItem.id) return; // Skip self
 
       const distance = Math.sqrt(
-        Math.pow((item.x + item.width / 2) - (movedItem.x + movedItem.width / 2), 2) +
-        Math.pow((item.y + item.height / 2) - (movedItem.y + movedItem.height / 2), 2)
+        Math.pow(
+          item.x + item.width / 2 - (movedItem.x + movedItem.width / 2),
+          2,
+        ) +
+          Math.pow(
+            item.y + item.height / 2 - (movedItem.y + movedItem.height / 2),
+            2,
+          ),
       );
 
       console.log(`Distance to component ${item.id}:`, distance);
@@ -1599,31 +1719,38 @@ const BlockDiagram = () => {
       if (checkProximity(movedItem, item)) {
         // Create a consistent key based on sorted IDs
         const connectionKey = [movedItem.id, item.id].sort().join("-");
-        console.log('✅ Connection detected!', connectionKey);
+        console.log("✅ Connection detected!", connectionKey);
 
         // Only show toast if not already connected
         // connections is now an array from Redux
         if (!connections.includes(connectionKey)) {
-          console.log('🎉 New connection! Showing toast...');
+          console.log("🎉 New connection! Showing toast...");
           dispatch(addConnection(connectionKey));
 
           // Calculate connection point (midpoint between components)
-          const connectionX = (movedItem.x + movedItem.width / 2 + item.x + item.width / 2) / 2;
-          const connectionY = (movedItem.y + movedItem.height / 2 + item.y + item.height / 2) / 2;
+          const connectionX =
+            (movedItem.x + movedItem.width / 2 + item.x + item.width / 2) / 2;
+          const connectionY =
+            (movedItem.y + movedItem.height / 2 + item.y + item.height / 2) / 2;
 
           // Create spark effect
           const sparkId = Date.now();
-          setSparkEffects(prev => [...prev, { id: sparkId, x: connectionX, y: connectionY }]);
+          setSparkEffects((prev) => [
+            ...prev,
+            { id: sparkId, x: connectionX, y: connectionY },
+          ]);
 
           // Remove spark after animation (500ms)
           setTimeout(() => {
-            setSparkEffects(prev => prev.filter(s => s.id !== sparkId));
+            setSparkEffects((prev) => prev.filter((s) => s.id !== sparkId));
           }, 500);
 
           // Play connection sound
-          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2S57OihUQwOVqzn77BdGAg+ltv1xnMoBSh+zPLaizsKGGGy6OyrYBgINZXX9Mp5LQUohM/y3I4+CxVitOvtrGEaBkCY3PLJdysGKoLO8tuJNggTYbjs6qZTEAhMouDwumkkBSR4yPDck0MLHGW66+yjWBUIQ5zh8sNuIQUofcry2Ig0BhFYrOjuqF4YBzaU2PTJeiwGKIHN8t2LPAoVXrTq7qxgGQg4lNn0zHosBSaAy/DblUAOF2S36+yjVxUIRJ3h8sFuIAQnfsny2Yk3BxNWq+fuqF4WAzWS1vPKeS0GJ4DN8tz');
+          const audio = new Audio(
+            "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2S57OihUQwOVqzn77BdGAg+ltv1xnMoBSh+zPLaizsKGGGy6OyrYBgINZXX9Mp5LQUohM/y3I4+CxVitOvtrGEaBkCY3PLJdysGKoLO8tuJNggTYbjs6qZTEAhMouDwumkkBSR4yPDck0MLHGW66+yjWBUIQ5zh8sNuIQUofcry2Ig0BhFYrOjuqF4YBzaU2PTJeiwGKIHN8t2LPAoVXrTq7qxgGQg4lNn0zHosBSaAy/DblUAOF2S36+yjVxUIRJ3h8sFuIAQnfsny2Yk3BxNWq+fuqF4WAzWS1vPKeS0GJ4DN8tz",
+          );
           audio.volume = 0.3;
-          audio.play().catch(e => console.log('Could not play sound:', e));
+          audio.play().catch((e) => console.log("Could not play sound:", e));
 
           // Show toast notification
           toast({
@@ -1635,7 +1762,7 @@ const BlockDiagram = () => {
             position: "top",
           });
         } else {
-          console.log('Already connected:', connectionKey);
+          console.log("Already connected:", connectionKey);
         }
       }
     });
@@ -1650,16 +1777,18 @@ const BlockDiagram = () => {
     const savedData = localStorage.getItem("savedDesign");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
-      dispatch(setDroppedItems(
-        parsedData.map((item) => ({
-          ...item,
-          x: item.x || 100, // Preserve original x-position
-          y: item.y || 100, // Preserve original y-position
-          width: item.width || 120, // Preserve width
-          height: item.height || 120, // Preserve height
-          rotation: item.rotation || 0, // Preserve rotation
-        }))
-      ));
+      dispatch(
+        setDroppedItems(
+          parsedData.map((item) => ({
+            ...item,
+            x: item.x || 100, // Preserve original x-position
+            y: item.y || 100, // Preserve original y-position
+            width: item.width || 120, // Preserve width
+            height: item.height || 120, // Preserve height
+            rotation: item.rotation || 0, // Preserve rotation
+          })),
+        ),
+      );
       alert("Design loaded successfully!");
     } else {
       alert("No saved design found.");
@@ -1697,7 +1826,11 @@ const BlockDiagram = () => {
           placeItems="center"
           flexShrink={0}
         >
-          <img src={symbol.src} alt={symbol.name} style={{ width: "32px", height: "32px" }} />
+          <img
+            src={symbol.src}
+            alt={symbol.name}
+            style={{ width: "32px", height: "32px" }}
+          />
         </Box>
         <Text fontSize="sm" fontWeight="600" color="#DDE6ED" noOfLines={2}>
           {symbol.name}
@@ -1707,25 +1840,28 @@ const BlockDiagram = () => {
   };
 
   const Canvas = () => {
-    const [, drop] = useDrop(() => ({
-      accept: "symbol",
-      drop: (item, monitor) => {
-        const offset = monitor.getClientOffset();
-        if (item && item.symbol && offset) {
-          const newSymbol = {
-            symbol: item.symbol,
-            x: offset.x - 100,
-            y: offset.y - 100,
-            width: 120,
-            height: 120,
-            rotation: 0,
-            id: Date.now() + Math.random(),
-          };
-          dispatch(addDroppedItem(newSymbol));
-          setActiveSymbol(droppedItems.length);
-        }
-      },
-    }), [droppedItems]);
+    const [, drop] = useDrop(
+      () => ({
+        accept: "symbol",
+        drop: (item, monitor) => {
+          const offset = monitor.getClientOffset();
+          if (item && item.symbol && offset) {
+            const newSymbol = {
+              symbol: item.symbol,
+              x: offset.x - 100,
+              y: offset.y - 100,
+              width: 120,
+              height: 120,
+              rotation: 0,
+              id: Date.now() + Math.random(),
+            };
+            dispatch(addDroppedItem(newSymbol));
+            setActiveSymbol(droppedItems.length);
+          }
+        },
+      }),
+      [droppedItems],
+    );
 
     const handleRotateStart = (index, event) => {
       event.preventDefault();
@@ -1769,10 +1905,12 @@ const BlockDiagram = () => {
           Math.atan2(currentY - centerY, currentX - centerX) * (180 / Math.PI);
         const angleChange = newAngle - startAngle;
 
-        dispatch(updateDroppedItem({
-          id: symbol.id,
-          rotation: startRotation + angleChange
-        }));
+        dispatch(
+          updateDroppedItem({
+            id: symbol.id,
+            rotation: startRotation + angleChange,
+          }),
+        );
         setRotatingItem(null);
       };
 
@@ -1783,13 +1921,15 @@ const BlockDiagram = () => {
     const handleResizeStop = (index, _dir, ref, delta, position) => {
       const item = droppedItems[index];
       if (item) {
-        dispatch(updateDroppedItem({
-          id: item.id,
-          width: ref.offsetWidth,
-          height: ref.offsetHeight,
-          x: position.x,
-          y: position.y,
-        }));
+        dispatch(
+          updateDroppedItem({
+            id: item.id,
+            width: ref.offsetWidth,
+            height: ref.offsetHeight,
+            x: position.x,
+            y: position.y,
+          }),
+        );
       }
     };
 
@@ -1882,13 +2022,17 @@ const BlockDiagram = () => {
                 zIndex: 1000,
               }}
             >
-              <div className="spark-animation" style={{
-                width: "40px",
-                height: "40px",
-                background: "radial-gradient(circle, rgba(255,255,0,1) 0%, rgba(255,165,0,0) 70%)",
-                borderRadius: "50%",
-                animation: "spark-scale 0.5s ease-out forwards",
-              }} />
+              <div
+                className="spark-animation"
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  background:
+                    "radial-gradient(circle, rgba(255,255,0,1) 0%, rgba(255,165,0,0) 70%)",
+                  borderRadius: "50%",
+                  animation: "spark-scale 0.5s ease-out forwards",
+                }}
+              />
             </div>
           ))}
 
@@ -1915,18 +2059,24 @@ const BlockDiagram = () => {
                 if (item) {
                   // Calculate snapped position
                   const currentItem = { ...item, x: d.x, y: d.y };
-                  const { x: snappedX, y: snappedY, snapped } = calculateSnapPosition(currentItem, droppedItems);
+                  const {
+                    x: snappedX,
+                    y: snappedY,
+                    snapped,
+                  } = calculateSnapPosition(currentItem, droppedItems);
 
                   const finalX = snapped ? snappedX : d.x;
                   const finalY = snapped ? snappedY : d.y;
 
                   const updatedItem = { ...item, x: finalX, y: finalY };
 
-                  dispatch(updateDroppedItem({
-                    id: item.id,
-                    x: finalX,
-                    y: finalY
-                  }));
+                  dispatch(
+                    updateDroppedItem({
+                      id: item.id,
+                      x: finalX,
+                      y: finalY,
+                    }),
+                  );
 
                   // Check for connections after drag (using final position)
                   handleConnectionDetection(updatedItem);
@@ -2044,7 +2194,8 @@ const BlockDiagram = () => {
                   width: "100%",
                   height: "100%",
                   borderRadius: "50%",
-                  background: "radial-gradient(circle, #FFD700 0%, #FFA500 30%, transparent 70%)",
+                  background:
+                    "radial-gradient(circle, #FFD700 0%, #FFA500 30%, transparent 70%)",
                   animation: "sparkPulse 0.5s ease-out",
                 }}
               />
@@ -2054,7 +2205,8 @@ const BlockDiagram = () => {
                   width: "100%",
                   height: "100%",
                   borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.5) 40%, transparent 70%)",
+                  background:
+                    "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.5) 40%, transparent 70%)",
                   animation: "sparkExpand 0.5s ease-out",
                 }}
               />
@@ -2100,7 +2252,7 @@ const BlockDiagram = () => {
         <div
           className="top-controls"
 
-        // style={{ paddingTop: "1px", alignItems: "center" }}
+          // style={{ paddingTop: "1px", alignItems: "center" }}
         >
           <Box display="flex" justifyContent="flex-end" width={"100%"} gap={4}>
             {/* {selectedProject?.name && (
@@ -2195,10 +2347,19 @@ const BlockDiagram = () => {
                   letterSpacing="0.05em"
                   textTransform="uppercase"
                   color={sidebarMode === "explorer" ? "#27374D" : "#DDE6ED"}
-                  bg={sidebarMode === "explorer" ? "#DDE6ED" : "rgba(221,230,237,0.12)"}
+                  bg={
+                    sidebarMode === "explorer"
+                      ? "#DDE6ED"
+                      : "rgba(221,230,237,0.12)"
+                  }
                   border="1px solid rgba(221,230,237,0.24)"
                   transition="all 0.2s ease"
-                  _hover={{ bg: sidebarMode === "explorer" ? "#B0C4D8" : "rgba(221,230,237,0.2)" }}
+                  _hover={{
+                    bg:
+                      sidebarMode === "explorer"
+                        ? "#B0C4D8"
+                        : "rgba(221,230,237,0.2)",
+                  }}
                 >
                   Explorer
                 </chakra.button>
@@ -2212,10 +2373,19 @@ const BlockDiagram = () => {
                   letterSpacing="0.05em"
                   textTransform="uppercase"
                   color={sidebarMode === "components" ? "#27374D" : "#DDE6ED"}
-                  bg={sidebarMode === "components" ? "#DDE6ED" : "rgba(221,230,237,0.12)"}
+                  bg={
+                    sidebarMode === "components"
+                      ? "#DDE6ED"
+                      : "rgba(221,230,237,0.12)"
+                  }
                   border="1px solid rgba(221,230,237,0.24)"
                   transition="all 0.2s ease"
-                  _hover={{ bg: sidebarMode === "components" ? "#B0C4D8" : "rgba(221,230,237,0.2)" }}
+                  _hover={{
+                    bg:
+                      sidebarMode === "components"
+                        ? "#B0C4D8"
+                        : "rgba(221,230,237,0.2)",
+                  }}
                 >
                   Components
                 </chakra.button>
@@ -2249,14 +2419,24 @@ const BlockDiagram = () => {
                       bg="rgba(39,55,77,0.35)"
                       color="#DDE6ED"
                       _placeholder={{ color: "rgba(221,230,237,0.7)" }}
-                      _focus={{ borderColor: "#9DB2BF", boxShadow: "0 0 0 1px #9DB2BF" }}
+                      _focus={{
+                        borderColor: "#9DB2BF",
+                        boxShadow: "0 0 0 1px #9DB2BF",
+                      }}
                     />
                   </InputGroup>
 
-                  <VStack align="stretch" spacing={5} overflowY="auto" className="symbol-grid">
+                  <VStack
+                    align="stretch"
+                    spacing={5}
+                    overflowY="auto"
+                    className="symbol-grid"
+                  >
                     {filteredSymbols.length === 0 ? (
                       <Center py={12}>
-                        <Text color="rgba(221,230,237,0.7)">No components found.</Text>
+                        <Text color="rgba(221,230,237,0.7)">
+                          No components found.
+                        </Text>
                       </Center>
                     ) : (
                       filteredSymbols.map((section, sectionIndex) => (
@@ -2330,7 +2510,7 @@ const BlockDiagram = () => {
                 </Center>
               </Box>
             )}
-            {/* 
+            {/*
             {!selectedProject?.name && (
               <ProjectSelectionModal
                 onProjectSelect={setSelectedProject}

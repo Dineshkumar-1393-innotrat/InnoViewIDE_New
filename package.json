@@ -1,13 +1,15 @@
 {
   "name": "innotrat-texteditor",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "InnoView IDE with comprehensive auto-save functionality",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clear-cache": "node -e \"localStorage.clear(); sessionStorage.clear();\" 2>/dev/null || echo 'Run in browser console: localStorage.clear(); sessionStorage.clear();'"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.2.4",

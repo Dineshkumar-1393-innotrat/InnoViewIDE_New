@@ -1132,7 +1132,7 @@
 // export default Output;
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Text,
@@ -1150,6 +1150,11 @@ import {
   Radio,
   Stack,
   Input,
+  Select,
+  Textarea,
+  VStack,
+  HStack,
+  Badge
 } from "@chakra-ui/react";
 import { executeCode } from "../api";
 import OutputStatus from "./OutputStatus";
@@ -1165,8 +1170,177 @@ const Output = ({ editorRef, language }) => {
   const [isRunClicked, setIsRunClicked] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [alignment, setAlignment] = useState("left");
-  const [userInput, setUserInput] = useState(""); // User input for stdin
+  const [userInput, setUserInput] = useState("");
   const [response, setResponse] = useState("");
+  const [postmanUrl, setPostmanUrl] = useState("https://jsonplaceholder.typicode.com/todos/1");
+  const [postmanMethod, setPostmanMethod] = useState("GET");
+  const [postmanBody, setPostmanBody] = useState("");
+  const [activePanel, setActivePanel] = useState("problem");
+  const [terminalInput, setTerminalInput] = useState("");
+  const [terminalOutput, setTerminalOutput] = useState([]);
+  const [serialOutput, setSerialOutput] = useState([]);
+
+  // Enhanced Terminal State
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [cwd, setCwd] = useState("/home/user");
+
+  // Serial Monitor State
+  const [isConnectedToDevice, setIsConnectedToDevice] = useState(false);
+  const [isDeviceConnectedForActions, setIsDeviceConnectedForActions] = useState(() => {
+    const savedState = localStorage.getItem('innoide:device-connected');
+    return savedState === 'true';
+  });
+  const [selectedDeviceInfo, setSelectedDeviceInfo] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('innoide:device-info') || 'null');
+    } catch { return null; }
+  });
+  const [postmanResponse, setPostmanResponse] = useState(null);
+  const [postmanLoading, setPostmanLoading] = useState(false);
+
+  // Serial Monitor Logic (Web Serial API)
+  useEffect(() => {
+    if (!isConnectedToDevice) return;
+    let reader;
+    let keepReading = true;
+    let currentPort = null;
+    const readSerialData = async () => {
+      const deviceInfoStr = localStorage.getItem('innoide:device-info');
+      if (!deviceInfoStr) return;
+      try {
+        const deviceInfo = JSON.parse(deviceInfoStr);
+        if ('serial' in navigator) {
+          const ports = await navigator.serial.getPorts();
+          if (ports.length === 0) {
+            setSerialOutput(prev => [...prev, `[INFO] No serial ports detected.`]);
+            return;
+          }
+          currentPort = ports[0];
+          if (!currentPort.readable && !currentPort.writable) {
+            await currentPort.open({ baudRate: 115200 });
+            setSerialOutput(prev => [...prev, `[INFO] Serial port opened.`]);
+          }
+          if (currentPort.readable) {
+            const textDecoder = new TextDecoderStream();
+            currentPort.readable.pipeTo(textDecoder.writable);
+            reader = textDecoder.readable.getReader();
+            while (keepReading) {
+              const { value, done } = await reader.read();
+              if (done) break;
+              if (value) {
+                const lines = value.split('\n').filter(l => l.trim());
+                if (lines.length) setSerialOutput(prev => [...prev.slice(-100), ...lines]);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Serial error:', error);
+      }
+    };
+    readSerialData();
+    return () => { keepReading = false; if (reader) reader.cancel(); };
+  }, [isConnectedToDevice]);
+
+  // Enhanced Terminal Logic
+  const handleTerminalCommand = () => {
+    if (!terminalInput.trim()) return;
+    const cmd = terminalInput.trim();
+    const newHistory = [...history, cmd];
+    setHistory(newHistory);
+    setHistoryIndex(-1);
+
+    setTerminalOutput(prev => [
+      ...prev,
+      `user@innoide:${cwd}$ ${cmd}`,
+      ...simulateCommandOutput(cmd)
+    ]);
+    setTerminalInput("");
+  };
+
+  const simulateCommandOutput = (command) => {
+    const args = command.split(' ');
+    const cmd = args[0].toLowerCase();
+
+    if (cmd === 'help') return ['Available commands: help, ls, pwd, cd, date, clear, echo, whoami'];
+    if (cmd === 'ls') return ['main.c', 'src/', 'include/', 'Makefile', 'README.md'];
+    if (cmd === 'pwd') return [cwd];
+    if (cmd === 'cd') {
+      if (args[1]) {
+        if (args[1] === '..') setCwd(cwd.split('/').slice(0, -1).join('/') || '/');
+        else setCwd(`${cwd === '/' ? '' : cwd}/${args[1]}`);
+      } else {
+        setCwd('/home/user');
+      }
+      return [];
+    }
+    if (cmd === 'date') return [new Date().toString()];
+    if (cmd === 'whoami') return ['user'];
+    if (cmd === 'clear') { setTerminalOutput([]); return []; }
+    if (cmd === 'echo') return [args.slice(1).join(' ')];
+
+    return [`bash: ${cmd}: command not found`];
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleTerminalCommand();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (history.length > 0) {
+        const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
+        setHistoryIndex(newIndex);
+        setTerminalInput(history[newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex !== -1) {
+        const newIndex = historyIndex + 1;
+        if (newIndex >= history.length) {
+          setHistoryIndex(-1);
+          setTerminalInput("");
+        } else {
+          setHistoryIndex(newIndex);
+          setTerminalInput(history[newIndex]);
+        }
+      }
+    }
+  };
+
+  const handlePostmanSend = async () => {
+    setPostmanLoading(true);
+    setPostmanResponse(null);
+    try {
+      const options = {
+        method: postmanMethod,
+        url: postmanUrl,
+        headers: { 'Content-Type': 'application/json' },
+      };
+      if (['POST', 'PUT', 'PATCH'].includes(postmanMethod) && postmanBody) {
+        try {
+          options.data = JSON.parse(postmanBody);
+        } catch (e) {
+          throw new Error("Invalid JSON body");
+        }
+      }
+      const res = await axios(options);
+      setPostmanResponse({
+        status: res.status,
+        statusText: res.statusText,
+        data: res.data,
+        headers: res.headers
+      });
+    } catch (error) {
+      setPostmanResponse({
+        error: true,
+        message: error.message,
+        data: error.response?.data
+      });
+    } finally {
+      setPostmanLoading(false);
+    }
+  };
 
   const responseStyle = {
     marginTop: "20px",
@@ -1178,6 +1352,7 @@ const Output = ({ editorRef, language }) => {
   };
 
   const runCode = async () => {
+    // ... (existing runCode implementation)
     const sourceCode = editorRef.current.getValue();
     if (!sourceCode) {
       toast({
@@ -1191,6 +1366,7 @@ const Output = ({ editorRef, language }) => {
 
     try {
       setIsLoading(true);
+      setActivePanel("problem");
       const { run: result } = await executeCode("c", sourceCode, userInput); // Pass user input
       setOutput((prevOutput) => [...prevOutput, ...result.output.split("\n")]); // Append output
       setIsError(!!result.stderr);
@@ -1207,8 +1383,7 @@ const Output = ({ editorRef, language }) => {
     }
   };
 
-  // handle flash code
-
+  // ... (existing handleCodeFlash implementation)
   const handleCodeFlash = async () => {
     setIsLoading(true);
     const sourceCode = editorRef.current.getValue();
@@ -1241,7 +1416,7 @@ const Output = ({ editorRef, language }) => {
         "❌ Firmware flashing failed!\nPlease check your connection, code syntax, and device status."
       );
     } finally {
-      setIsLoading(false); // Ensure button re-enables after request
+      setIsLoading(false);
     }
   };
 
@@ -1263,11 +1438,12 @@ const Output = ({ editorRef, language }) => {
       <Box display="flex" alignItems="center" mb={4} gap={4}>
         {/* Add Hamburger Icon Button for Alignment by me  */}
         <Button
+          display="none" // Hidden as per user request
           size="sm"
           colorScheme="blue"
           variant="outline"
           onClick={openModal}
-          // mr={4}
+        // mr={4}
         >
           &#9776;
         </Button>
@@ -1285,44 +1461,187 @@ const Output = ({ editorRef, language }) => {
           Flash
         </Button>
 
-        {/* <Text
-          fontWeight="bold"
+
+        <Button
+          loadingText="Viewing Data"
+          spinnerPlacement="start"
+          isLoading={isLoading}
+          size={"sm"}
+          colorScheme="blue"
+          variant={isLoading ? "solid" : "outline"}
           cursor="pointer"
-          onClick={handleRunClick}
-          textDecoration={isRunClicked ? "underline" : "none"}
-          color="green.500"
-          mr={4}
+          _hover={{ bg: "blue.500", color: "white" }}
+          onClick={runCode}
         >
-          Run Code
-        </Text> */}
+          View Output
+        </Button>
 
         <Button
           size="sm"
           colorScheme="blue"
-          variant="outline"
-          onClick={() => console.log("Problem Output clicked")}
+          variant={activePanel === "problem" ? "solid" : "outline"}
+          onClick={() => setActivePanel("problem")}
+          _hover={{ bg: "blue.500", color: "white" }}
         >
-          Problem Output
+          Problem
         </Button>
         <Button
           size="sm"
           colorScheme="blue"
-          variant="outline"
-          onClick={() => console.log("Serial Console clicked")}
+          variant={activePanel === "debug" ? "solid" : "outline"}
+          onClick={() => setActivePanel("debug")}
+          _hover={{ bg: "blue.500", color: "white" }}
         >
-          Serial Console
+          Debug Console
         </Button>
         <Button
           size="sm"
           colorScheme="blue"
-          variant="outline"
-          onClick={() => console.log("Terminal clicked")}
+          variant={activePanel === "terminal" ? "solid" : "outline"}
+          onClick={() => setActivePanel("terminal")}
+          _hover={{ bg: "blue.500", color: "white" }}
         >
           Terminal
         </Button>
+        <Button
+          size="sm"
+          colorScheme="blue"
+          variant={activePanel === "postman" ? "solid" : "outline"}
+          onClick={() => setActivePanel("postman")}
+          _hover={{ bg: "blue.500", color: "white" }}
+        >
+          Postman
+        </Button>
       </Box>
 
-      <pre style={responseStyle}>{response}</pre>
+      {/* Postman Panel UI - Rendered independently if toggled */}
+      {activePanel === "postman" && (
+        <Box p={4} border="1px solid" borderColor={colorMode === "dark" ? "gray.600" : "gray.300"} borderRadius="md" mb={4}>
+          <Box display="flex" flexDirection="column" gap={4}>
+            <Box display="flex" gap={2}>
+              <Select width="100px" size="sm" value={postmanMethod} onChange={(e) => setPostmanMethod(e.target.value)}>
+                <option value="GET">GET</option>
+                <option value="POST">POST</option>
+                <option value="PUT">PUT</option>
+                <option value="DELETE">DELETE</option>
+              </Select>
+              <Input
+                size="sm"
+                placeholder="Enter request URL"
+                value={postmanUrl}
+                onChange={(e) => setPostmanUrl(e.target.value)}
+                color={colorMode === "dark" ? "white" : "black"}
+                _placeholder={{ color: "gray.500" }}
+              />
+              <Button size="sm" colorScheme="blue" onClick={handlePostmanSend} isLoading={postmanLoading}>
+                Send
+              </Button>
+            </Box>
+
+            {['POST', 'PUT', 'PATCH'].includes(postmanMethod) && (
+              <Box>
+                <Text fontSize="xs" mb={1} color="gray.500">Request Body (JSON)</Text>
+                <Textarea
+                  size="sm"
+                  value={postmanBody}
+                  onChange={(e) => setPostmanBody(e.target.value)}
+                  placeholder='{"key": "value"}'
+                  fontFamily="monospace"
+                  rows={4}
+                  color={colorMode === "dark" ? "white" : "black"}
+                  _placeholder={{ color: "gray.500" }}
+                />
+              </Box>
+            )}
+
+            <Box borderTop="1px solid" borderColor={colorMode === "dark" ? "gray.700" : "gray.200"} pt={2} display="flex" flexDirection="column" gap={2}>
+              <Text fontSize="xs" fontWeight="bold">Response</Text>
+              {postmanResponse ? (
+                <Box
+                  bg={colorMode === "dark" ? "gray.800" : "gray.50"}
+                  p={2}
+                  borderRadius="md"
+                  overflowY="auto"
+                  maxH="300px"
+                  border="1px solid"
+                  borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
+                >
+                  <Box mb={2} display="flex" gap={4} position="sticky" top="0" bg="inherit" zIndex="1" alignItems="center">
+                    <Badge colorScheme={postmanResponse.error ? "red" : "green"}>
+                      {postmanResponse.status || "Error"} {postmanResponse.statusText}
+                    </Badge>
+                    <Text fontSize="xs" color="gray.500">
+                      Time: {new Date().toLocaleTimeString()}
+                    </Text>
+                  </Box>
+                  <pre style={{ fontSize: '11px', color: colorMode === "dark" ? '#e2e8f0' : '#1a202c' }}>
+                    {JSON.stringify(postmanResponse.data, null, 2)}
+                  </pre>
+                </Box>
+              ) : (
+                <Text fontSize="xs" color="gray.500">No response yet.</Text>
+              )}
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* Main Panels */}
+      <Box
+        height="30vh"
+        overflowY="auto"
+        borderTop="1px solid"
+        borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
+        pt={2}
+      >
+        {/* Problem Panel (Code Output) */}
+        <Box display={activePanel === "problem" ? "block" : "none"}>
+          <Text fontSize="sm" fontWeight="bold" mb={2} color="gray.500">Output</Text>
+          <pre style={{ ...responseStyle, margin: 0, minHeight: "100%" }}>
+            {output.length > 0
+              ? output.map((line, i) => <Text key={i}>{line}</Text>)
+              : (response || "Run or flash to see output.")}
+          </pre>
+        </Box>
+
+        {/* Debug Console (Serial) */}
+        <Box display={activePanel === "debug" ? "block" : "none"}>
+          <Box display="flex" justifyContent="space-between" mb={2}>
+            <Text fontSize="sm" fontWeight="bold" color="gray.500">Debug Console</Text>
+            <Box display="flex" gap={2}>
+              <Button size="xs" onClick={() => setIsConnectedToDevice(!isConnectedToDevice)} colorScheme={isConnectedToDevice ? "red" : "green"}>
+                {isConnectedToDevice ? "Disconnect" : "Connect Serial"}
+              </Button>
+              <Button size="xs" onClick={() => setSerialOutput([])}>Clear</Button>
+            </Box>
+          </Box>
+          <Box fontFamily="monospace" fontSize="sm">
+            {serialOutput.length === 0 ? (
+              <Text color="gray.500">No debug output. Connect to a device.</Text>
+            ) : (
+              serialOutput.map((line, i) => <Text key={i}>{line}</Text>)
+            )}
+          </Box>
+        </Box>
+
+        {/* Terminal */}
+        <Box display={activePanel === "terminal" ? "block" : "none"}>
+          <Box fontFamily="monospace" fontSize="sm" mb={2}>
+            {terminalOutput.map((line, i) => <Text key={i}>{line}</Text>)}
+          </Box>
+          <HStack>
+            <Text color="green.400">{`user@innoide:${cwd}$`}</Text>
+            <Input
+              variant="unstyled"
+              placeholder=""
+              value={terminalInput}
+              onChange={(e) => setTerminalInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              autoFocus
+            />
+          </HStack>
+        </Box>
+      </Box>
 
       {/* Input box for stdin is this section i have added here */}
       {/* <Box mb={4}>
@@ -1365,29 +1684,29 @@ const Output = ({ editorRef, language }) => {
       {/* <OutputStatus errorLine={{ line: 11, row: 2 }} /> */}
 
       {/* <Modal isOpen={isModalOpen} onClose={closeModal}> */}
-        {/* <ModalOverlay /> */}
-        {/* <ModalContent> */}
-          {/* <ModalHeader>Choose Panel Alignment</ModalHeader> */}
-          {/* <ModalCloseButton /> */}
-          {/* <ModalBody> */}
-            {/* <RadioGroup onChange={setAlignment} value={alignment}> */}
-              {/* <Stack direction="column"> */}
-                {/* <Radio value="left">Left</Radio> */}
-                {/* <Radio value="right">Right</Radio> */}
-                {/* <Radio value="top">Top</Radio> */}
-                {/* <Radio value="bottom">Bottom</Radio> */}
-              {/* </Stack> */}
-            {/* </RadioGroup> */}
-          {/* </ModalBody> */}
-          {/* <ModalFooter> */}
-            {/* <Button colorScheme="blue" mr={3} onClick={closeModal}> */}
-              {/* Apply */}
-            {/* </Button> */}
-            {/* <Button variant="ghost" onClick={closeModal}> */}
-              {/* Cancel */}
-            {/* </Button> */}
-          {/* </ModalFooter> */}
-        {/* </ModalContent> */}
+      {/* <ModalOverlay /> */}
+      {/* <ModalContent> */}
+      {/* <ModalHeader>Choose Panel Alignment</ModalHeader> */}
+      {/* <ModalCloseButton /> */}
+      {/* <ModalBody> */}
+      {/* <RadioGroup onChange={setAlignment} value={alignment}> */}
+      {/* <Stack direction="column"> */}
+      {/* <Radio value="left">Left</Radio> */}
+      {/* <Radio value="right">Right</Radio> */}
+      {/* <Radio value="top">Top</Radio> */}
+      {/* <Radio value="bottom">Bottom</Radio> */}
+      {/* </Stack> */}
+      {/* </RadioGroup> */}
+      {/* </ModalBody> */}
+      {/* <ModalFooter> */}
+      {/* <Button colorScheme="blue" mr={3} onClick={closeModal}> */}
+      {/* Apply */}
+      {/* </Button> */}
+      {/* <Button variant="ghost" onClick={closeModal}> */}
+      {/* Cancel */}
+      {/* </Button> */}
+      {/* </ModalFooter> */}
+      {/* </ModalContent> */}
       {/* </Modal> */}
     </Box>
   );

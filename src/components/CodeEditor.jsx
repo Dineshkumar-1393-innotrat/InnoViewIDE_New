@@ -12,7 +12,14 @@ import {
   useToast,
   Text,
   Tooltip,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
 } from "@chakra-ui/react";
+import ProductDefinition from "./CreateProduct";
 import { Editor } from "@monaco-editor/react";
 import { AddIcon, CloseIcon, ExternalLinkIcon } from "@chakra-ui/icons";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -20,6 +27,8 @@ import LanguageSelector from "./LanguageSelector";
 import { CODE_SNIPPETS, MONACO_LANGUAGE_MAP } from "../constants";
 import Output from "./Output";
 import { useAutoSaveTabs } from "../hooks/useAutoSaveTabs";
+import { useCodeEditorAutoSave, useGlobalAutoSave } from "../hooks/useAutoSave";
+import { autoSaveManager } from "../utils/autoSaveManager";
 
 import IconBar from "./IconBar";
 import FileExplorer from "./FileExplorer";
@@ -28,30 +37,47 @@ import Flash from "./Flash";
 import DefineProductButton from "./shared/DefineProductButton";
 // import MathWidgetButton from "./shared/MathWidgetButton";
 
-// Component to handle FileExplorer and Flash panel layout  
-const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colorMode }) => {
+// Component to handle FileExplorer and Flash panel layout
+const FileExplorerWithFlash = ({
+  isFlashing,
+  onFlashComplete,
+  onFlashStart,
+  colorMode,
+}) => {
   const [isDeviceConnected, setIsDeviceConnected] = useState(() => {
     // Check localStorage for persisted device connection state
-    const savedState = localStorage.getItem('innoide:device-connected');
-    return savedState === 'true';
+    const savedState = localStorage.getItem("innoide:device-connected");
+    return savedState === "true";
   });
 
   useEffect(() => {
     const handleDeviceConnect = () => {
       setIsDeviceConnected(true);
-      localStorage.setItem('innoide:device-connected', 'true');
+      localStorage.setItem("innoide:device-connected", "true");
     };
     const handleDeviceDisconnect = () => {
       setIsDeviceConnected(false);
-      localStorage.setItem('innoide:device-connected', 'false');
+      localStorage.setItem("innoide:device-connected", "false");
     };
 
-    window.addEventListener('innoide:device-detect-complete', handleDeviceConnect);
-    window.addEventListener('innoide:device-disconnect', handleDeviceDisconnect);
+    window.addEventListener(
+      "innoide:device-detect-complete",
+      handleDeviceConnect,
+    );
+    window.addEventListener(
+      "innoide:device-disconnect",
+      handleDeviceDisconnect,
+    );
 
     return () => {
-      window.removeEventListener('innoide:device-detect-complete', handleDeviceConnect);
-      window.removeEventListener('innoide:device-disconnect', handleDeviceDisconnect);
+      window.removeEventListener(
+        "innoide:device-detect-complete",
+        handleDeviceConnect,
+      );
+      window.removeEventListener(
+        "innoide:device-disconnect",
+        handleDeviceDisconnect,
+      );
     };
   }, []);
 
@@ -76,8 +102,13 @@ const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colo
       </Box>
       {/* Only show Flash panel when device is connected */}
       <Box
+        display="none" // Hidden as per user request
         borderTop="1px solid"
-        borderColor={colorMode === "dark" ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)"}
+        borderColor={
+          colorMode === "dark"
+            ? "rgba(148,163,184,0.12)"
+            : "rgba(15,23,42,0.08)"
+        }
         p={2}
         maxH="240px"
         minH="200px"
@@ -112,7 +143,12 @@ const buildIdentity = (data) => {
   }
 
   const email = (data.email || data.userEmail || "").trim();
-  const phone = (data.phone || data.mobileNumber || data.phoneNumber || "").trim();
+  const phone = (
+    data.phone ||
+    data.mobileNumber ||
+    data.phoneNumber ||
+    ""
+  ).trim();
   const name = (
     data.name ||
     data.fullName ||
@@ -182,14 +218,51 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     saveTab,
     saveAsset,
     getActiveTab,
-    getFolderInfo
-  } = useAutoSaveTabs([
-    { id: 1, name: "main.c", content: CODE_SNIPPETS["C"] || "", dirty: false }
-  ], {
-    maxTabs: 10,
-    defaultTabName: "file",
-    defaultContent: CODE_SNIPPETS["C"] || ""
-  });
+    getFolderInfo,
+  } = useAutoSaveTabs(
+    [
+      {
+        id: 1,
+        name: "main.c",
+        content: CODE_SNIPPETS["C"] || "",
+        dirty: false,
+      },
+    ],
+    {
+      maxTabs: 10,
+      defaultTabName: "file",
+      defaultContent: CODE_SNIPPETS["C"] || "",
+    },
+  );
+
+  // Enhanced auto-save for code editor state
+  const {
+    isSaving: isAutoSaving,
+    lastSaveTime: lastAutoSaveTime,
+    saveNow: saveEditorNow,
+    scheduleSave: scheduleEditorSave,
+    isLoaded: isAutoSaveLoaded,
+  } = useCodeEditorAutoSave(
+    tabs.find((t) => t.id === activeTab)?.content || "",
+    {
+      screenKey: "/editor",
+      tabs,
+      activeTab,
+      autoSaveDelay: 2000,
+      priority: 2,
+      onSave: (data) => {
+        console.log("[CodeEditor] Auto-saved editor state:", data);
+      },
+      onLoad: (loadedData) => {
+        console.log("[CodeEditor] Loading saved editor state:", loadedData);
+      },
+      onError: (error) => {
+        console.error("[CodeEditor] Auto-save error:", error);
+      },
+    },
+  );
+
+  const { saveAll: saveAllScreens } = useGlobalAutoSave();
 
   const [language, setLanguage] = useState("Select Languages");
   const [searchQuery, setSearchQuery] = useState("");
@@ -237,15 +310,68 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const MAX_TABS = 10;
   const activeTabName = useMemo(
     () => tabs.find((tab) => tab.id === activeTab)?.name || "main",
-    [tabs, activeTab]
+    [tabs, activeTab],
   );
+
+  // Save editor state when tabs or content change
+  useEffect(() => {
+    if (tabs.length > 0) {
+      scheduleEditorSave();
+    }
+  }, [tabs, activeTab, scheduleEditorSave]);
+
+  // Save before navigating away or page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveEditorNow();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        saveEditorNow();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      // Save when unmounting (navigating away)
+      saveEditorNow();
+    };
+  }, [saveEditorNow]);
+
+  // Register code editor save strategy with auto-save manager
+  useEffect(() => {
+    const saveFunction = () => ({
+      tabs: tabs.map((t) => ({
+        id: t.id,
+        name: t.name,
+        content: t.content,
+        dirty: t.dirty,
+      })),
+      activeTab,
+      timestamp: Date.now(),
+    });
+
+    autoSaveManager.registerSaveStrategy("codeeditor:tabs", saveFunction, {
+      priority: 2,
+      skipEmpty: false,
+    });
+
+    return () => {
+      autoSaveManager.unregisterSaveStrategy("codeeditor:tabs");
+    };
+  }, [tabs, activeTab]);
 
   const handleRenameTab = useCallback(
     (tabId) => {
       const targetTab = tabs.find((tab) => tab.id === tabId);
       if (!targetTab) return;
 
-      const requested = window.prompt('Rename tab', targetTab.name || '');
+      const requested = window.prompt("Rename tab", targetTab.name || "");
       if (requested === null) return;
 
       const trimmed = requested.trim();
@@ -254,7 +380,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       // Use the auto-save rename function
       renameTab(tabId, trimmed);
     },
-    [tabs, renameTab]
+    [tabs, renameTab],
   );
 
   const onSelect = (selectedLanguage) => {
@@ -280,32 +406,47 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   // Listen for device connection events and persist state
   useEffect(() => {
     // Initialize from localStorage
-    const savedState = localStorage.getItem('innoide:device-connected');
-    if (savedState === 'true') {
+    const savedState = localStorage.getItem("innoide:device-connected");
+    if (savedState === "true") {
       setIsDeviceConnected(true);
     }
 
     const handleDeviceConnect = () => {
       setIsDeviceConnected(true);
-      localStorage.setItem('innoide:device-connected', 'true');
+      localStorage.setItem("innoide:device-connected", "true");
     };
     const handleDeviceDisconnect = () => {
       setIsDeviceConnected(false);
-      localStorage.setItem('innoide:device-connected', 'false');
+      localStorage.setItem("innoide:device-connected", "false");
     };
     const handleDeviceFailed = () => {
       setIsDeviceConnected(false);
-      localStorage.setItem('innoide:device-connected', 'false');
+      localStorage.setItem("innoide:device-connected", "false");
     };
 
-    window.addEventListener('innoide:device-detect-complete', handleDeviceConnect);
-    window.addEventListener('innoide:device-disconnect', handleDeviceDisconnect);
-    window.addEventListener('innoide:device-detect-failed', handleDeviceFailed);
+    window.addEventListener(
+      "innoide:device-detect-complete",
+      handleDeviceConnect,
+    );
+    window.addEventListener(
+      "innoide:device-disconnect",
+      handleDeviceDisconnect,
+    );
+    window.addEventListener("innoide:device-detect-failed", handleDeviceFailed);
 
     return () => {
-      window.removeEventListener('innoide:device-detect-complete', handleDeviceConnect);
-      window.removeEventListener('innoide:device-disconnect', handleDeviceDisconnect);
-      window.removeEventListener('innoide:device-detect-failed', handleDeviceFailed);
+      window.removeEventListener(
+        "innoide:device-detect-complete",
+        handleDeviceConnect,
+      );
+      window.removeEventListener(
+        "innoide:device-disconnect",
+        handleDeviceDisconnect,
+      );
+      window.removeEventListener(
+        "innoide:device-detect-failed",
+        handleDeviceFailed,
+      );
     };
   }, []);
 
@@ -323,26 +464,28 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         if (code.trim()) {
           // Submit code to API before flashing
           try {
-            const res = await fetch('https://admin.innotrat.in/submit-code', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ code })
+            const res = await fetch("https://admin.innotrat.in/submit-code", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code }),
             });
 
             const result = await res.json();
-            console.log('Code submitted to server:', result.message);
+            console.log("Code submitted to server:", result.message);
 
             toast({
               title: "Code Submitted",
-              description: result.message || "Code submitted successfully to server",
+              description:
+                result.message || "Code submitted successfully to server",
               status: "success",
               duration: 3000,
             });
           } catch (apiError) {
-            console.error('Error submitting code to server:', apiError);
+            console.error("Error submitting code to server:", apiError);
             toast({
               title: "API Warning",
-              description: "Failed to submit code to server, but continuing with flash...",
+              description:
+                "Failed to submit code to server, but continuing with flash...",
               status: "warning",
               duration: 3000,
             });
@@ -352,7 +495,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         // Proceed with normal flash operation
         await flashRunner();
       } catch (error) {
-        console.error('Flash error:', error);
+        console.error("Flash error:", error);
       } finally {
         setIsFlashing(false);
       }
@@ -410,9 +553,13 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
   const bumpPseudoFrame = useCallback((label) => {
     setDebugVariables((prev) => {
-      const filtered = prev.filter((item) => !["lastStep", "currentLine"].includes(item.name));
+      const filtered = prev.filter(
+        (item) => !["lastStep", "currentLine"].includes(item.name),
+      );
       const currentLine = prev.find((item) => item.name === "currentLine");
-      const nextLine = currentLine ? Number.parseInt(currentLine.value, 10) + 1 : 1;
+      const nextLine = currentLine
+        ? Number.parseInt(currentLine.value, 10) + 1
+        : 1;
       return [
         { name: "lastStep", value: label },
         { name: "currentLine", value: `${nextLine}` },
@@ -441,7 +588,8 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       setDebugBusy(false);
 
       if (!result?.ok) {
-        const message = result?.error?.message || result?.reason || "unknown error";
+        const message =
+          result?.error?.message || result?.reason || "unknown error";
         setDebugStatus("error");
         setThreadState("error");
         setDebugVariables([]);
@@ -459,16 +607,16 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         prev.length > 0
           ? prev
           : [
-            {
-              path: activeTabName,
-              line: 1,
-            },
-          ]
+              {
+                path: activeTabName,
+                line: 1,
+              },
+            ],
       );
       pushDebugLog(
         hasStdErr
           ? `${label} completed with stderr output.`
-          : `${label} completed successfully.`
+          : `${label} completed successfully.`,
       );
       if (hasStdErr) {
         pushDebugOutput(`${label} completed with stderr output.`);
@@ -478,12 +626,22 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
       return result;
     },
-    [activeTabName, inferVariablesFromStdout, pushDebugLog, pushDebugOutput, setThreadState]
+    [
+      activeTabName,
+      inferVariablesFromStdout,
+      pushDebugLog,
+      pushDebugOutput,
+      setThreadState,
+    ],
   );
 
   const handleRunAndDebug = useCallback(async () => {
     setActiveToolPanel("debug");
-    await runProgram({ reason: "run-debug", append: false, label: "Run & Debug" });
+    await runProgram({
+      reason: "run-debug",
+      append: false,
+      label: "Run & Debug",
+    });
   }, [runProgram]);
 
   const handleDebugRestart = useCallback(async () => {
@@ -562,29 +720,37 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     setLibraryManagerOpen(true);
   }, []);
 
-  const handleInsertLibraryCode = useCallback((code) => {
-    const activeTabData = tabs.find((tab) => tab.id === activeTab);
-    if (!activeTabData) return;
+  const handleInsertLibraryCode = useCallback(
+    (code) => {
+      const activeTabData = tabs.find((tab) => tab.id === activeTab);
+      if (!activeTabData) return;
 
-    // Insert code at the beginning of the file (for includes) or at cursor position
-    const currentContent = activeTabData.content || "";
-    const newContent = code.startsWith('#include')
-      ? code + '\n\n' + currentContent  // Add includes at the top
-      : currentContent + '\n' + code;   // Add other code at the bottom
+      // Insert code at the beginning of the file (for includes) or at cursor position
+      const currentContent = activeTabData.content || "";
+      const newContent = code.startsWith("#include")
+        ? code + "\n\n" + currentContent // Add includes at the top
+        : currentContent + "\n" + code; // Add other code at the bottom
 
-    setTabs(
-      tabs.map((tab) =>
-        tab.id === activeTab ? { ...tab, content: newContent } : tab
-      )
-    );
+      setTabs(
+        tabs.map((tab) =>
+          tab.id === activeTab ? { ...tab, content: newContent } : tab,
+        ),
+      );
 
-    // Update editor if it exists
-    if (editorRef.current) {
-      editorRef.current.setValue(newContent);
-    }
-  }, [tabs, activeTab]);
+      // Update editor if it exists
+      if (editorRef.current) {
+        editorRef.current.setValue(newContent);
+      }
+    },
+    [tabs, activeTab],
+  );
 
-  const onMount = (editor) => {
+  const [isCreateProductModalOpen, setCreateProductModalOpen] = useState(false);
+
+  const handleOpenCreateProductModal = () => setCreateProductModalOpen(true);
+  const handleCloseCreateProductModal = () => setCreateProductModalOpen(false);
+
+  const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
     editor.focus();
   };
@@ -605,7 +771,16 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   };
 
   const handleTabChange = useCallback(
-    (tab) => {
+    async (tab) => {
+      // Save current editor state before navigating
+      try {
+        await saveEditorNow();
+        await saveAllScreens();
+        console.log("[CodeEditor] Saved state before tab change to:", tab);
+      } catch (error) {
+        console.error("[CodeEditor] Failed to save before tab change:", error);
+      }
+
       const routes = {
         Simulation: "/simulation",
         Flowchart: "/FlowchartTest",
@@ -618,7 +793,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         navigate(next);
       }
     },
-    [navigate]
+    [navigate],
   );
 
   const editorTheme = colorMode === "dark" ? "vs-dark" : "vs-light";
@@ -626,7 +801,8 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const monacoLanguage = MONACO_LANGUAGE_MAP[language] || language;
 
   // Determine platform for library manager
-  const currentPlatform = language === 'esp32' || language === 'arduino' ? 'esp32' : 'stm32';
+  const currentPlatform =
+    language === "esp32" || language === "arduino" ? "esp32" : "stm32";
 
   const filteredFiles = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -667,18 +843,27 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             h="100%"
             overflowY="auto"
             css={{
-              '&::-webkit-scrollbar': {
-                width: '8px',
+              "&::-webkit-scrollbar": {
+                width: "8px",
               },
-              '&::-webkit-scrollbar-track': {
-                background: colorMode === "dark" ? "rgba(15,23,42,0.3)" : "rgba(15,23,42,0.05)",
+              "&::-webkit-scrollbar-track": {
+                background:
+                  colorMode === "dark"
+                    ? "rgba(15,23,42,0.3)"
+                    : "rgba(15,23,42,0.05)",
               },
-              '&::-webkit-scrollbar-thumb': {
-                background: colorMode === "dark" ? "rgba(148,163,184,0.3)" : "rgba(148,163,184,0.4)",
-                borderRadius: '4px',
+              "&::-webkit-scrollbar-thumb": {
+                background:
+                  colorMode === "dark"
+                    ? "rgba(148,163,184,0.3)"
+                    : "rgba(148,163,184,0.4)",
+                borderRadius: "4px",
               },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: colorMode === "dark" ? "rgba(148,163,184,0.5)" : "rgba(148,163,184,0.6)",
+              "&::-webkit-scrollbar-thumb:hover": {
+                background:
+                  colorMode === "dark"
+                    ? "rgba(148,163,184,0.5)"
+                    : "rgba(148,163,184,0.6)",
               },
             }}
           >
@@ -687,7 +872,11 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               display="flex"
               flexDirection="column"
               gap={2}
-              bg={colorMode === "dark" ? "rgba(11,18,32,0.85)" : "rgba(15,23,42,0.02)"}
+              bg={
+                colorMode === "dark"
+                  ? "rgba(11,18,32,0.85)"
+                  : "rgba(15,23,42,0.02)"
+              }
               overflow="hidden"
             >
               <FileExplorerWithFlash
@@ -707,18 +896,27 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             h="100%"
             overflowY="auto"
             css={{
-              '&::-webkit-scrollbar': {
-                width: '8px',
+              "&::-webkit-scrollbar": {
+                width: "8px",
               },
-              '&::-webkit-scrollbar-track': {
-                background: colorMode === "dark" ? "rgba(15,23,42,0.3)" : "rgba(15,23,42,0.05)",
+              "&::-webkit-scrollbar-track": {
+                background:
+                  colorMode === "dark"
+                    ? "rgba(15,23,42,0.3)"
+                    : "rgba(15,23,42,0.05)",
               },
-              '&::-webkit-scrollbar-thumb': {
-                background: colorMode === "dark" ? "rgba(148,163,184,0.3)" : "rgba(148,163,184,0.4)",
-                borderRadius: '4px',
+              "&::-webkit-scrollbar-thumb": {
+                background:
+                  colorMode === "dark"
+                    ? "rgba(148,163,184,0.3)"
+                    : "rgba(148,163,184,0.4)",
+                borderRadius: "4px",
               },
-              '&::-webkit-scrollbar-thumb:hover': {
-                background: colorMode === "dark" ? "rgba(148,163,184,0.5)" : "rgba(148,163,184,0.6)",
+              "&::-webkit-scrollbar-thumb:hover": {
+                background:
+                  colorMode === "dark"
+                    ? "rgba(148,163,184,0.5)"
+                    : "rgba(148,163,184,0.6)",
               },
             }}
           >
@@ -733,7 +931,12 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               minH={{ base: "480px", lg: "580px" }}
               overflow="hidden"
             >
-              <Flex justify="space-between" align="center" flexWrap="wrap" gap={2}>
+              <Flex
+                justify="space-between"
+                align="center"
+                flexWrap="wrap"
+                gap={2}
+              >
                 <HStack spacing={1} flex="1" overflowX="auto">
                   {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;
@@ -744,20 +947,39 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                         onClick={() => handleTabClick(tab.id)}
                         px={2}
                         py={1.5}
-                        bg={isActive ? "linear-gradient(135deg,#2563eb,#38bdf8)" : "transparent"}
-                        color={isActive ? "white" : colorMode === "dark" ? "rgba(226,232,240,0.8)" : "#0f172a"}
+                        bg={
+                          isActive
+                            ? "linear-gradient(135deg,#2563eb,#38bdf8)"
+                            : "transparent"
+                        }
+                        color={
+                          isActive
+                            ? "white"
+                            : colorMode === "dark"
+                              ? "rgba(226,232,240,0.8)"
+                              : "#0f172a"
+                        }
                         fontSize="xs"
                         flexShrink={0}
                         whiteSpace="nowrap"
                         cursor="pointer"
                         transition="all 0.2s ease"
-                        _hover={{ bg: isActive ? "linear-gradient(135deg,#1d4ed8,#22d3ee)" : "rgba(148,163,184,0.18)" }}
+                        _hover={{
+                          bg: isActive
+                            ? "linear-gradient(135deg,#1d4ed8,#22d3ee)"
+                            : "rgba(148,163,184,0.18)",
+                        }}
                         maxW="120px"
                         textOverflow="ellipsis"
                         overflow="hidden"
                         gap={1}
                       >
-                        <Text noOfLines={1} onDoubleClick={() => handleRenameTab(tab.id)} title="Double-click to rename" fontSize="xs">
+                        <Text
+                          noOfLines={1}
+                          onDoubleClick={() => handleRenameTab(tab.id)}
+                          title="Double-click to rename"
+                          fontSize="xs"
+                        >
                           {tab.name}
                         </Text>
                         <IconButton
@@ -765,9 +987,19 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                           size="xs"
                           aria-label="Close tab"
                           variant="ghost"
-                          color={isActive ? "white" : colorMode === "dark" ? "rgba(226,232,240,0.7)" : "#0f172a"}
+                          color={
+                            isActive
+                              ? "white"
+                              : colorMode === "dark"
+                                ? "rgba(226,232,240,0.7)"
+                                : "#0f172a"
+                          }
                           onClick={(event) => handleTabClose(tab.id, event)}
-                          _hover={{ bg: isActive ? "rgba(255,255,255,0.14)" : "rgba(148,163,184,0.3)" }}
+                          _hover={{
+                            bg: isActive
+                              ? "rgba(255,255,255,0.14)"
+                              : "rgba(148,163,184,0.3)",
+                          }}
                           minW="auto"
                           w="16px"
                           h="16px"
@@ -781,36 +1013,61 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                     onClick={addNewTab}
                     aria-label="Add new tab"
                     variant="outline"
-                    borderColor={colorMode === "dark" ? "rgba(148,163,184,0.4)" : "rgba(15,23,42,0.15)"}
-                    color={colorMode === "dark" ? "rgba(226,232,240,0.9)" : "#0f172a"}
+                    borderColor={
+                      colorMode === "dark"
+                        ? "rgba(148,163,184,0.4)"
+                        : "rgba(15,23,42,0.15)"
+                    }
+                    color={
+                      colorMode === "dark" ? "rgba(226,232,240,0.9)" : "#0f172a"
+                    }
                     _hover={{ bg: "rgba(56,189,248,0.2)" }}
                   />
                 </HStack>
                 <Flex align="center" gap={3}>
                   {/* <MathWidgetButton /> */}
+                  <Button
+                    size="sm"
+                    colorScheme="blue"
+                    variant="solid"
+                    onClick={handleOpenCreateProductModal}
+                  >
+                    + Create Product
+                  </Button>
                   <DefineProductButton position="inline" />
                   <LanguageSelector language={language} onSelect={onSelect} />
-                  <IconBar
-                    placement="inline"
-                    direction="row"
-                    buttonSize="sm"
-                    gap={2}
-                    onBuildClick={handleBuildClick}
-                    onDebugClick={handleDebugClick}
-                    onFlashClick={handleFlashClick}
-                    onEraseClick={handleEraseClick}
-                    isDeviceConnected={isDeviceConnected}
-                  />
+                  <Box display="none">
+                    {" "}
+                    {/* Hidden as per user request */}
+                    <IconBar
+                      placement="inline"
+                      direction="row"
+                      buttonSize="sm"
+                      gap={2}
+                      onBuildClick={handleBuildClick}
+                      onDebugClick={handleDebugClick}
+                      onFlashClick={handleFlashClick}
+                      onEraseClick={handleEraseClick}
+                      isDeviceConnected={isDeviceConnected}
+                    />
+                  </Box>
                 </Flex>
               </Flex>
-
 
               <Box
                 flex="1"
                 borderRadius="xl"
                 border="1px solid"
-                borderColor={colorMode === "dark" ? "rgba(148,163,184,0.14)" : "rgba(15,23,42,0.1)"}
-                bg={colorMode === "dark" ? "rgba(11,18,32,0.78)" : "rgba(15,23,42,0.02)"}
+                borderColor={
+                  colorMode === "dark"
+                    ? "rgba(148,163,184,0.14)"
+                    : "rgba(15,23,42,0.1)"
+                }
+                bg={
+                  colorMode === "dark"
+                    ? "rgba(11,18,32,0.78)"
+                    : "rgba(15,23,42,0.02)"
+                }
                 overflow="hidden"
               >
                 <Editor
@@ -822,18 +1079,25 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                   theme={editorTheme}
                   language={monacoLanguage}
                   value={activeTabContent}
-                  onMount={onMount}
+                  onMount={handleEditorDidMount}
                   onChange={handleEditorChange}
                 />
               </Box>
-
             </Box>
             <Box
               borderRadius="2xl"
               bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
               border="1px solid"
-              borderColor={colorMode === "dark" ? "rgba(148,163,184,0.14)" : "rgba(15,23,42,0.1)"}
-              boxShadow={colorMode === "dark" ? "0 30px 60px rgba(8,15,32,0.45)" : "0 24px 60px rgba(15,23,42,0.06)"}
+              borderColor={
+                colorMode === "dark"
+                  ? "rgba(148,163,184,0.14)"
+                  : "rgba(15,23,42,0.1)"
+              }
+              boxShadow={
+                colorMode === "dark"
+                  ? "0 30px 60px rgba(8,15,32,0.45)"
+                  : "0 24px 60px rgba(15,23,42,0.06)"
+              }
               px={{ base: 4, md: 6 }}
               py={{ base: 4, md: 5 }}
               minH={{ base: "220px", lg: "260px" }}
@@ -868,12 +1132,20 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
           >
             <Flex justify="space-between" align="center">
               <Text fontWeight="bold">Build Console</Text>
-              <Button size="xs" variant="ghost" onClick={() => setActiveToolPanel(null)}>
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => setActiveToolPanel(null)}
+              >
                 Close
               </Button>
             </Flex>
-            <Text fontSize="sm" color={colorMode === "dark" ? "gray.300" : "gray.600"}>
-              Access compiler output, serial logs, or the integrated terminal from the console panel below.
+            <Text
+              fontSize="sm"
+              color={colorMode === "dark" ? "gray.300" : "gray.600"}
+            >
+              Access compiler output, serial logs, or the integrated terminal
+              from the console panel below.
             </Text>
             <Button size="sm" colorScheme="blue" onClick={handleScrollToOutput}>
               Jump to Console
@@ -916,7 +1188,6 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         </Box>
       )}
 
-
       <Erase isOpen={isEraseOpen} onClose={() => setEraseOpen(false)} />
 
       <LibraryManager
@@ -925,6 +1196,22 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         onInsertCode={handleInsertLibraryCode}
         currentPlatform={currentPlatform}
       />
+
+      {/* Create Product Modal */}
+      <Modal
+        isOpen={isCreateProductModalOpen}
+        onClose={handleCloseCreateProductModal}
+        size="xl"
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Product Configuration</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody pb={6}>
+            <ProductDefinition />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </>
   );
 };

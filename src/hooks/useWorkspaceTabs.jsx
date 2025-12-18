@@ -174,8 +174,28 @@ export const WorkspaceTabsProvider = ({ kind, createInitialState, children }) =>
   }, [hydrateFromStorage]);
 
   const selectTab = useCallback((tabId) => {
+    // If we're already on this tab, do nothing
+    if (tabId === activeTabId) return;
+
+    // Save current tab before switching (fire event for components to save their state)
+    if (activeTabId) {
+      console.log('[WorkspaceTabs] Switching tabs, saving current tab:', activeTabId);
+      // Dispatch event so components can save their state before tab switch
+      window.dispatchEvent(new CustomEvent('workspace:before-tab-switch', {
+        detail: { fromTabId: activeTabId, toTabId: tabId }
+      }));
+      // Do not persist immediately here, because the state update from the event 
+      // hasn't processed yet. We rely on the component calling updateActiveTabState 
+      // which triggers scheduleSave.
+    }
+
     setActiveTabId(tabId);
-  }, []);
+
+    // Dispatch event so components can restore state from new tab
+    window.dispatchEvent(new CustomEvent('workspace:after-tab-switch', {
+      detail: { tabId }
+    }));
+  }, [activeTabId, persistTab]);
 
   const updateTab = useCallback((tabId, updater, options = {}) => {
     setTabs((current) =>

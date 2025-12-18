@@ -80,7 +80,7 @@ const CodeEditor = () => {
   };
 
   const goToFlowchart = () => {
-    navigate("/flowchart");
+    navigate("/FlowchartTest");
   };
 
   const beginResize = (event) => {

@@ -16,7 +16,7 @@ const Embedded = () => {
         const routes = {
             Embedded: '/embedded',
             Simulation: '/simulation',
-            Flowchart: '/Flowchartone',
+            Flowchart: '/FlowchartTest',
             'Block Diagram': '/BlockDiagram',
             'Code Editor': '/editor',
         };
@@ -137,7 +137,7 @@ const Embedded = () => {
                 <OutputStatus errorLine={{ line: 11, row: 2 }} />
             </div>
 
-{/* 
+            {/* 
             <Footer /> */}
         </>
     );
