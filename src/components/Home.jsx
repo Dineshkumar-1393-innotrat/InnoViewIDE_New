@@ -345,7 +345,7 @@ const Home = () => {
                     Create an account
                   </ChakraLink>
                 </Flex>
-                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_Rev0.7_28-11-2025 (C) Innotrat Labs</Text>
+                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_Rev0.8_18-12-2025 (C) Innotrat Labs</Text>
               </VStack>
             </Flex>
           </Box>
