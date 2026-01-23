@@ -66,7 +66,9 @@ function ProductEditModal({
       <Button
         size="sm"
         colorScheme="teal"
-        float={"inline-end"}
+        borderRadius="full"
+        height="32px"
+        px={6}
         ref={btnRef}
         onClick={onOpen}
         zIndex={999}

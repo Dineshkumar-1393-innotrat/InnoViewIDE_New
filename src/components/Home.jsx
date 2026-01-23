@@ -20,11 +20,20 @@ import {
   useToast,
   Select,
   Divider,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
 } from "@chakra-ui/react";
-import { FaEye, FaEyeSlash, FaClock, FaCalendar } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaClock, FaCalendar, FaPlayCircle } from "react-icons/fa";
 import loginImage from "../images/image.jpg";
 import Ellipse521 from "../images/Ellipse 521.svg";
 import { Link as ChakraLink } from "@chakra-ui/react";
+import { onboardingSteps } from "../data/onboardingSteps";
 
 const Home = () => {
   const [show, setShow] = useState(false);
@@ -124,6 +133,26 @@ const Home = () => {
     navigate("/createaccount");
   };
 
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [onboardingStep, setOnboardingStep] = useState(0);
+
+  const handleOpenOnboarding = () => {
+    setOnboardingStep(0);
+    onOpen();
+  };
+
+  const handleNextStep = () => {
+    if (onboardingStep < onboardingSteps.length - 1) {
+      setOnboardingStep(prev => prev + 1);
+    } else {
+      onClose();
+    }
+  };
+
+  const handlePrevStep = () => {
+    setOnboardingStep(prev => Math.max(0, prev - 1));
+  };
+
   return (
     <>
       <Box
@@ -165,12 +194,13 @@ const Home = () => {
         transition={{ duration: 0.5 }}
       >
         <Flex
-          minHeight="calc(100vh - 70px)"
+          height="calc(100vh - 70px)"
           width="full"
           align="center"
           justifyContent="center"
           bg={useColorModeValue("linear-gradient(135deg, #667eea 0%, #764ba2 100%)", "gray.900")}
           position="relative"
+          overflow="hidden"
           _before={{
             content: '""',
             position: "absolute",
@@ -207,30 +237,55 @@ const Home = () => {
                   height="100%"
                   width="100%"
                 />
+
+                {/* Onboarding Trigger on Image Side */}
+                <Box position="absolute" inset="0" display="flex" alignItems="center" justifyContent="center">
+                  <Button
+                    leftIcon={<FaPlayCircle />}
+                    colorScheme="whiteAlpha"
+                    onClick={handleOpenOnboarding}
+                    size="lg"
+                    backdropFilter="blur(8px)"
+                    bg="rgba(0,0,0,0.4)"
+                    _hover={{ bg: "rgba(0,0,0,0.6)" }}
+                  >
+                    Watch Intro Tour
+                  </Button>
+                </Box>
               </Box>
 
               <VStack
                 as="form"
                 onSubmit={handleLogin}
-                spacing={8}
-                p={10}
+                spacing={5}
+                p={8}
                 flex={1}
                 bg={useColorModeValue("white", "gray.800")}
                 alignItems="stretch"
                 justify="center"
               >
                 <Box width="full" textAlign="left">
-                  <Heading
-                    as="h1"
-                    size="xl"
-                    bgGradient="linear(to-r, #667eea, #764ba2)"
-                    bgClip="text"
-                    fontWeight="extrabold"
-                    mb={2}
-                  >
-                    Welcome Back
-                  </Heading>
-                  <Text fontSize="md" color={useColorModeValue("gray.600", "gray.400")} mb={6}>
+                  <Flex justify="space-between" align="center" mb={2}>
+                    <Heading
+                      as="h1"
+                      size="xl"
+                      bgGradient="linear(to-r, #667eea, #764ba2)"
+                      bgClip="text"
+                      fontWeight="extrabold"
+                    >
+                      Welcome Back
+                    </Heading>
+                    {/* Mobile Trigger */}
+                    <IconButton
+                      display={{ base: "flex", md: "none" }}
+                      icon={<FaPlayCircle />}
+                      aria-label="Watch Intro"
+                      onClick={handleOpenOnboarding}
+                      variant="ghost"
+                      colorScheme="purple"
+                    />
+                  </Flex>
+                  <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={4}>
                     Sign in to Innotrat Labs IDE
                   </Text>
                 </Box>
@@ -242,8 +297,8 @@ const Home = () => {
                       id="countryCode"
                       value={formData.countryCode}
                       onChange={handleInputChange}
-                      width="100px"
-                      height="50px"
+                      width="90px"
+                      height="45px"
                       borderRadius="lg"
                       color="black"
                       bg="gray.50"
@@ -257,8 +312,8 @@ const Home = () => {
                     <Input
                       id="mobileNumber"
                       type="tel"
-                      placeholder="Enter your mobile number"
-                      height="50px"
+                      placeholder="Mobile Number"
+                      height="45px"
                       borderRadius="lg"
                       pattern="[0-9]{10}"
                       maxLength="10"
@@ -283,8 +338,8 @@ const Home = () => {
                     <Input
                       pr="3.5rem"
                       type={show ? "text" : "password"}
-                      placeholder="Enter password"
-                      height="50px"
+                      placeholder="Password"
+                      height="45px"
                       borderRadius="lg"
                       value={formData.password}
                       onChange={handleInputChange}
@@ -295,11 +350,11 @@ const Home = () => {
                       _placeholder={{ color: "gray.400" }}
                       fontSize="md"
                       fontWeight="medium"
-                      _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
+                      _focus={{ borderColor: "purple.500", boxShadow: "0 0 0 1px #805ad5" }}
                     />
-                    <InputRightElement height="50px" width="3.5rem">
+                    <InputRightElement height="45px" width="3.5rem">
                       <IconButton
-                        h="2rem"
+                        h="1.75rem"
                         size="sm"
                         onClick={() => setShow(!show)}
                         aria-label={show ? "Hide password" : "Show password"}
@@ -315,7 +370,7 @@ const Home = () => {
                 <Button
                   type="submit"
                   width="full"
-                  height="50px"
+                  height="45px"
                   fontSize="lg"
                   borderRadius="lg"
                   isLoading={isLoading}
@@ -345,11 +400,98 @@ const Home = () => {
                     Create an account
                   </ChakraLink>
                 </Flex>
-                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_Rev0.8_18-12-2025 (C) Innotrat Labs</Text>
+                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_Rev0.9_23-01-2026 (C) Innotrat Labs</Text>
               </VStack>
             </Flex>
           </Box>
         </Flex>
+
+        {/* Onboarding Modal */}
+        <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
+          <ModalOverlay backdropFilter="blur(8px)" />
+          <ModalContent borderRadius="2xl" overflow="hidden">
+            <ModalHeader borderBottom="1px solid" borderColor="gray.100" py={4}>
+              <Flex align="center" gap={2}>
+                <Heading size="md">InnoIDE Walkthrough</Heading>
+              </Flex>
+            </ModalHeader>
+            <ModalCloseButton />
+            <ModalBody p={0} bg="gray.50">
+              {/* Video Section */}
+              <Box bg="black" width="100%" position="relative" paddingBottom="56.25%">
+                <Box position="absolute" top="0" left="0" right="0" bottom="0">
+                  {onboardingSteps[onboardingStep].videoUrl ? (
+                    <video
+                      key={onboardingStep}
+                      src={onboardingSteps[onboardingStep].videoUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      controls
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Flex height="100%" align="center" justify="center" bg="gray.900" color="white">
+                      <VStack>
+                        <FaPlayCircle size={48} opacity={0.5} />
+                        <Text>Preview: {onboardingSteps[onboardingStep].title}</Text>
+                      </VStack>
+                    </Flex>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Content Section */}
+              <VStack p={6} spacing={3} textAlign="center" bg="white">
+                <Text fontSize="xs" fontWeight="bold" color="blue.500" textTransform="uppercase" letterSpacing="wide">
+                  Step {onboardingStep + 1} of {onboardingSteps.length}
+                </Text>
+                <Heading size="lg" color="gray.800">
+                  {onboardingSteps[onboardingStep].title}
+                </Heading>
+                <Text color="gray.600" fontSize="md" maxW="lg">
+                  {onboardingSteps[onboardingStep].description}
+                </Text>
+              </VStack>
+            </ModalBody>
+            <ModalFooter bg="white" borderTop="1px solid" borderColor="gray.100" p={6}>
+              <Flex justify="space-between" width="100%" align="center">
+                <Button
+                  variant="ghost"
+                  onClick={handlePrevStep}
+                  isDisabled={onboardingStep === 0}
+                  color="gray.500"
+                >
+                  Previous
+                </Button>
+
+                <HStack spacing={2}>
+                  {onboardingSteps.map((_, idx) => (
+                    <Box
+                      key={idx}
+                      h="2"
+                      w={idx === onboardingStep ? "6" : "2"}
+                      bg={idx === onboardingStep ? "blue.500" : "gray.200"}
+                      borderRadius="full"
+                      transition="all 0.3s"
+                    />
+                  ))}
+                </HStack>
+
+                <Button
+                  colorScheme="blue"
+                  bgGradient="linear(to-r, #667eea, #764ba2)"
+                  _hover={{ bgGradient: "linear(to-r, #764ba2, #667eea)" }}
+                  onClick={handleNextStep}
+                >
+                  {onboardingStep === onboardingSteps.length - 1 ? 'Finish' : 'Next'}
+                </Button>
+              </Flex>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
       </motion.div>
     </>
   );

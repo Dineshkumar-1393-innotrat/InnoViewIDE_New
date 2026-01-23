@@ -6,7 +6,7 @@ import {
   buildWorkspaceFileName,
 } from '../utils/workspaceStorage';
 
-const WorkspaceTabsContext = createContext(null);
+export const WorkspaceTabsContext = createContext(null);
 
 const createTabId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 

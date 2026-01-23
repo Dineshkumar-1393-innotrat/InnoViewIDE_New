@@ -10,7 +10,7 @@
 
 //   const handleSubmit = async () => {
 //     const productID = prompt("Please enter the Product ID:");
-    
+
 //     if (!productID) {
 //       toast({
 //         title: "Product ID is required.",
@@ -22,8 +22,8 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/${productID}/definition`;
-      
+//       const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
+
 //       const response = await axios.post(url, formData);
 
 //       toast({
@@ -80,8 +80,8 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/${productID}/definition`;
-      
+//       const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
+
 //       const payload = {
 //         productID,
 //         productName,
@@ -159,7 +159,7 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/${productID}/definition`;
+//       const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
 
 //       const payload = {
 //         productID,
@@ -274,20 +274,20 @@ const DefineProductTwo = () => {
       });
       return;
     }
-  
+
     try {
       // Validate JSON format before submitting
       const parsedComponents = JSON.parse(components);
-      
-      const url = `https://eureka.innotrat.in/product/${productID}/definition`;
+
+      const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
       const payload = {
         productID,
         productName,
         components: parsedComponents,
       };
-  
+
       await axios.post(url, payload);
-  
+
       toast({
         title: "Product defined successfully.",
         description: "Redirecting to block diagram...",
@@ -295,10 +295,10 @@ const DefineProductTwo = () => {
         duration: 3000,
         isClosable: true,
       });
-  
+
       // Navigate to BlockDiagramOne and pass productID and productName
       navigate("/blockdiagram", { state: { productID, productName } });
-  
+
     } catch (error) {
       if (error instanceof SyntaxError) {
         toast({
@@ -319,7 +319,7 @@ const DefineProductTwo = () => {
       }
     }
   };
-  
+
 
   return (
     <Container maxW="container.md" py={8}>
@@ -334,14 +334,14 @@ const DefineProductTwo = () => {
             isReadOnly
             bg="gray.100"
           />
-          
+
           <FormLabel>Product Name</FormLabel>
           <Input
             value={productName}
             isReadOnly
             bg="gray.100"
           />
-          
+
           <FormLabel>Components (JSON Format)</FormLabel>
           <Textarea
             placeholder={`{
@@ -359,7 +359,7 @@ const DefineProductTwo = () => {
             minH="200px"
             p={4}
           />
-          
+
           <Button
             colorScheme="blue"
             size="lg"

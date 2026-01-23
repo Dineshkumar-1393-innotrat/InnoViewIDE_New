@@ -105,7 +105,7 @@
   border-color: #d1d5db;
 }
 
-.prop-color-input input[type="color"]:focus + .color-preview {
+.prop-color-input input[type="color"]:focus+.color-preview {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
 }

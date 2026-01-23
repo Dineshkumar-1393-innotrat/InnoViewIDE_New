@@ -20,21 +20,30 @@ import {
   ModalBody,
 } from "@chakra-ui/react";
 import ProductDefinition from "./CreateProduct";
+import ProductEditModal from "./Product/ProductEdit/ProductEditModal";
 import { Editor } from "@monaco-editor/react";
 import { AddIcon, CloseIcon, ExternalLinkIcon } from "@chakra-ui/icons";
 import { useLocation, useNavigate } from "react-router-dom";
 import LanguageSelector from "./LanguageSelector";
 import { CODE_SNIPPETS, MONACO_LANGUAGE_MAP } from "../constants";
 import Output from "./Output";
-import { useAutoSaveTabs } from "../hooks/useAutoSaveTabs";
 import { useCodeEditorAutoSave, useGlobalAutoSave } from "../hooks/useAutoSave";
 import { autoSaveManager } from "../utils/autoSaveManager";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  setTabs,
+  setActiveTab,
+  addTab,
+  closeTab,
+  renameTab,
+  updateTabContent as updateReduxTabContent,
+} from "../store/slices/editorSlice";
 
 import IconBar from "./IconBar";
 import FileExplorer from "./FileExplorer";
 import Debug from "./Debug";
 import Flash from "./Flash";
-import DefineProductButton from "./shared/DefineProductButton";
+import CreateProductButton from "./shared/CreateProductButton";
 // import MathWidgetButton from "./shared/MathWidgetButton";
 
 // Component to handle FileExplorer and Flash panel layout
@@ -206,34 +215,52 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const editorRef = useRef();
   const outputRef = useRef(null);
 
-  // Initialize auto-save tabs with default content
-  const {
-    tabs,
-    activeTab,
-    addNewTab,
-    closeTab,
-    updateTabContent,
-    renameTab,
-    handleTabClick,
-    saveTab,
-    saveAsset,
-    getActiveTab,
-    getFolderInfo,
-  } = useAutoSaveTabs(
-    [
-      {
-        id: 1,
-        name: "main.c",
-        content: CODE_SNIPPETS["C"] || "",
-        dirty: false,
-      },
-    ],
-    {
-      maxTabs: 10,
-      defaultTabName: "file",
-      defaultContent: CODE_SNIPPETS["C"] || "",
-    },
+  const dispatch = useDispatch();
+  const { tabs, activeTabId } = useSelector((state) => state.editor);
+  const activeTab = useMemo(
+    () => tabs.find((t) => t.id === activeTabId),
+    [tabs, activeTabId],
   );
+
+  const addNewTab = useCallback(() => {
+    const newId = Date.now();
+    dispatch(
+      addTab({
+        id: newId,
+        name: `file-${tabs.length + 1}.c`,
+        content: CODE_SNIPPETS["C"] || "",
+        dirty: true,
+      }),
+    );
+  }, [dispatch, tabs.length]);
+
+  const updateTabContent = useCallback(
+    (id, content) => {
+      dispatch(updateReduxTabContent({ tabId: id, content }));
+    },
+    [dispatch],
+  );
+
+  const handleTabClick = useCallback(
+    (id) => {
+      dispatch(setActiveTab(id));
+    },
+    [dispatch],
+  );
+
+  const closeTabHandler = useCallback(
+    (id) => {
+      dispatch(closeTab(id));
+    },
+    [dispatch],
+  );
+
+  // Initialize first tab if none exists
+  useEffect(() => {
+    if (tabs.length === 0) {
+      addNewTab();
+    }
+  }, [tabs.length, addNewTab]);
 
   // Enhanced auto-save for code editor state
   const {
@@ -243,11 +270,11 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     scheduleSave: scheduleEditorSave,
     isLoaded: isAutoSaveLoaded,
   } = useCodeEditorAutoSave(
-    tabs.find((t) => t.id === activeTab)?.content || "",
+    activeTab?.content || "",
     {
       screenKey: "/editor",
       tabs,
-      activeTab,
+      activeTab: activeTabId,
       autoSaveDelay: 2000,
       priority: 2,
       onSave: (data) => {
@@ -309,8 +336,8 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
   const MAX_TABS = 10;
   const activeTabName = useMemo(
-    () => tabs.find((tab) => tab.id === activeTab)?.name || "main",
-    [tabs, activeTab],
+    () => tabs.find((tab) => tab.id === activeTabId)?.name || "main",
+    [tabs, activeTabId],
   );
 
   // Save editor state when tabs or content change
@@ -366,28 +393,43 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     };
   }, [tabs, activeTab]);
 
-  const handleRenameTab = useCallback(
-    (tabId) => {
-      const targetTab = tabs.find((tab) => tab.id === tabId);
-      if (!targetTab) return;
+  // Tab Renaming State
+  const [editingTabId, setEditingTabId] = useState(null);
+  const [tempName, setTempName] = useState("");
 
-      const requested = window.prompt("Rename tab", targetTab.name || "");
-      if (requested === null) return;
+  const startRenaming = (e, tab) => {
+    e.stopPropagation();
+    setEditingTabId(tab.id);
+    setTempName(tab.name);
+  };
 
-      const trimmed = requested.trim();
-      if (!trimmed || trimmed === targetTab.name) return;
+  const handleRenameChange = (e) => {
+    setTempName(e.target.value);
+  };
 
-      // Use the auto-save rename function
-      renameTab(tabId, trimmed);
-    },
-    [tabs, renameTab],
-  );
+  const handleRenameSubmit = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finishRenaming();
+    } else if (e.key === "Escape") {
+      setEditingTabId(null);
+      setTempName("");
+    }
+  };
+
+  const finishRenaming = () => {
+    if (editingTabId && tempName.trim()) {
+      dispatch(renameTab({ tabId: editingTabId, name: tempName.trim() }));
+    }
+    setEditingTabId(null);
+    setTempName("");
+  };
 
   const onSelect = (selectedLanguage) => {
     setLanguage(selectedLanguage);
     const newContent = CODE_SNIPPETS[selectedLanguage] || "";
-    if (activeTab) {
-      updateTabContent(activeTab, newContent);
+    if (activeTabId) {
+      updateTabContent(activeTabId, newContent);
     }
   };
 
@@ -402,6 +444,17 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const handleFlashStart = useCallback(() => {
     setIsFlashing(true);
   }, []);
+
+  const handleEditorChange = (newValue) => {
+    if (activeTabId) {
+      updateTabContent(activeTabId, newValue);
+    }
+  };
+
+  const handleTabClose = (tabId, event) => {
+    event.stopPropagation();
+    dispatch(closeTab(tabId));
+  };
 
   // Listen for device connection events and persist state
   useEffect(() => {
@@ -458,8 +511,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
       try {
         // Get the current code from the active tab
-        const activeTabData = tabs.find((tab) => tab.id === activeTab);
-        const code = activeTabData?.content || "";
+        const code = activeTab?.content || "";
 
         if (code.trim()) {
           // Submit code to API before flashing
@@ -607,11 +659,11 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         prev.length > 0
           ? prev
           : [
-              {
-                path: activeTabName,
-                line: 1,
-              },
-            ],
+            {
+              path: activeTabName,
+              line: 1,
+            },
+          ],
       );
       pushDebugLog(
         hasStdErr
@@ -747,6 +799,8 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
   const [isCreateProductModalOpen, setCreateProductModalOpen] = useState(false);
 
+  const [hasProduct, setHasProduct] = useState(() => !!localStorage.getItem("activeProjectIds"));
+
   const handleOpenCreateProductModal = () => setCreateProductModalOpen(true);
   const handleCloseCreateProductModal = () => setCreateProductModalOpen(false);
 
@@ -755,16 +809,6 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     editor.focus();
   };
 
-  const handleEditorChange = (newValue) => {
-    if (activeTab) {
-      updateTabContent(activeTab, newValue);
-    }
-  };
-
-  const handleTabClose = (tabId, event) => {
-    event.stopPropagation();
-    closeTab(tabId);
-  };
 
   const goToFlowchart = () => {
     navigate("/flowchart");
@@ -797,7 +841,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   );
 
   const editorTheme = colorMode === "dark" ? "vs-dark" : "vs-light";
-  const activeTabContent = getActiveTab()?.content || "";
+  const activeTabContent = activeTab?.content || "";
   const monacoLanguage = MONACO_LANGUAGE_MAP[language] || language;
 
   // Determine platform for library manager
@@ -939,7 +983,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               >
                 <HStack spacing={1} flex="1" overflowX="auto">
                   {tabs.map((tab) => {
-                    const isActive = activeTab === tab.id;
+                    const isActive = activeTabId === tab.id;
                     return (
                       <Flex
                         key={tab.id}
@@ -974,14 +1018,35 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                         overflow="hidden"
                         gap={1}
                       >
-                        <Text
-                          noOfLines={1}
-                          onDoubleClick={() => handleRenameTab(tab.id)}
-                          title="Double-click to rename"
-                          fontSize="xs"
-                        >
-                          {tab.name}
-                        </Text>
+                        <Flex align="center" gap={1} flex={1} minW={0}>
+                          {editingTabId === tab.id ? (
+                            <Input
+                              size="xs"
+                              value={tempName}
+                              onChange={handleRenameChange}
+                              onBlur={finishRenaming}
+                              onKeyDown={handleRenameSubmit}
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                              bg="white"
+                              color="black"
+                              borderColor="blue.500"
+                              _focus={{ borderColor: "blue.500", boxShadow: "none" }}
+                              h="20px"
+                              minW="80px"
+                            />
+                          ) : (
+                            <Text
+                              noOfLines={1}
+                              onDoubleClick={(e) => startRenaming(e, tab)}
+                              title="Double-click to rename"
+                              fontSize="xs"
+                              userSelect="none"
+                            >
+                              {tab.name}
+                            </Text>
+                          )}
+                        </Flex>
                         <IconButton
                           icon={<CloseIcon fontSize="6px" />}
                           size="xs"
@@ -1026,15 +1091,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                 </HStack>
                 <Flex align="center" gap={3}>
                   {/* <MathWidgetButton /> */}
-                  <Button
-                    size="sm"
-                    colorScheme="blue"
-                    variant="solid"
-                    onClick={handleOpenCreateProductModal}
-                  >
-                    + Create Product
-                  </Button>
-                  <DefineProductButton position="inline" />
+                  <CreateProductButton />
                   <LanguageSelector language={language} onSelect={onSelect} />
                   <Box display="none">
                     {" "}
@@ -1208,7 +1265,12 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
           <ModalHeader>Product Configuration</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
-            <ProductDefinition />
+            <ProductDefinition
+              onSuccess={() => {
+                setHasProduct(true);
+                handleCloseCreateProductModal();
+              }}
+            />
           </ModalBody>
         </ModalContent>
       </Modal>

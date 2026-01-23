@@ -19,7 +19,16 @@ import { useLocation, useNavigate } from "react-router-dom";
 import LanguageSelector from "./LanguageSelector";
 import { CODE_SNIPPETS, MONACO_LANGUAGE_MAP } from "../constants";
 import Output from "./Output";
-import { useAutoSaveTabs } from "../hooks/useAutoSaveTabs";
+import { useCodeEditorAutoSave, useGlobalAutoSave } from "../hooks/useAutoSave";
+import { useDispatch, useSelector } from "react-redux";
+import {
+    setTabs,
+    setActiveTab,
+    addTab,
+    closeTab,
+    updateTabContent as updateReduxTabContent,
+    renameTab as renameReduxTab,
+} from "../store/slices/mathEditorSlice";
 
 import IconBar from "./IconBar";
 import FileExplorer from "./FileExplorer";
@@ -170,26 +179,52 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     const editorRef = useRef();
     const outputRef = useRef(null);
 
-    // Initialize auto-save tabs with default content
-    const {
-        tabs,
-        activeTab,
-        addNewTab,
-        closeTab,
-        updateTabContent,
-        renameTab,
-        handleTabClick,
-        saveTab,
-        saveAsset,
-        getActiveTab,
-        getFolderInfo
-    } = useAutoSaveTabs([
-        { id: 1, name: "main.c", content: CODE_SNIPPETS["C"] || "", dirty: false }
-    ], {
-        maxTabs: 10,
-        defaultTabName: "file",
-        defaultContent: CODE_SNIPPETS["C"] || ""
-    });
+    const dispatch = useDispatch();
+    const { tabs, activeTabId } = useSelector((state) => state.mathEditor);
+    const activeTabObj = useMemo(
+        () => tabs.find((t) => t.id === activeTabId),
+        [tabs, activeTabId],
+    );
+
+    const addNewTab = useCallback(() => {
+        const newId = Date.now();
+        dispatch(
+            addTab({
+                id: newId,
+                name: `file-${tabs.length + 1}.c`,
+                content: CODE_SNIPPETS["C"] || "",
+                dirty: true,
+            }),
+        );
+    }, [dispatch, tabs.length]);
+
+    const updateTabContent = useCallback(
+        (id, content) => {
+            dispatch(updateReduxTabContent({ tabId: id, content }));
+        },
+        [dispatch],
+    );
+
+    const handleTabClick = useCallback(
+        (id) => {
+            dispatch(setActiveTab(id));
+        },
+        [dispatch],
+    );
+
+    const closeTabHandler = useCallback(
+        (id) => {
+            dispatch(closeTab(id));
+        },
+        [dispatch],
+    );
+
+    // Initialize first tab if none exists
+    useEffect(() => {
+        if (tabs.length === 0) {
+            addNewTab();
+        }
+    }, [tabs.length, addNewTab]);
 
     const [language, setLanguage] = useState("Select Languages");
     const [searchQuery, setSearchQuery] = useState("");
@@ -257,8 +292,8 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
     const MAX_TABS = 10;
     const activeTabName = useMemo(
-        () => tabs.find((tab) => tab.id === activeTab)?.name || "main",
-        [tabs, activeTab]
+        () => tabs.find((tab) => tab.id === activeTabId)?.name || "main",
+        [tabs, activeTabId]
     );
 
     const handleRenameTab = useCallback(
@@ -272,17 +307,16 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             const trimmed = requested.trim();
             if (!trimmed || trimmed === targetTab.name) return;
 
-            // Use the auto-save rename function
-            renameTab(tabId, trimmed);
+            dispatch(renameReduxTab({ tabId, name: trimmed }));
         },
-        [tabs, renameTab]
+        [tabs, dispatch]
     );
 
     const onSelect = (selectedLanguage) => {
         setLanguage(selectedLanguage);
         const newContent = CODE_SNIPPETS[selectedLanguage] || "";
-        if (activeTab) {
-            updateTabContent(activeTab, newContent);
+        if (activeTabId) {
+            updateTabContent(activeTabId, newContent);
         }
     };
 
@@ -598,26 +632,19 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     }, []);
 
     const handleInsertLibraryCode = useCallback((code) => {
-        const activeTabData = tabs.find((tab) => tab.id === activeTab);
-        if (!activeTabData) return;
+        if (!activeTabObj) return;
 
-        // Insert code at the beginning of the file (for includes) or at cursor position
-        const currentContent = activeTabData.content || "";
+        const currentContent = activeTabObj.content || "";
         const newContent = code.startsWith('#include')
-            ? code + '\n\n' + currentContent  // Add includes at the top
-            : currentContent + '\n' + code;   // Add other code at the bottom
+            ? code + '\n\n' + currentContent
+            : currentContent + '\n' + code;
 
-        setTabs(
-            tabs.map((tab) =>
-                tab.id === activeTab ? { ...tab, content: newContent } : tab
-            )
-        );
+        updateTabContent(activeTabId, newContent);
 
-        // Update editor if it exists
         if (editorRef.current) {
             editorRef.current.setValue(newContent);
         }
-    }, [tabs, activeTab]);
+    }, [activeTabObj, activeTabId, updateTabContent]);
 
     const onMount = (editor) => {
         editorRef.current = editor;
@@ -625,14 +652,14 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     };
 
     const handleEditorChange = (newValue) => {
-        if (activeTab) {
-            updateTabContent(activeTab, newValue);
+        if (activeTabId) {
+            updateTabContent(activeTabId, newValue);
         }
     };
 
     const handleTabClose = (tabId, event) => {
         event.stopPropagation();
-        closeTab(tabId);
+        dispatch(closeTab(tabId));
     };
 
     const goToFlowchart = () => {
@@ -657,7 +684,7 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     );
 
     const editorTheme = colorMode === "dark" ? "vs-dark" : "vs-light";
-    const activeTabContent = getActiveTab()?.content || "";
+    const activeTabContent = activeTabObj?.content || "";
     const monacoLanguage = MONACO_LANGUAGE_MAP[language] || language;
 
     // Determine platform for library manager
@@ -672,17 +699,16 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
     // Handler for loading equation into editor
     const handleLoadEquation = useCallback((equation) => {
-        if (activeTab && equation.expression) {
-            // Load the full equation expression and result into the editor
+        if (activeTabId && equation.expression) {
             const equationText = `// ${equation.name || 'Equation'}
 // Saved: ${equation.timestamp || ''}
 ${equation.expression}
 // Result: ${equation.result || ''}
 `;
-            updateTabContent(activeTab, equationText);
+            updateTabContent(activeTabId, equationText);
         }
         setShowEquationsList(false);
-    }, [activeTab, updateTabContent]);
+    }, [activeTabId, updateTabContent]);
 
     // Handler for saving equation from calculator
     const handleSaveEquationFromCalculator = useCallback((newEquation) => {
@@ -746,7 +772,7 @@ ${equation.expression}
                                 <Flex justify="space-between" align="center" flexWrap="wrap" gap={3}>
                                     <HStack spacing={2} flex="1" overflowX="auto">
                                         {tabs.map((tab) => {
-                                            const isActive = activeTab === tab.id;
+                                            const isActive = activeTabId === tab.id;
                                             return (
                                                 <Flex
                                                     key={tab.id}

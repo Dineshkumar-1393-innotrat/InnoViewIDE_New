@@ -22,7 +22,7 @@
 //   const [modalAction, setModalAction] = useState('start');
 //   const [deviceId, setDeviceId] = useState('');
 //   const toast = useToast();
-  
+
 //   // Get activeProductId from the project context
 //   const { activeProductId } = useProject();
 
@@ -37,7 +37,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     setModalAction('start');
 //     setIsModalOpen(true);
 //   };
@@ -53,7 +53,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     if (!deviceId) {
 //       toast({
 //         title: 'Error',
@@ -64,7 +64,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     setModalAction('stop');
 //     setIsModalOpen(true);
 //   };
@@ -117,11 +117,11 @@
 //           body: JSON.stringify({ deviceCount: 1 }),
 //         }
 //       );
-      
+
 //       if (!response.ok) {
 //         throw new Error(`Failed to create device: ${response.statusText}`);
 //       }
-      
+
 //       const data = await response.json();
 //       const createdDeviceId = data.addedDevices[0];
 
@@ -152,11 +152,11 @@
 //           }),
 //         }
 //       );
-      
+
 //       if (!response.ok) {
 //         throw new Error(`Failed to ${action} device: ${response.statusText}`);
 //       }
-      
+
 //       const data = await response.json();
 
 //       toast({
@@ -166,7 +166,7 @@
 //         duration: 3000,
 //         isClosable: true,
 //       });
-      
+
 //       return data;
 //     } catch (error) {
 //       console.error(`Error ${action}ing device:`, error);
@@ -275,7 +275,7 @@
 //   const [deviceId, setDeviceId] = useState('');
 //   const [isLoading, setIsLoading] = useState(false);
 //   const toast = useToast();
-  
+
 //   // Get activeProductId from the project context
 //   const { activeProductId } = useProject();
 
@@ -295,7 +295,7 @@
 //     setIsLoading(true);
 //     try {
 //       const { needToCreateDevice, existingDeviceId, isDeviceRunning } = await checkRunningDevices(productId);
-      
+
 //       if (!needToCreateDevice && existingDeviceId) {
 //         setDeviceId(existingDeviceId);
 //         setIsRunning(isDeviceRunning);
@@ -321,7 +321,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     setModalAction('start');
 //     setIsModalOpen(true);
 //   };
@@ -337,7 +337,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     if (!deviceId) {
 //       toast({
 //         title: 'Error',
@@ -348,7 +348,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     setModalAction('stop');
 //     setIsModalOpen(true);
 //   };
@@ -362,16 +362,16 @@
 //           headers: { 'Content-Type': 'application/json' },
 //         }
 //       );
-      
+
 //       // Handle non-JSON responses
 //       const contentType = response.headers.get("content-type");
 //       if (!contentType || !contentType.includes("application/json")) {
 //         console.error("Received non-JSON response:", await response.text());
 //         return { needToCreateDevice: true, error: "Received non-JSON response" };
 //       }
-      
+
 //       const data = await response.json();
-      
+
 //       if (!response.ok) {
 //         // If we get an error with specific message, we need to create a device
 //         if (data.message === "please create device for this product") {
@@ -379,7 +379,7 @@
 //         }
 //         throw new Error(data.message || `Failed to check running devices`);
 //       }
-      
+
 //       // If we have running devices, get the first one
 //       if (data.devices && data.devices.length > 0) {
 //         return { 
@@ -388,7 +388,7 @@
 //           isDeviceRunning: true
 //         };
 //       }
-      
+
 //       // No running devices, but we need to check if there are any devices at all
 //       // This is a new addition to check for stopped devices too
 //       const allDevicesResponse = await fetch(
@@ -398,7 +398,7 @@
 //           headers: { 'Content-Type': 'application/json' },
 //         }
 //       );
-      
+
 //       if (allDevicesResponse.ok) {
 //         const allDevicesData = await allDevicesResponse.json();
 //         if (allDevicesData.devices && allDevicesData.devices.length > 0) {
@@ -409,7 +409,7 @@
 //           };
 //         }
 //       }
-      
+
 //       // No devices found, need to create one
 //       return { needToCreateDevice: true };
 //     } catch (error) {
@@ -435,11 +435,11 @@
 //     try {
 //       if (modalAction === 'start') {
 //         let deviceToUse = deviceId;
-        
+
 //         // If we don't have a device ID yet, check if there are existing devices
 //         if (!deviceToUse) {
 //           const { needToCreateDevice, existingDeviceId, error } = await checkRunningDevices(activeProductId);
-          
+
 //           if (error) {
 //             toast({
 //               title: 'Warning',
@@ -449,12 +449,12 @@
 //               isClosable: true,
 //             });
 //           }
-          
+
 //           if (!needToCreateDevice && existingDeviceId) {
 //             // Use existing device
 //             deviceToUse = existingDeviceId;
 //             setDeviceId(existingDeviceId);
-            
+
 //             toast({
 //               title: 'Using Existing Device',
 //               description: `Device ID: ${existingDeviceId}`,
@@ -472,7 +472,7 @@
 //             }
 //           }
 //         }
-        
+
 //         // Start the device
 //         if (deviceToUse) {
 //           await controlDevices('start', activeProductId, deviceToUse);
@@ -508,7 +508,7 @@
 //           body: JSON.stringify({ deviceCount: 1 }),
 //         }
 //       );
-      
+
 //       // Check if the response is valid JSON
 //       const contentType = response.headers.get("content-type");
 //       if (!contentType || !contentType.includes("application/json")) {
@@ -516,13 +516,13 @@
 //         console.error("Received non-JSON response:", responseText);
 //         throw new Error("Received non-JSON response from server");
 //       }
-      
+
 //       const data = await response.json();
-      
+
 //       if (!response.ok) {
 //         throw new Error(data.message || `Failed to create device: ${response.statusText}`);
 //       }
-      
+
 //       const createdDeviceId = data.addedDevices[0];
 
 //       toast({
@@ -552,7 +552,7 @@
 //           }),
 //         }
 //       );
-      
+
 //       // Check if the response is valid JSON
 //       const contentType = response.headers.get("content-type");
 //       if (!contentType || !contentType.includes("application/json")) {
@@ -560,9 +560,9 @@
 //         console.error("Received non-JSON response:", responseText);
 //         throw new Error("Received non-JSON response from server");
 //       }
-      
+
 //       const data = await response.json();
-      
+
 //       if (!response.ok) {
 //         throw new Error(data.message || `Failed to ${action} device: ${response.statusText}`);
 //       }
@@ -574,7 +574,7 @@
 //         duration: 3000,
 //         isClosable: true,
 //       });
-      
+
 //       return data;
 //     } catch (error) {
 //       console.error(`Error ${action}ing device:`, error);
@@ -672,7 +672,7 @@
 //   const [deviceId, setDeviceId] = useState('');
 //   const [isLoading, setIsLoading] = useState(false);
 //   const toast = useToast();
-  
+
 //   // Get activeProductId from the project context
 //   const { activeProductId } = useProject();
 
@@ -692,7 +692,7 @@
 //     setIsLoading(true);
 //     try {
 //       const { needToCreateDevice, existingDeviceId, isDeviceRunning } = await checkRunningDevices(productId);
-      
+
 //       if (!needToCreateDevice && existingDeviceId) {
 //         setDeviceId(existingDeviceId);
 //         setIsRunning(isDeviceRunning);
@@ -718,20 +718,20 @@
 //       });
 //       return;
 //     }
-    
+
 //     setIsLoading(true);
 //     try {
 //       let deviceToUse = deviceId;
-      
+
 //       // If we don't have a device ID yet, check if there are existing devices
 //       if (!deviceToUse) {
 //         const { needToCreateDevice, existingDeviceId } = await checkRunningDevices(activeProductId);
-        
+
 //         if (!needToCreateDevice && existingDeviceId) {
 //           // Use existing device
 //           deviceToUse = existingDeviceId;
 //           setDeviceId(existingDeviceId);
-          
+
 //           toast({
 //             title: 'Using Existing Device',
 //             description: `Device ID: ${existingDeviceId}`,
@@ -749,7 +749,7 @@
 //           }
 //         }
 //       }
-      
+
 //       // Start the device
 //       if (deviceToUse) {
 //         await controlDevices('start', activeProductId, deviceToUse);
@@ -779,7 +779,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     if (!deviceId) {
 //       toast({
 //         title: 'Error',
@@ -790,7 +790,7 @@
 //       });
 //       return;
 //     }
-    
+
 //     setIsLoading(true);
 //     try {
 //       await controlDevices('stop', activeProductId, deviceId);
@@ -817,9 +817,9 @@
 //           headers: { 'Content-Type': 'application/json' },
 //         }
 //       );
-      
+
 //       const data = await response.json();
-      
+
 //       if (!response.ok) {
 //         // If we get an error with specific message, we need to create a device
 //         if (data.message === "please create device for this product") {
@@ -827,7 +827,7 @@
 //         }
 //         throw new Error(data.message || `Failed to check running devices`);
 //       }
-      
+
 //       // If we have running devices, get the first one
 //       if (data.devices && data.devices.length > 0) {
 //         return { 
@@ -836,7 +836,7 @@
 //           isDeviceRunning: true
 //         };
 //       }
-      
+
 //       // No running devices, but we need to check if there are any devices at all
 //       const allDevicesResponse = await fetch(
 //         `https://eureka.innotrat.in/product/${productId}/devices`,
@@ -845,7 +845,7 @@
 //           headers: { 'Content-Type': 'application/json' },
 //         }
 //       );
-      
+
 //       if (allDevicesResponse.ok) {
 //         const allDevicesData = await allDevicesResponse.json();
 //         if (allDevicesData.devices && allDevicesData.devices.length > 0) {
@@ -856,7 +856,7 @@
 //           };
 //         }
 //       }
-      
+
 //       // No devices found, need to create one
 //       return { needToCreateDevice: true };
 //     } catch (error) {
@@ -876,13 +876,13 @@
 //           body: JSON.stringify({ deviceCount: 1 }),
 //         }
 //       );
-      
+
 //       const data = await response.json();
-      
+
 //       if (!response.ok) {
 //         throw new Error(data.message || `Failed to create device: ${response.statusText}`);
 //       }
-      
+
 //       const createdDeviceId = data.addedDevices[0];
 
 //       toast({
@@ -912,9 +912,9 @@
 //           }),
 //         }
 //       );
-      
+
 //       const data = await response.json();
-      
+
 //       if (!response.ok) {
 //         throw new Error(data.message || `Failed to ${action} device: ${response.statusText}`);
 //       }
@@ -926,7 +926,7 @@
 //         duration: 3000,
 //         isClosable: true,
 //       });
-      
+
 //       return data;
 //     } catch (error) {
 //       console.error(`Error ${action}ing device:`, error);
@@ -984,7 +984,7 @@ const DeviceControlButtons = () => {
   const [deviceId, setDeviceId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
-  
+
   // Get activeProductId from the project context
   const { activeProductId } = useProject();
 
@@ -1004,7 +1004,7 @@ const DeviceControlButtons = () => {
     setIsLoading(true);
     try {
       const { needToCreateDevice, existingDeviceId, isDeviceRunning } = await checkRunningDevices(productId);
-      
+
       if (!needToCreateDevice && existingDeviceId) {
         setDeviceId(existingDeviceId);
         setIsRunning(isDeviceRunning);
@@ -1030,20 +1030,20 @@ const DeviceControlButtons = () => {
       });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       let deviceToUse = deviceId;
-      
+
       // If we don't have a device ID yet, check if there are existing devices
       if (!deviceToUse) {
         const { needToCreateDevice, existingDeviceId } = await checkRunningDevices(activeProductId);
-        
+
         if (!needToCreateDevice && existingDeviceId) {
           // Use existing device
           deviceToUse = existingDeviceId;
           setDeviceId(existingDeviceId);
-          
+
           toast({
             title: 'Using Existing Device',
             description: `Device ID: ${existingDeviceId}`,
@@ -1061,7 +1061,7 @@ const DeviceControlButtons = () => {
           }
         }
       }
-      
+
       // Start the device
       if (deviceToUse) {
         await controlDevices('start', activeProductId, deviceToUse);
@@ -1091,7 +1091,7 @@ const DeviceControlButtons = () => {
       });
       return;
     }
-    
+
     if (!deviceId) {
       toast({
         title: 'Error',
@@ -1102,7 +1102,7 @@ const DeviceControlButtons = () => {
       });
       return;
     }
-    
+
     setIsLoading(true);
     try {
       await controlDevices('stop', activeProductId, deviceId);
@@ -1129,9 +1129,9 @@ const DeviceControlButtons = () => {
           headers: { 'Content-Type': 'application/json' },
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         // If we get an error with specific message, we need to create a device
         if (data.message === "please create device for this product") {
@@ -1139,16 +1139,16 @@ const DeviceControlButtons = () => {
         }
         throw new Error(data.message || `Failed to check running devices`);
       }
-      
+
       // If we have running devices, get the first one
       if (data.devices && data.devices.length > 0) {
-        return { 
-          needToCreateDevice: false, 
+        return {
+          needToCreateDevice: false,
           existingDeviceId: data.devices[0].deviceID,
           isDeviceRunning: true
         };
       }
-      
+
       // No running devices, but we need to check if there are any devices at all
       const allDevicesResponse = await fetch(
         `https://eureka.innotrat.in/product/${productId}/devices`,
@@ -1157,7 +1157,7 @@ const DeviceControlButtons = () => {
           headers: { 'Content-Type': 'application/json' },
         }
       );
-      
+
       if (allDevicesResponse.ok) {
         const allDevicesData = await allDevicesResponse.json();
         if (allDevicesData.devices && allDevicesData.devices.length > 0) {
@@ -1168,7 +1168,7 @@ const DeviceControlButtons = () => {
           };
         }
       }
-      
+
       // No devices found, need to create one
       return { needToCreateDevice: true };
     } catch (error) {
@@ -1188,13 +1188,13 @@ const DeviceControlButtons = () => {
           body: JSON.stringify({ deviceCount: 1 }),
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || `Failed to create device: ${response.statusText}`);
       }
-      
+
       const createdDeviceId = data.addedDevices[0];
 
       toast({
@@ -1219,14 +1219,14 @@ const DeviceControlButtons = () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            devices: [{ deviceID: devId, action }] 
+          body: JSON.stringify({
+            devices: [{ deviceID: devId, action }]
           }),
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || `Failed to ${action} device: ${response.statusText}`);
       }
@@ -1238,7 +1238,7 @@ const DeviceControlButtons = () => {
         duration: 3000,
         isClosable: true,
       });
-      
+
       return data;
     } catch (error) {
       console.error(`Error ${action}ing device:`, error);
@@ -1248,11 +1248,14 @@ const DeviceControlButtons = () => {
 
   return (
     <Box>
-      <HStack spacing={2}>
+      <HStack spacing={3}>
         <IconButton
           icon={<FaPlay />}
-          colorScheme="green"
+          bg="#2F855A"
+          _hover={{ bg: "#276749" }}
+          color="white"
           size="sm"
+          borderRadius="md"
           aria-label="Start device"
           onClick={handleStartClick}
           isDisabled={isRunning || !activeProductId || isLoading}
@@ -1260,14 +1263,28 @@ const DeviceControlButtons = () => {
         />
         <IconButton
           icon={<FaStop />}
-          colorScheme="red"
+          bg="#C53030"
+          _hover={{ bg: "#9B2C2C" }}
+          color="white"
           size="sm"
+          borderRadius="md"
           aria-label="Stop device"
           onClick={handleStopClick}
           isDisabled={!isRunning || !deviceId || isLoading}
           isLoading={isLoading && isRunning}
         />
-        <Button size="sm" colorScheme={isRunning ? 'teal' : 'gray'}>
+        <Button
+          size="sm"
+          bg="white"
+          color="black"
+          borderRadius="full"
+          height="32px"
+          px={4}
+          fontSize="xs"
+          fontWeight="bold"
+          _hover={{ bg: "gray.100" }}
+          boxShadow="sm"
+        >
           {isRunning ? 'Running' : 'Paused'}
         </Button>
       </HStack>

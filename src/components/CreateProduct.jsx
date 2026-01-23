@@ -1,4 +1,3 @@
-
 import {
   Box,
   VStack,
@@ -20,14 +19,260 @@ import {
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
-import axios from "axios";
 
-export default function ProductDefinition() {
+import {
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+} from "@chakra-ui/react";
+
+import axios from "axios";
+import { useProject } from "../ProjectContext";
+
+export default function ProductDefinition({ onSuccess }) {
   const toast = useToast();
 
-  // compnneets type
+  // Get setters from ProjectContext to update activeProductId
+  const { setActiveProductId, setActiveProductName } = useProject();
+
+  // Component Names list
+  const [componentNames, setComponentNames] = useState([]);
+  console.log(componentNames, "componentNames---");
+  const [selectedComponentId, setSelectedComponentId] = useState("");
+  console.log(selectedComponentId, "selectedComponentId---");
+  const [specificParams, setSpecificParams] = useState([]);
+
+  const parameterOptions = specificParams
+    .flatMap(item => item.parameterName); // flatten array
+
+  console.log(parameterOptions, "parameterOptions---");
+
+  console.log(specificParams, "specificParams---");
+  const [parameterNames, setParameterNames] = useState(["temperature", "humidity"]);
+
+  // const submitParameters = async () => {
+  //   if (!selectedComponentId) {
+  //     alert("Component ID select pannunga");
+  //     return;
+  //   }
+
+  //   if (!newSpecificParam) {
+  //     alert("Parameter name enter pannunga");
+  //     return;
+  //   }
+
+  //   const payload = {
+  //     componentId: selectedComponentId,
+  //     parameterName: [newSpecificParam], // single param as array
+  //     parameterType: "simple",
+  //   };
+
+  //   console.log("Payload:", payload);
+
+  //   try {
+  //     const res = await axios.post(
+  //       "https://eureka.innotrat.in/api/v2/componentParameters",
+  //       payload
+  //     );
+
+  //     console.log("API Success:---", res.data);
+
+  //     // ✅ Dropdown option-la add pannradhu
+  //     setSpecificParamOptions((prev) => [
+  //       ...prev,
+  //       newSpecificParam,
+  //     ]);
+
+  //     // optional: parameterNames-kum store panna
+  //     setParameterNames((prev) => [
+  //       ...prev,
+  //       newSpecificParam,
+  //     ]);
+
+  //     // input clear
+  //     setNewSpecificParam("");
+
+  //   } catch (error) {
+  //     console.error("API Error:", error);
+  //   }
+  // };
+
+  // const submitParameters = async () => {
+  //   if (!selectedComponentId) {
+  //     alert("Component ID select pannunga");
+  //     return;
+  //   }
+
+  //   if (!newSpecificParam.trim()) {
+  //     alert("Parameter name enter pannunga");
+  //     return;
+  //   }
+
+  //   try {
+  //     // 🔹 1. First API – parameterVariables
+  //     // const variableRes = await fetch(
+  //     //   "https://eureka.innotrat.in/api/v2/parameterVariables",
+  //     //   {
+  //     //     method: "POST",
+  //     //     headers: {
+  //     //       "Content-Type": "application/json",
+  //     //     },
+  //     //     body: JSON.stringify({
+  //     //       variableName: newSpecificParam.trim(),
+  //     //     }),
+  //     //   }
+  //     // );
+
+  //     // const variableResult = await variableRes.json();
+  //     // console.log("Variable API Response:", variableResult);
+
+  //     // 🔹 2. Second API – componentParameters
+  //     const payload = {
+  //       componentId: selectedComponentId,
+  //       parameterName: [newSpecificParam.trim()],
+  //       parameterType: "simple",
+  //     };
+
+  //     console.log("Payload:", payload);
+
+  //     const res = await axios.post(
+  //       "https://eureka.innotrat.in/api/v2/componentParameters",
+  //       payload
+  //     );
+
+  //     console.log("Component API Success:", res.data);
+
+  //     // 🔹 Dropdown & local state update
+  //     setSpecificParamOptions((prev) => [
+  //       ...prev,
+  //       newSpecificParam.trim(),
+  //     ]);
+
+  //     setParameterNames((prev) => [
+  //       ...prev,
+  //       newSpecificParam.trim(),
+  //     ]);
+
+  //     // 🔹 clear & close
+  //     setNewSpecificParam("");
+  //     setIsParamModalOpen(false);
+
+  //   } catch (error) {
+  //     console.error("API Error:", error);
+  //   }
+  // };
+
+  const submitParameters = async () => {
+    if (!selectedComponentId) {
+      alert("Component ID select pannunga");
+      return;
+    }
+
+    if (!newSpecificParam.trim()) {
+      alert("Parameter name enter pannunga");
+      return;
+    }
+
+    try {
+      // 🔹 POST API
+      await axios.post(
+        "https://eureka.innotrat.in/api/v2/componentParameters",
+        {
+          componentId: selectedComponentId,
+          parameterName: [newSpecificParam.trim()],
+          parameterType: "simple",
+        }
+      );
+
+      console.log("Parameter added successfully");
+
+      // 🔁 IMMEDIATE REFRESH (GET API call)
+      await fetchComponentParameters(selectedComponentId);
+
+      // clear UI
+      setNewSpecificParam("");
+      setIsParamModalOpen(false);
+
+    } catch (error) {
+      console.error("Submit API Error:", error);
+    }
+  };
+
+
+
+
+  const fetchComponentParameters = async (componentId) => {
+    if (!componentId) return;
+
+    try {
+      const res = await fetch(
+        `https://eureka.innotrat.in/api/v2/componentParameters/${componentId}`
+      );
+
+      const result = await res.json();
+      console.log("Next API response:", result);
+
+      setSpecificParams(result.data || []);
+    } catch (error) {
+      console.error("Fetch component parameters error:", error);
+    }
+  };
+
+  const fetchVariables = async () => {
+    try {
+      const res = await fetch(
+        "http://localhost:5004/api/v2/parameterVariables"
+      );
+      const result = await res.json();
+
+      console.log("Variables GET response:", result);
+
+      // assuming result.data = [{ variableName: "onConstant" }]
+      const variables = (result.data || []).map(
+        (item) => item.variableName
+      );
+
+      setVariableOptions(variables);
+    } catch (error) {
+      console.error("GET variables error:", error);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchVariables();
+  }, []);
+
+
+
+  useEffect(() => {
+    fetchComponentParameters(selectedComponentId);
+  }, [selectedComponentId]);
+
+
+
+  // component parameters
+  const [isParamModalOpen, setIsParamModalOpen] = useState(false);
+  const [isVariableModalOpen, setIsVariableModalOpen] = useState(false);
+
+  const [newSpecificParam, setNewSpecificParam] = useState("");
+  const [newVariable, setNewVariable] = useState("");
+
+  const [specificParamOptions, setSpecificParamOptions] = useState([]);
+  console.log(specificParamOptions, "specificParamOptions---");
+  const [variableOptions, setVariableOptions] = useState([]);
+  console.log(variableOptions, "variableOptions---");
+
+  // component types from API
   const [componentTypes, setComponentTypes] = useState([]);
+  console.log(componentTypes, "componentTypes---");
+
   const [selectedComponentTypes, setSelectedComponentTypes] = useState('');
+  console.log(selectedComponentTypes, "selectedComponentTypes---");
   const [loadingComponentType, setLoadingComponentType] = useState(true);
 
   // basic states
@@ -48,8 +293,60 @@ export default function ProductDefinition() {
   const [selectedComponent, setSelectedComponent] = useState(""); // Sensor / Actuator
   const [selectedComponentName, setSelectedComponentName] = useState(""); // e.g. Flame Sensor
 
-  // Components list (type + name + parameters)
-  const [components, setComponents] = useState([]);
+  const fetchComponentNames = async (typeId) => {
+    if (!typeId) return;
+
+    try {
+      const res = await axios.get(
+        `https://eureka.innotrat.in/api/v2/componentNames/${typeId}`
+      );
+      setComponentNames(res.data.data || []);
+    } catch (err) {
+      console.error("Fetch component names failed", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedComponentTypes) return;
+
+    fetchComponentNames(selectedComponentTypes);
+  }, [selectedComponentTypes]);
+
+  const handleAddComponentName = async () => {
+    const name = prompt("Enter Component Name", "Buzzer");
+    if (!name || !selectedComponentTypes) {
+      alert("Select Component Type first");
+      return;
+    }
+
+    try {
+      await axios.post(
+        "https://eureka.innotrat.in/api/v2/componentNames",
+        {
+          typeId: selectedComponentTypes,
+          name,
+        }
+      );
+
+      // ✅ POST finished → GET /componentNames/:typeId again
+      await fetchComponentNames(selectedComponentTypes);
+
+      // auto select newly added name
+      setSelectedComponentName(name);
+    } catch (err) {
+      console.error("Component name create failed", err);
+    }
+  };
+
+  // Components list (type + name + parameters) - FORM COMPONENTS
+  const [formComponents, setFormComponents] = useState([
+    {
+      name: "",
+      type: "Sensor",
+      parameters: [],
+    }
+  ]);
+  console.log(formComponents, "formComponents---");
 
   // deviceInfos is an array of device identity objects (one per device)
   const [deviceInfos, setDeviceInfos] = useState([{ imei: "", iccid: "", phone: "" }]);
@@ -102,7 +399,7 @@ export default function ProductDefinition() {
 
   // existing handlers (addComponent, addParameter, updateParameter, handleVariableChange)
   const addComponent = (compData) => {
-    setComponents((prev) => [
+    setFormComponents((prev) => [
       ...prev,
       {
         ...compData,
@@ -120,24 +417,55 @@ export default function ProductDefinition() {
     });
   };
 
+
   const addParameter = (compIndex, type) => {
-    if (compIndex < 0 || compIndex >= components.length) return;
-    setComponents((prev) => {
+    console.log("addParameter called with:", compIndex, type); // ← ADD THIS
+
+    if (compIndex < 0 || compIndex >= formComponents.length) {
+      console.log("Invalid index:", compIndex);
+      return;
+    }
+
+    console.log("Form components length:", formComponents.length);
+    console.log("Current component:", formComponents[compIndex]);
+
+    setFormComponents((prev) => {
+      console.log("Previous state:", prev);
+
       const updated = [...prev];
-      updated[compIndex].parameters.push({
+
+      // Ensure the component exists
+      if (!updated[compIndex]) {
+        console.log("Component doesn't exist at index:", compIndex);
+        return prev;
+      }
+
+      // Ensure parameters array exists
+      if (!updated[compIndex].parameters) {
+        updated[compIndex].parameters = [];
+        console.log("Created empty parameters array");
+      }
+
+      const newParam = {
         type: type === "constant" ? "constant" : "inconstant",
+        variable: "",
         name: "",
         min: "",
         max: "",
         unit: "",
         value: "",
-      });
+      };
+
+      console.log("Adding new parameter:", newParam);
+
+      updated[compIndex].parameters.push(newParam);
+
       return updated;
     });
   };
 
   const updateParameter = (compIndex, paramIndex, field, value) => {
-    setComponents((prev) => {
+    setFormComponents((prev) => {
       const updated = [...prev];
       if (!updated[compIndex] || !updated[compIndex].parameters[paramIndex]) return prev;
       updated[compIndex].parameters[paramIndex][field] = value;
@@ -145,20 +473,46 @@ export default function ProductDefinition() {
     });
   };
 
+  // const handleVariableChange = (compIndex, paramIndex, newValue) => {
+  //   setFormComponents((prev) => {
+  //     const updated = [...prev];
+  //     const param = updated[compIndex].parameters[paramIndex];
+  //     param.type = newValue === "Constant" ? "constant" : "inconstant";
+  //     updated[compIndex].parameters[paramIndex] = param;
+  //     return updated;
+  //   });
+  // };
+
   const handleVariableChange = (compIndex, paramIndex, newValue) => {
-    setComponents((prev) => {
-      const updated = [...prev];
-      const param = updated[compIndex].parameters[paramIndex];
-      param.type = newValue === "Constant" ? "constant" : "inconstant";
-      updated[compIndex].parameters[paramIndex] = param;
-      return updated;
-    });
+    setFormComponents((prev) =>
+      prev.map((comp, cIdx) =>
+        cIdx === compIndex
+          ? {
+            ...comp,
+            parameters: comp.parameters.map((param, pIdx) =>
+              pIdx === paramIndex
+                ? {
+                  ...param,
+                  variable: newValue,     // ✅ store variable name
+                  type: newValue === "Constant"
+                    ? "constant"
+                    : "inconstant",
+                }
+                : param
+            ),
+          }
+          : comp
+      )
+    );
   };
+
+
+
 
   // ---------- New helpers: edit / delete ----------
   const deleteParameter = (compIndex, paramIndex) => {
     if (!window.confirm("Delete this parameter?")) return;
-    setComponents((prev) => {
+    setFormComponents((prev) => {
       const copy = [...prev];
       if (!copy[compIndex]) return prev;
       copy[compIndex] = {
@@ -176,19 +530,19 @@ export default function ProductDefinition() {
 
   const deleteComponent = (compIndex) => {
     if (!window.confirm("Delete this component and its parameters?")) return;
-    setComponents((prev) => {
+    setFormComponents((prev) => {
       const copy = prev.filter((_, i) => i !== compIndex);
       return copy;
     });
     // clear selection if needed
     setSelectedComponent((curr) => {
-      if (!components[compIndex]) return curr;
-      if (components[compIndex].type === curr) return "";
+      if (!formComponents[compIndex]) return curr;
+      if (formComponents[compIndex].type === curr) return "";
       return curr;
     });
     setSelectedComponentName((curr) => {
-      if (!components[compIndex]) return curr;
-      if (components[compIndex].name === curr) return "";
+      if (!formComponents[compIndex]) return curr;
+      if (formComponents[compIndex].name === curr) return "";
       return curr;
     });
   };
@@ -231,7 +585,7 @@ export default function ProductDefinition() {
       numDevices,
       selectedComponent,
       selectedComponentName,
-      components,
+      components: formComponents,
       urlLink,
       note,
       deviceInfos,
@@ -304,9 +658,9 @@ export default function ProductDefinition() {
       return;
     }
 
-    if (components && components.length > 0) {
-      setSelectedComponent(components[0].type);
-      setSelectedComponentName(components[0].name);
+    if (formComponents && formComponents.length > 0) {
+      setSelectedComponent(formComponents[0].type);
+      setSelectedComponentName(formComponents[0].name);
     }
 
     const userData = JSON.parse(localStorage.getItem("userData") || "{}");
@@ -316,7 +670,6 @@ export default function ProductDefinition() {
       projectId: localStorage.getItem("activeProjectId") ?? undefined,
       productDesc: description ?? "",
     };
-
 
     if (!payload.projectId) {
       toast({
@@ -332,17 +685,21 @@ export default function ProductDefinition() {
     try {
       saveToLocal("pendingProductNew", payload);
 
-      const url = "http://192.168.68.109:5004/productNew";
+      const url = "https://eureka.innotrat.in/productNew";
       const resp = await axios.post(url, payload);
       console.log(resp, "productID----");
 
       // Extract productID from response
-      const productId = resp.data.productID; 
+      const productId = resp.data.productID;
       console.log("Extracted Product ID:", productId);
 
-      // Store in localStorage
-      localStorage.setItem("activeProjectIds", productId);
+      // Store in localStorage AND update context
+      localStorage.setItem("activeProductId", productId);
+      localStorage.setItem("activeProductName", productName);
 
+      // Update ProjectContext state so components can react to the change
+      setActiveProductId(productId);
+      setActiveProductName(productName);
 
       saveToLocal("productNewResponse", resp.data);
 
@@ -384,6 +741,102 @@ export default function ProductDefinition() {
   };
   const [isLoading, setIsLoading] = useState(false);
 
+  const submitProductDefinition = async () => {
+    const productId = localStorage.getItem("activeProductId");
+    if (!productId) {
+      console.error("Product ID missing for definition");
+      return;
+    }
+
+    // 1. Transform formComponents -> API payload format
+    /*
+      Expected structure:
+      {
+        "productID": "...",
+        "productName": "...",
+        "components": {
+           "DHT11" (componentName): {
+              "componentID": "...", 
+              "type": "sensors", 
+              "temperature": { min, max, unit },
+              ...
+           }
+        }
+      }
+    */
+
+    const componentsPayload = {};
+
+    formComponents.forEach((comp) => {
+      // safe keys
+      const safeName = comp.name || "Unnamed";
+
+      // prepare the component object
+      const compObj = {
+        componentID: "", // or if we have it from somewhere?
+        type: (comp.type || "sensors").toLowerCase() + "s", // "Sensor" -> "sensors" (plural, lowercase based on example)
+        note: note || "", // from state
+        urls: urlLink ? [urlLink] : []
+      };
+
+      // map parameters
+      if (Array.isArray(comp.parameters)) {
+        comp.parameters.forEach((param) => {
+          if (!param.name) return;
+
+          if (param.type === "inconstant") {
+            // e.g. "temperature": { min: 20, max: 30, unit: "C" }
+            compObj[param.name] = {
+              min: param.min,
+              max: param.max,
+              unit: param.unit
+            };
+          } else {
+            // constant
+            // e.g. "someParam": "someValue"
+            compObj[param.name] = param.value;
+          }
+        });
+      }
+
+      componentsPayload[safeName] = compObj;
+    });
+
+    const payload = {
+      productID: productId,
+      productName: productName,
+      components: componentsPayload
+    };
+
+    console.log("📤 Definition Payload:", payload);
+
+    try {
+      const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
+      // const url = `http://localhost:5004/product/${productId}/definitionNew`; // Local testing if needed
+
+      const resp = await axios.post(url, payload);
+      console.log("📥 Definition Response:", resp.data);
+
+      toast({
+        title: "Definition Saved",
+        description: "Product definition updated successfully",
+        status: "success",
+        duration: 3000,
+      });
+
+      if (onSuccess) onSuccess();
+
+    } catch (error) {
+      console.error("❌ Definition API Error:", error);
+      toast({
+        title: "Failed to Save Definition",
+        description: error?.response?.data?.message || "Error saving definition",
+        status: "error",
+        duration: 3000,
+      });
+    }
+  };
+
   const handleSubmitDevices = async () => {
     setIsLoading(true);
     const productId = localStorage.getItem("activeProjectIds");
@@ -399,7 +852,7 @@ export default function ProductDefinition() {
       return;
     }
 
-    // Validation: Check if at least one device has data
+    // Validation
     const hasData = deviceInfos.some(dev =>
       dev.imei.trim() || dev.iccid.trim() || dev.phone.trim()
     );
@@ -415,10 +868,10 @@ export default function ProductDefinition() {
       return;
     }
 
+    // Prepare devices payload
     const infos = [...deviceInfos];
     const required = Math.max(0, Number(numDevices) || 0);
 
-    // Build devices array
     const devices = infos.map((d) => {
       const IMEI = (d?.imei || "").trim();
       const ICCID = (d?.iccid || "").trim();
@@ -428,30 +881,36 @@ export default function ProductDefinition() {
       return { IMEI, ICCID, mobileNumber };
     }).filter(Boolean);
 
-    const payload = {
+    const devicePayload = {
       deviceCount: required,
       devices,
     };
 
-    console.log("📤 Devices Payload:", payload);
+    console.log("📤 Devices Payload:", devicePayload);
 
     try {
-      const url = `http://192.168.68.109:5004/product/${productId}/devicesNew`;
-      const resp = await axios.post(url, payload);
+      // 1. Submit Devices
+      const devUrl = `https://eureka.innotrat.in/product/${productId}/devicesNew`;
+      const devResp = await axios.post(devUrl, devicePayload);
+
+      console.log("📥 Devices Response:", devResp.data);
 
       toast({
         title: "Devices Saved",
-        description: resp?.data?.message || "Device list updated successfully",
+        description: devResp?.data?.message || "Device list updated",
         status: "success",
-        duration: 3000,
+        duration: 2000,
       });
 
-      console.log("📥 Devices Response:", resp.data);
-    } catch (error) {
-      console.error("❌ Devices API Error:", error);
+      // 2. Submit Definition (Chained)
+      await submitProductDefinition();
 
+      if (onSuccess) onSuccess();
+
+    } catch (error) {
+      console.error("❌ API Error:", error);
       toast({
-        title: "Failed to Save Devices",
+        title: "Submission Failed",
         description:
           error?.response?.data?.message || error.message || "Unknown error",
         status: "error",
@@ -466,31 +925,39 @@ export default function ProductDefinition() {
   const [componentsLoading, setComponentsLoading] = useState(false);
   const [componentsError, setComponentsError] = useState(null);
 
+  // Fetch component types from API
+  const fetchComponentTypeList = async () => {
+    setComponentsLoading(true);
+    setComponentsError(null);
+
+    try {
+      const resp = await axios.get(
+        "https://eureka.innotrat.in/api/v2/componentTypes"
+      );
+
+      const list = Array.isArray(resp?.data?.data)
+        ? resp.data.data
+        : [];
+
+      setComponentTypes(list);
+
+    } catch (err) {
+      console.error("Failed to load component types", err);
+      setComponentsError(err);
+      toast({
+        title: "Failed to load components",
+        description:
+          err?.response?.data?.message || err.message || "Check server",
+        status: "error",
+        duration: 3000,
+      });
+    } finally {
+      setComponentsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchComponentTypes = async () => {
-      setComponentsLoading(true);
-      setComponentsError(null);
-
-      try {
-        const resp = await axios.get("http://192.168.68.105:5004/api/v2/componentTypes");
-        // expecting resp.data.data to be the array per your sample
-        const list = Array.isArray(resp?.data?.data) ? resp.data.data : [];
-        setComponents(list);
-      } catch (err) {
-        console.error("Failed to load component types", err);
-        setComponentsError(err);
-        toast({
-          title: "Failed to load components",
-          description: err?.response?.data?.message || err.message || "Check server",
-          status: "error",
-          duration: 3000,
-        });
-      } finally {
-        setComponentsLoading(false);
-      }
-    };
-
-    fetchComponentTypes();
+    fetchComponentTypeList();
   }, []);
 
   const handleAddComponentPrompt = async () => {
@@ -498,16 +965,21 @@ export default function ProductDefinition() {
     if (!name) return;
 
     setComponentsLoading(true);
+
     try {
-      const token = localStorage.getItem("token"); // if you use auth
-      const res = await fetch("http://192.168.68.109:5004/api/v2/componentTypes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ componentName: name }),
-      });
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(
+        "https://eureka.innotrat.in/api/v2/componentTypes",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ componentName: name }),
+        }
+      );
 
       if (!res.ok) {
         const errText = await res.text();
@@ -515,15 +987,27 @@ export default function ProductDefinition() {
       }
 
       const data = await res.json();
-      // Append new component to list
-      setComponents((prev) => [data, ...prev]);
-      // Optionally set selected
-      setSelectedComponent(data.componentName);
+
+      // ✅ POST finished → GET again
+      await fetchComponentTypeList();
+
+      // optional: auto select new component
+      setSelectedComponentTypes(data._id);
       setSelectedComponentName(data.componentName);
-      // show success toast (if using Chakra useToast)
+
+      toast({
+        title: "Component added successfully",
+        status: "success",
+        duration: 2000,
+      });
     } catch (err) {
       console.error("Create component error:", err);
-      // show error toast
+      toast({
+        title: "Failed to create component",
+        description: err.message,
+        status: "error",
+        duration: 3000,
+      });
     } finally {
       setComponentsLoading(false);
     }
@@ -536,7 +1020,7 @@ export default function ProductDefinition() {
     setNumDevices(1);
     setSelectedComponent("");
     setSelectedComponentName("");
-    setComponents([
+    setFormComponents([
       {
         name: "Flame Sensor",
         type: "Sensor",
@@ -587,9 +1071,13 @@ export default function ProductDefinition() {
       return;
     }
 
-    const exists = components.some(
-      (comp) => comp.name.toLowerCase() === newComponent.name.trim().toLowerCase() && comp.type === newComponent.type
+    const exists = formComponents.some(
+      (comp) =>
+        comp?.name?.toLowerCase() ===
+        newComponent?.name?.trim()?.toLowerCase() &&
+        comp?.type === newComponent?.type
     );
+
     if (exists) {
       toast({
         title: "Component Already Exists",
@@ -612,26 +1100,6 @@ export default function ProductDefinition() {
     setShowComponentPopup(false);
     setNewComponent({ name: "", type: "Sensor" });
   };
-
-  const fetchComponentType = async () => {
-    setLoadingComponentType(true);
-
-    try {
-      const response = await axios.get('http://192.168.68.109:5004/api/v2/componentTypes');
-
-      if (response.data.status === "success") {
-        setComponentTypes(response.data.data);
-      }
-    } catch (err) {
-      console.error("Error fetching component types:", err);
-    } finally {
-      setLoadingComponentType(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchComponentType();
-  }, []);
 
   // STEP 1 UI
   if (step === 1) {
@@ -669,12 +1137,10 @@ export default function ProductDefinition() {
 
   // STEP 2 UI
   const activeComponentIndex = (() => {
-    const idx = components.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
+    const idx = formComponents.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
     return idx === -1 ? 0 : idx;
   })();
-  const activeComponent = components[activeComponentIndex] || components[0];
-
-
+  const activeComponent = formComponents[activeComponentIndex] || formComponents[0];
 
   return (
     <Box width="100%" bg="gray.100" py={8}>
@@ -727,7 +1193,7 @@ export default function ProductDefinition() {
               <GridItem>
                 <HStack justify="space-between" mb={1}>
                   <Text fontSize="sm" fontWeight="medium">
-                    Component{" "}
+                    Components{" "}
                     <Text as="span" color="red.500">
                       *
                     </Text>
@@ -740,40 +1206,23 @@ export default function ProductDefinition() {
                     onClick={handleAddComponentPrompt}
                   />
                 </HStack>
-
-                {/* <Select
-                  size="sm"
-                  placeholder={componentsLoading ? "Loading components..." : "Select Component"}
-                  value={selectedComponent}
-                  onChange={(e) => {
-                    const newType = e.target.value;
-                    setSelectedComponent(newType);
-                    const firstCompOfType = components.find((c) => c.componentName === newType);
-                    setSelectedComponentName(firstCompOfType ? firstCompOfType.componentName : "");
-                  }}
-                  sx={inputStyles}
-                  isDisabled={componentsLoading || components.length === 0}
-                >
-
-                  {components.map((c) => (
-                    <option key={c.data._id} value={c.data.componentName}>
-                      {c.data.componentName}
-                    </option>
-                  ))}
-                </Select> */}
                 <Select
                   value={selectedComponentTypes}
                   onChange={(e) => setSelectedComponentTypes(e.target.value)}
-                  placeholder={loadingComponentType ? "Loading..." : "Select type"}
+                  color={selectedComponentTypes ? "black" : "black"}
+                  _focus={{ color: "black" }}
                 >
-                  {componentTypes.map((type) => (
-                    <option key={type._id} value={type._id}>
-                      {type.componentName}
+                  <option value="" style={{ color: "black" }}>
+                    {loadingComponentType ? "Loading..." : "Select type"}
+                  </option>
+
+                  {componentTypes?.map((item) => (
+                    <option key={item?._id} value={item?._id} style={{ color: "black" }}>
+                      {item?.componentName}
                     </option>
                   ))}
                 </Select>
               </GridItem>
-
 
               {/* COMPONENT NAME */}
               <GridItem>
@@ -792,7 +1241,7 @@ export default function ProductDefinition() {
                       icon={<EditIcon />}
                       variant="ghost"
                       onClick={() => {
-                        const idx = components.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
+                        const idx = formComponents.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
                         if (idx === -1) return;
                         setEditingComponentIndex(idx);
                       }}
@@ -803,12 +1252,18 @@ export default function ProductDefinition() {
                       icon={<DeleteIcon />}
                       variant="ghost"
                       onClick={() => {
-                        const idx = components.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
+                        const idx = formComponents.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
                         if (idx === -1) return alert("No component selected");
                         deleteComponent(idx);
                       }}
                     />
-                    <IconButton aria-label="Add component name" icon={<AddIcon boxSize={3} />} size="xs" variant="ghost" onClick={openComponentPopup} />
+                    <IconButton
+                      aria-label="Add component name"
+                      icon={<AddIcon boxSize={3} />}
+                      size="xs"
+                      variant="ghost"
+                      onClick={handleAddComponentName}
+                    />
                   </HStack>
                 </HStack>
 
@@ -816,10 +1271,10 @@ export default function ProductDefinition() {
                   <HStack>
                     <Input
                       size="sm"
-                      value={components[editingComponentIndex]?.name || ""}
+                      value={formComponents[editingComponentIndex]?.name || ""}
                       onChange={(e) => {
                         const v = e.target.value;
-                        setComponents((prev) => {
+                        setFormComponents((prev) => {
                           const c = [...prev];
                           c[editingComponentIndex] = { ...c[editingComponentIndex], name: v };
                           return c;
@@ -833,21 +1288,32 @@ export default function ProductDefinition() {
                     </Button>
                   </HStack>
                 ) : (
-                  <Select size="sm" placeholder="Select Component Name" value={selectedComponentName} onChange={(e) => setSelectedComponentName(e.target.value)} sx={inputStyles}>
+
+                  <Select
+                    size="sm"
+                    placeholder="Select Component Name"
+                    value={selectedComponentId}
+                    onChange={(e) => setSelectedComponentId(e.target.value)}
+                    sx={inputStyles}
+                  >
                     <option value="">Select Component Name</option>
-                    {components
-                      .filter((comp) => (selectedComponent ? comp.type === selectedComponent : true))
-                      .map((comp, idx) => (
-                        <option key={idx} value={comp.name}>
-                          {comp.name}
-                        </option>
-                      ))}
+
+                    {componentNames.map((comp) => (
+                      <option key={comp._id} value={comp._id}>
+                        {comp.name}
+                      </option>
+                    ))}
                   </Select>
+
                 )}
               </GridItem>
             </Grid>
 
-            <Button size="xs" colorScheme="blue" variant="outline" leftIcon={<AddIcon />} onClick={() => addParameter(activeComponentIndex, "inconstant")}>
+            <Button size="xs" colorScheme="blue" variant="outline" leftIcon={<AddIcon />} onClick={() => {
+              console.log("clicked");
+              addParameter(activeComponentIndex, "inconstant");
+            }}>
+
               Add Parameters
             </Button>
           </Box>
@@ -881,21 +1347,67 @@ export default function ProductDefinition() {
                         <Text fontSize="sm" mb={1} fontWeight="medium">
                           Specific Parameter
                         </Text>
+                        <IconButton
+                          size="xs"
+                          aria-label="Add parameter"
+                          icon={<AddIcon />}
+                          variant="ghost"
+                          onClick={() => setIsParamModalOpen(true)}
+                        />
 
-                        {editingParam && editingParam.compIndex === activeComponentIndex && editingParam.paramIndex === paramIndex ? (
-                          <HStack>
-                            <Input
-                              size="sm"
-                              value={param.name}
-                              onChange={(e) => saveParameterField(activeComponentIndex, paramIndex, "name", e.target.value)}
-                              sx={inputStyles}
-                            />
-                            <Button size="xs" onClick={() => setEditingParam(null)}>
-                              Done
-                            </Button>
-                          </HStack>
+                        {editingParam ? (
+                          // <Select
+                          //   size="sm"
+                          //   value={param.name}
+                          //   sx={inputStyles}
+                          //   autoFocus
+                          //   onChange={(e) => {
+                          //     updateParameter(activeComponentIndex, paramIndex, "name", e.target.value);
+                          //     setEditingParam(null);
+                          //   }}
+                          //   onBlur={() => setEditingParam(null)}
+                          // >
+                          //   <option value="">Select Parameterss</option>
+                          //   {specificParamOptions.map((opt, i) => (
+                          //     <option key={i} value={opt}>
+                          //       {opt}
+                          //     </option>
+                          //   ))}
+                          // </Select>
+                          <Select
+                            size="sm"
+                            value={param.name}
+                            sx={inputStyles}
+                            onChange={(e) => {
+                              updateParameter(
+                                activeComponentIndex,
+                                paramIndex,
+                                "name",
+                                e.target.value
+                              );
+                              setEditingParam(null);
+                            }}
+                            onBlur={() => setEditingParam(null)}
+                          >
+                            <option value="">Select Parameters</option>
+
+                            {parameterOptions.map((name, index) => (
+                              <option key={index} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                          </Select>
+
                         ) : (
-                          <Input size="sm" value={param.name} onChange={(e) => updateParameter(activeComponentIndex, paramIndex, "name", e.target.value)} sx={inputStyles} placeholder="Flame Intensity" />
+                          <Text
+                            fontSize="sm"
+                            cursor="pointer"
+                            onClick={() =>
+                              setEditingParam({ compIndex: activeComponentIndex, paramIndex })
+                            }
+                          >
+                            {param.name || "Flame Intensity"}
+                          </Text>
                         )}
                       </GridItem>
 
@@ -903,10 +1415,60 @@ export default function ProductDefinition() {
                         <Text fontSize="sm" mb={1} fontWeight="medium">
                           Variables
                         </Text>
-                        <Select size="sm" value={param.type === "constant" ? "Constant" : "Inconstant"} onChange={(e) => handleVariableChange(activeComponentIndex, paramIndex, e.target.value)} sx={inputStyles}>
-                          <option value="Inconstant">Inconstant</option>
-                          <option value="Constant">Constant</option>
+                        <IconButton
+                          size="xs"
+                          aria-label="Add variable"
+                          icon={<AddIcon />}
+                          variant="ghost"
+                          onClick={() => setIsVariableModalOpen(true)}
+                        />
+
+                        {/* <Select
+                          size="sm"
+                          // value={param.type}
+                          value={param.type || ""}
+                          // onChange={(e) =>
+                          //   handleVariableChange(activeComponentIndex, paramIndex, e.target.value)
+                          // }
+                          onChange={(e) => {
+                            console.log("Selected:", e.target.value);
+                            handleVariableChange(activeComponentIndex, paramIndex, e.target.value);
+                          }}
+                        >
+                          {param.type && !variableOptions.includes(param.type) && (
+                            <option value={param.type}>{param.type}</option>
+                          )}
+
+                          {variableOptions.map((opt, i) => (
+                            <option key={i} value={opt}>
+                              {opt}
+                            </option>
+
+
+                          ))}
+                        </Select> */}
+
+                        <Select
+                          size="sm"
+                          value={param.variable || ""}
+                          onChange={(e) =>
+                            handleVariableChange(
+                              activeComponentIndex,
+                              paramIndex,
+                              e.target.value
+                            )
+                          }
+                        >
+                          <option value="">Select Variable</option>
+
+                          {variableOptions.map((opt, i) => (
+                            <option key={i} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
                         </Select>
+
+
                       </GridItem>
 
                       <GridItem>
@@ -955,7 +1517,7 @@ export default function ProductDefinition() {
                         Component Name
                       </Text>
                       <Select size="sm" value={activeComponent?.name || ""} sx={inputStyles}>
-                        <option value={activeComponent?.name || ""}>{activeComponent?.name || "Select Component"}</option>
+                        <option value={activeComponent?.name || ""}>{activeComponent?.name || "Select Components"}</option>
                       </Select>
                     </GridItem>
 
@@ -973,7 +1535,7 @@ export default function ProductDefinition() {
                       <Text fontSize="sm" mb={1} fontWeight="medium">
                         Constant Values
                       </Text>
-                      <Input size="sm" placeholder="Enter value" value={param.value} onChange={(e) => updateParameter(activeComponentIndex, paramIndex, "value", e.target.value)} sx={inputStyles} />
+                      <Input size="sm" placeholder="Enter value" value={param.value?.toLowerCase()} onChange={(e) => updateParameter(activeComponentIndex, paramIndex, "value", e.target.value)} sx={inputStyles} />
                     </GridItem>
                   </Grid>
                 )
@@ -1066,52 +1628,175 @@ export default function ProductDefinition() {
             </Button>
           </HStack>
         </VStack>
-      </Box>
+      </Box >
 
       {/* POPUP: Add Component (type + name) */}
-      {showComponentPopup && (
-        <Box position="fixed" top={0} left={0} w="100vw" h="100vh" bg="blackAlpha.400" display="flex" alignItems="center" justifyContent="center" zIndex={1000}>
-          <Box bg="#f5f5f5" borderRadius="md" borderWidth="1px" maxW="400px" w="100%" p={6}>
-            <HStack justify="space-between" mb={4}>
-              <Text fontSize="sm" fontWeight="semibold">
-                Add Component
-              </Text>
-              <Button variant="ghost" size="sm" fontSize="sm" onClick={handleComponentPopupCancel} px={2}>
-                ✕
-              </Button>
-            </HStack>
-
-            <VStack align="stretch" spacing={4}>
-              <Box>
-                <Text fontSize="xs" mb={1}>
-                  Component
+      {
+        showComponentPopup && (
+          <Box position="fixed" top={0} left={0} w="100vw" h="100vh" bg="blackAlpha.400" display="flex" alignItems="center" justifyContent="center" zIndex={1000}>
+            <Box bg="#f5f5f5" borderRadius="md" borderWidth="1px" maxW="400px" w="100%" p={6}>
+              <HStack justify="space-between" mb={4}>
+                <Text fontSize="sm" fontWeight="semibold">
+                  Add Component
                 </Text>
-                <Select size="sm" value={newComponent.type} onChange={(e) => setNewComponent((prev) => ({ ...prev, type: e.target.value }))} sx={inputStyles}>
-                  <option value="Sensor">Sensor</option>
-                  <option value="Actuator">Actuator</option>
-                </Select>
-              </Box>
+                <Button variant="ghost" size="sm" fontSize="sm" onClick={handleComponentPopupCancel} px={2}>
+                  ✕
+                </Button>
+              </HStack>
 
-              <Box>
-                <Text fontSize="xs" mb={1}>
-                  Component Name{" "}
-                  <Text as="span" color="red.500">
-                    *
+              <VStack align="stretch" spacing={4}>
+                <Box>
+                  <Text fontSize="xs" mb={1}>
+                    Component
                   </Text>
-                </Text>
-                <Input size="sm" value={newComponent.name} onChange={(e) => setNewComponent((prev) => ({ ...prev, name: e.target.value }))} sx={inputStyles} placeholder="Enter component name" />
-              </Box>
-            </VStack>
+                  <Select size="sm" value={newComponent.type} onChange={(e) => setNewComponent((prev) => ({ ...prev, type: e.target.value }))} sx={inputStyles}>
+                    <option value="Sensor">Sensor</option>
+                    <option value="Actuator">Actuator</option>
+                  </Select>
+                </Box>
 
-            <Box textAlign="center" mt={6}>
-              <Button colorScheme="blue" size="sm" px={8} onClick={handleComponentPopupSubmit}>
-                Submit
-              </Button>
+                <Box>
+                  <Text fontSize="xs" mb={1}>
+                    Component Name{" "}
+                    <Text as="span" color="red.500">
+                      *
+                    </Text>
+                  </Text>
+                  <Input size="sm" value={newComponent.name} onChange={(e) => setNewComponent((prev) => ({ ...prev, name: e.target.value }))} sx={inputStyles} placeholder="Enter component name" />
+                </Box>
+              </VStack>
+
+              <Box textAlign="center" mt={6}>
+                <Button colorScheme="blue" size="sm" px={8} onClick={handleComponentPopupSubmit}>
+                  Submit
+                </Button>
+              </Box>
             </Box>
           </Box>
-        </Box>
-      )}
-    </Box>
+        )
+      }
+
+      <Modal isOpen={isParamModalOpen} onClose={() => setIsParamModalOpen(false)} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Add Specific Parameter</ModalHeader>
+          <ModalCloseButton />
+
+          <ModalBody>
+            <Input
+              color="black"
+              placeholder="Enter parameter name"
+              value={newSpecificParam}
+              onChange={(e) => setNewSpecificParam(e.target.value)}
+            />
+          </ModalBody>
+
+          <ModalFooter>
+
+            <Button
+              colorScheme="blue"
+              onClick={submitParameters}
+            >
+              Submit
+            </Button>
+
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={isVariableModalOpen} onClose={() => setIsVariableModalOpen(false)} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Add Variable</ModalHeader>
+          <ModalCloseButton />
+
+          <ModalBody>
+            <Input
+              placeholder="Enter variable name"
+              color="black"
+              value={newVariable}
+              onChange={(e) => setNewVariable(e.target.value)}
+            />
+          </ModalBody>
+
+          <ModalFooter>
+
+            {/* <Button
+              colorScheme="blue"
+              onClick={async () => {
+                if (!newVariable.trim()) return;
+
+                try {
+                  const res = await fetch(
+                    "http://localhost:5004/api/v2/parameterVariables",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        variableName: newVariable.trim(),
+                      }),
+                    }
+                  );
+
+                  const result = await res.json();
+                  console.log("Variable API response:", result);
+
+                  // ✅ API success apram dropdown/state update
+                  setVariableOptions((prev) => [
+                    ...prev,
+                    newVariable.trim(),
+                  ]);
+
+                  setNewVariable("");
+                  setIsVariableModalOpen(false);
+
+                } catch (error) {
+                  console.error("Variable POST error:", error);
+                }
+              }}
+            >
+              Submit
+            </Button> */}
+            <Button
+              colorScheme="blue"
+              onClick={async () => {
+                if (!newVariable.trim()) return;
+
+                try {
+                  // 🔹 POST API
+                  await fetch(
+                    "http://localhost:5004/api/v2/parameterVariables",
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        variableName: newVariable.trim(),
+                      }),
+                    }
+                  );
+
+                  // 🔁 AUTO REFRESH (GET)
+                  await fetchVariables();
+
+                  setNewVariable("");
+                  setIsVariableModalOpen(false);
+
+                } catch (error) {
+                  console.error("Variable POST error:", error);
+                }
+              }}
+            >
+              Submit
+            </Button>
+
+
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Box >
   );
 }
-

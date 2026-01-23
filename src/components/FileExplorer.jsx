@@ -23,8 +23,7 @@ import {
   FolderPlus,
   FilePlus,
   MoreVertical,
-  Pencil,
-  RefreshCw
+  Pencil
 } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -127,6 +126,16 @@ const FileExplorer = ({ variant }) => {
     return false;
   };
 
+  const deleteNodeFromTree = (nodes, nodeId) => {
+    if (!nodes) return [];
+    return nodes
+      .filter((node) => node._id !== nodeId)
+      .map((node) => ({
+        ...node,
+        children: node.children ? deleteNodeFromTree(node.children, nodeId) : [],
+      }));
+  };
+
   const handleFolderDelete = async (node) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
     const id = node._id;
@@ -147,9 +156,15 @@ const FileExplorer = ({ variant }) => {
         setActiveProductName(null);
       }
 
-      handleRefresh();
+      // Optimistic update: Remove from local state immediately
+      setFileSystem((prev) => ({
+        ...prev,
+        children: deleteNodeFromTree(prev.children, id),
+      }));
+
     } catch (error) {
       console.error("Error deleting folder:", error);
+      handleRefresh(); // Sync on error
     }
   };
 
@@ -420,16 +435,7 @@ const FileExplorer = ({ variant }) => {
         </Box>
       )}
 
-      <Box px={1} mb={2} display="flex" justifyContent="flex-end">
-        <IconButton
-          icon={<RefreshCw size={14} />}
-          size="xs"
-          aria-label="Refresh"
-          onClick={handleRefresh}
-          isLoading={isLoading}
-          variant="ghost"
-        />
-      </Box>
+
 
       <Box flex="1" overflowY="auto" className="custom-scrollbar" px={1}>
         {fileSystem.children &&

@@ -1062,7 +1062,7 @@ import { useProject } from "../ProjectContext";
 import { checkProductDefinition } from "./EmbeddedFileManagement/EmbeddedFileManagement";
 import { fetchFileSystem } from "./EmbeddedFileManagement/EmbeddedFileManagement";
 import { buildTree } from "./EmbeddedFileManagement/EmbeddedFileManagement";
-import DefineProductButton from "./shared/DefineProductButton";
+import CreateProductButton from "./shared/CreateProductButton";
 import ProjectSelectionModal from "./ProjectSelectionModal/ProjectSelectionModal";
 import ProjectChangePopup from "./ProjectSelectionPopup/ProjectSelectionPopup";
 // ... (rest of your imports)
@@ -1184,62 +1184,60 @@ const symbolsData = [
 
 import { useDispatch, useSelector } from "react-redux";
 import {
-  setDroppedItems,
-  addDroppedItem,
-  updateDroppedItem,
-  removeDroppedItem,
-  setConnections,
-  addConnection,
+  setTabs,
+  addTab,
+  closeTab,
+  setActiveTab,
+  addSymbolToTab,
+  updateSymbolInTab,
+  removeSymbolFromTab,
+  addConnectionToTab,
+  setTabSymbolsAndConnections,
+  updateTabContent,
+  renameTab
 } from "../store/slices/simulationSlice";
-
-// ... existing imports
 
 const BlockDiagram = () => {
   const dispatch = useDispatch();
-  // Use Redux state for droppedItems and connections
-  const droppedItems = useSelector((state) => state.simulation.droppedItems);
-  const connections = useSelector((state) => state.simulation.connections); // This might need to be an array in Redux, but Set in component.
-  // Redux can't store Sets. We need to convert between them or use Array in Redux.
-  // My slice defined connections as array.
-  // In component it was `useState(new Set())`.
-  // I will use a local Set derived from Redux array for efficient lookup, or just use Array.includes.
-  // Let's stick to Array in Redux and convert to Set for local checks if needed, or just use Array methods.
+  const tabs = useSelector((state) => state.simulation.tabs);
+  const activeTabId = useSelector((state) => state.simulation.activeTab);
 
-  // const [droppedItems, setDroppedItems] = useState([]); // REMOVED
-  // const [connections, setConnections] = useState(new Set()); // REMOVED
+  const activeTab = useMemo(() => tabs.find(t => t.id === activeTabId) || tabs[0], [tabs, activeTabId]);
+  const droppedItems = activeTab?.symbols || [];
+  const connections = activeTab?.connections || [];
 
-  const [activeSymbol, setActiveSymbol] = useState(null);
-  const [contextMenu, setContextMenu] = useState(null);
-  const contextMenuRef = useRef(null);
+  // Internal simulation tab switching
+  const handleSimulationTabClick = useCallback((id) => {
+    console.log("🔵 handleSimulationTabClick called with id:", id);
+    console.log("Current activeTabId:", activeTabId);
+    console.log("All tabs:", tabs);
+    dispatch(setActiveTab(id));
+    console.log("✅ Dispatched setActiveTab");
+  }, [dispatch, activeTabId, tabs]);
 
-  // Use auto-save tabs for simulation
-  const {
-    tabs,
-    activeTab,
-    addNewTab,
-    closeTab,
-    updateTabContent,
-    renameTab,
-    handleTabClick,
-    saveTab,
-    saveAsset,
-    getActiveTab,
-    getFolderInfo,
-  } = useAutoSaveTabs(
-    [
-      {
-        id: 1,
-        name: "simulation.c",
-        content: "// Simulation code\n",
-        dirty: false,
-      },
-    ],
-    {
-      maxTabs: 5,
-      defaultTabName: "simulation",
-      defaultContent: "// Simulation code\n",
-    },
-  );
+  const addNewSimulationTab = () => {
+    console.log("🟢 Add Tab clicked");
+    const newTabId = Date.now();
+    const newTab = {
+      id: newTabId,
+      name: `Simulation ${tabs.length + 1}`,
+      symbols: [],
+      connections: [],
+      content: "// Simulation code\n",
+      dirty: false
+    };
+    console.log("🟢 Dispatching addTab:", newTab);
+    dispatch(addTab(newTab));
+    dispatch(setActiveTab(newTabId));
+    console.log("✅ Add tab complete");
+  };
+
+  const closeSimulationTab = (id, e) => {
+    console.log("🔴 closeSimulationTab called with id:", id);
+    e?.stopPropagation();
+    dispatch(closeTab(id));
+    console.log("✅ Close tab complete");
+  };
 
   // Enhanced auto-save for simulation canvas state
   const {
@@ -1259,12 +1257,11 @@ const BlockDiagram = () => {
       console.log("[Simulation] Loading saved canvas state:", loadedData);
       // Restore canvas state from auto-save
       if (loadedData) {
-        if (loadedData.droppedItems && loadedData.droppedItems.length > 0) {
-          dispatch(setDroppedItems(loadedData.droppedItems));
-        }
-        if (loadedData.connections && loadedData.connections.length > 0) {
-          dispatch(setConnections(loadedData.connections));
-        }
+        dispatch(setTabSymbolsAndConnections({
+          tabId: activeTabId,
+          symbols: loadedData.droppedItems || [],
+          connections: loadedData.connections || []
+        }));
       }
     },
     onError: (error) => {
@@ -1324,6 +1321,9 @@ const BlockDiagram = () => {
     };
   }, [droppedItems, connections, activeTab, tabs]);
 
+  const [activeSymbol, setActiveSymbol] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
+  const contextMenuRef = useRef(null);
   const [openCategories, setOpenCategories] = useState({}); // Moved here
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarMode, setSidebarMode] = useState("components");
@@ -1337,6 +1337,47 @@ const BlockDiagram = () => {
   const [isProductDefined, setIsProductDefined] = useState(null);
   const [fileSystem, setFileSystem] = useState({});
   const [diagramId, setDiagramId] = useState(null);
+
+  // Tab Renaming State
+  const [editingTabId, setEditingTabId] = useState(null);
+  const [tempName, setTempName] = useState("");
+
+  const startRenaming = (e, tab) => {
+    console.log("🟡 Double click detected for tab:", tab.id, tab.name);
+    console.log("Event:", e);
+    e.stopPropagation();
+    setEditingTabId(tab.id);
+    setTempName(tab.name);
+    console.log("✅ Editing state set");
+  };
+
+  const handleRenameChange = (e) => {
+    console.log("🟡 Rename input changed:", e.target.value);
+    setTempName(e.target.value);
+  };
+
+  const handleRenameSubmit = (e) => {
+    console.log("🟡 Key pressed:", e.key);
+    if (e.key === 'Enter') {
+      console.log("🟡 Enter key detected, finishing rename");
+      finishRenaming();
+    }
+  };
+
+  const finishRenaming = () => {
+    console.log("🟡 Finishing renaming. ID:", editingTabId, "New Name:", tempName);
+    if (editingTabId && tempName.trim()) {
+      console.log("🟡 Dispatching renameTab action");
+      dispatch(renameTab({ tabId: editingTabId, newName: tempName.trim() }));
+      console.log("✅ Rename dispatched");
+    } else {
+      console.log("⚠️ No rename - ID or name missing");
+    }
+    setEditingTabId(null);
+    setTempName("");
+  };
+
+  // Main Navigation (EditorNavbar) handler
   const handleTabChange = useCallback(
     async (tab) => {
       // Save current simulation state before navigating
@@ -1360,7 +1401,7 @@ const BlockDiagram = () => {
         navigate(next);
       }
     },
-    [navigate],
+    [navigate, saveSimulationNow, saveAllScreens],
   );
 
   const {
@@ -1376,8 +1417,13 @@ const BlockDiagram = () => {
 
   const [isFetched, setIsFetched] = useState(false);
   const lastSavedDiagrams = useRef(null);
+  const droppedItemsRef = useRef(droppedItems);
 
-  const fetchSimulationDiagrams = async () => {
+  useEffect(() => {
+    droppedItemsRef.current = droppedItems;
+  }, [droppedItems]);
+
+  const fetchSimulationDiagrams = useCallback(async () => {
     try {
       if (!activeProductId || !activeProjectId) return;
 
@@ -1399,48 +1445,72 @@ const BlockDiagram = () => {
               ...diagram.symbol,
               src: decodeURIComponent(diagram.symbol.src),
             },
+            x: Number(diagram.x) || 0,
+            y: Number(diagram.y) || 0,
+            width: Number(diagram.width) || 120,
+            height: Number(diagram.height) || 120,
+            rotation: Number(diagram.rotation) || 0,
           }),
         );
 
         console.log("Decoded simulation diagrams:", fetchedDiagrams);
 
-        // Ensure all diagrams are retrieved and replace existing state
-        dispatch(setDroppedItems(fetchedDiagrams));
+        // Only dispatch if data is actually different to prevent loops
+        if (JSON.stringify(fetchedDiagrams) !== JSON.stringify(droppedItemsRef.current)) {
+          dispatch(setTabSymbolsAndConnections({
+            tabId: activeTabId,
+            symbols: fetchedDiagrams,
+            connections: [] // Backend doesn't seem to store connections yet
+          }));
+        }
 
         setIsFetched(true);
         lastSavedDiagrams.current = fetchedDiagrams;
       } else {
         console.warn("No simulation diagrams found, initializing empty state.");
-        dispatch(setDroppedItems([]));
+        if (droppedItemsRef.current.length > 0) {
+          dispatch(setTabSymbolsAndConnections({
+            tabId: activeTabId,
+            symbols: [],
+            connections: []
+          }));
+        }
         setIsFetched(false);
         lastSavedDiagrams.current = [];
       }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         console.warn("No stored simulation diagrams yet for this project.");
-        dispatch(setDroppedItems([]));
+        if (droppedItemsRef.current.length > 0) {
+          dispatch(setTabSymbolsAndConnections({
+            tabId: activeTabId,
+            symbols: [],
+            connections: []
+          }));
+        }
         setIsFetched(false);
         lastSavedDiagrams.current = [];
         return;
       }
       console.error("Error fetching diagrams:", err);
-      dispatch(setDroppedItems([]));
+      // Don't clear state on error unless necessary
       setIsFetched(false);
-      lastSavedDiagrams.current = [];
     }
-  };
+  }, [activeProductId, activeProjectId, dispatch]);
 
   // Fetch diagrams when product or project changes
   useEffect(() => {
     if (!activeProductId || !activeProjectId) return;
     fetchSimulationDiagrams();
-  }, [activeProductId, activeProjectId]);
+  }, [activeProductId, activeProjectId, fetchSimulationDiagrams]);
 
-  const saveSimulationDiagram = async (data = droppedItems) => {
+  const saveSimulationDiagram = useCallback(async (data) => {
     try {
+      const itemsToSave = data || droppedItemsRef.current;
+
       if (!activeProductId || !activeProjectId || !user?.userId) return;
 
-      if (!isFetched && data.length === 0) {
+      if (!isFetched && (!itemsToSave || itemsToSave.length === 0)) {
         console.warn(
           "Skipping save: Default empty state should not be auto-saved.",
         );
@@ -1448,7 +1518,7 @@ const BlockDiagram = () => {
       }
 
       // Prevent saving if no changes
-      if (JSON.stringify(lastSavedDiagrams.current) === JSON.stringify(data)) {
+      if (JSON.stringify(lastSavedDiagrams.current) === JSON.stringify(itemsToSave)) {
         console.log("No changes detected, skipping save.");
         return;
       }
@@ -1457,7 +1527,7 @@ const BlockDiagram = () => {
         fileORFolderId: activeProjectId,
         productId: activeProductId,
         userId: user.userId,
-        simulationDiagram: data, // Ensure all diagrams are saved
+        simulationDiagram: itemsToSave, // Ensure all diagrams are saved
       };
 
       console.log("Saving or updating simulation diagram:", payload);
@@ -1496,25 +1566,31 @@ const BlockDiagram = () => {
       }
 
       // Update last saved reference after successful save
-      lastSavedDiagrams.current = data;
+      lastSavedDiagrams.current = itemsToSave;
     } catch (error) {
       console.error("Error saving/updating simulation diagram data:", error);
     }
-  };
+  }, [activeProductId, activeProjectId, user, isFetched]);
 
   // Auto-save every 5 seconds if data changes
+  // Auto-save every 5 seconds if data changes
   useEffect(() => {
-    if (!droppedItems || droppedItems.length === 0) return;
+    // Check for changes immediately when droppedItems changes
+    const currentItems = droppedItems;
+    if (!currentItems || currentItems.length === 0) return;
 
     if (
-      JSON.stringify(lastSavedDiagrams.current) !== JSON.stringify(droppedItems)
+      lastSavedDiagrams.current &&
+      JSON.stringify(lastSavedDiagrams.current) !== JSON.stringify(currentItems)
     ) {
-      saveSimulationDiagram();
+      saveSimulationDiagram(currentItems);
     }
 
-    const interval = setInterval(() => saveSimulationDiagram(), 5000);
+    const interval = setInterval(() => {
+      saveSimulationDiagram(droppedItemsRef.current);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [droppedItems]);
+  }, [droppedItems, saveSimulationDiagram]);
 
   useEffect(() => {
     try {
@@ -1540,14 +1616,7 @@ const BlockDiagram = () => {
       if (event.key === "Delete" && activeSymbol !== null) {
         const itemToDelete = droppedItems[activeSymbol];
         if (itemToDelete) {
-          // If we have an ID, use it. Otherwise use index filtering.
-          // Since we are moving to IDs, let's try to use ID if available.
-          // But activeSymbol is an INDEX in the current logic.
-          // We need to filter by index.
-          const newItems = droppedItems.filter(
-            (_, index) => index !== activeSymbol,
-          );
-          dispatch(setDroppedItems(newItems));
+          dispatch(removeSymbolFromTab({ tabId: activeTabId, symbolId: itemToDelete.id }));
         }
         setActiveSymbol(null); // Reset active symbol after deletion
       }
@@ -1623,10 +1692,10 @@ const BlockDiagram = () => {
 
   const handleDelete = () => {
     if (contextMenu) {
-      const newItems = droppedItems.filter(
-        (_, index) => index !== contextMenu.symbolIndex,
-      );
-      dispatch(setDroppedItems(newItems));
+      const symbolToDelete = droppedItems[contextMenu.symbolIndex];
+      if (symbolToDelete) {
+        dispatch(removeSymbolFromTab({ tabId: activeTabId, symbolId: symbolToDelete.id }));
+      }
       setContextMenu(null);
       setActiveSymbol(null);
       alert("Symbol deleted successfully!");
@@ -1708,10 +1777,10 @@ const BlockDiagram = () => {
           item.x + item.width / 2 - (movedItem.x + movedItem.width / 2),
           2,
         ) +
-          Math.pow(
-            item.y + item.height / 2 - (movedItem.y + movedItem.height / 2),
-            2,
-          ),
+        Math.pow(
+          item.y + item.height / 2 - (movedItem.y + movedItem.height / 2),
+          2,
+        ),
       );
 
       console.log(`Distance to component ${item.id}:`, distance);
@@ -1719,13 +1788,15 @@ const BlockDiagram = () => {
       if (checkProximity(movedItem, item)) {
         // Create a consistent key based on sorted IDs
         const connectionKey = [movedItem.id, item.id].sort().join("-");
-        console.log("✅ Connection detected!", connectionKey);
+        console.log("✅ Connection detected within proximity!", connectionKey);
 
-        // Only show toast if not already connected
-        // connections is now an array from Redux
-        if (!connections.includes(connectionKey)) {
-          console.log("🎉 New connection! Showing toast...");
-          dispatch(addConnection(connectionKey));
+        // Check if connection exists in Redux state (passed via props/selector)
+        // connections is array of strings (connectionKeys)
+        const exists = connections.includes(connectionKey);
+
+        if (!exists) {
+          console.log("🎉 New connection! Dispatching addConnection...");
+          dispatch(addConnectionToTab({ tabId: activeTabId, connection: connectionKey }));
 
           // Calculate connection point (midpoint between components)
           const connectionX =
@@ -1745,14 +1816,24 @@ const BlockDiagram = () => {
             setSparkEffects((prev) => prev.filter((s) => s.id !== sparkId));
           }, 500);
 
-          // Play connection sound
-          const audio = new Audio(
-            "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2S57OihUQwOVqzn77BdGAg+ltv1xnMoBSh+zPLaizsKGGGy6OyrYBgINZXX9Mp5LQUohM/y3I4+CxVitOvtrGEaBkCY3PLJdysGKoLO8tuJNggTYbjs6qZTEAhMouDwumkkBSR4yPDck0MLHGW66+yjWBUIQ5zh8sNuIQUofcry2Ig0BhFYrOjuqF4YBzaU2PTJeiwGKIHN8t2LPAoVXrTq7qxgGQg4lNn0zHosBSaAy/DblUAOF2S36+yjVxUIRJ3h8sFuIAQnfsny2Yk3BxNWq+fuqF4WAzWS1vPKeS0GJ4DN8tz",
-          );
-          audio.volume = 0.3;
-          audio.play().catch((e) => console.log("Could not play sound:", e));
+          try {
+            // Play connection sound
+            const audio = new Audio(
+              "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2S57OihUQwOVqzn77BdGAg+ltv1xnMoBSh+zPLaizsKGGGy6OyrYBgINZXX9Mp5LQUohM/y3I4+CxVitOvtrGEaBkCY3PLJdysGKoLO8tuJNggTYbjs6qZTEAhMouDwumkkBSR4yPDck0MLHGW66+yjWBUIQ5zh8sNuIQUofcry2Ig0BhFYrOjuqF4YBzaU2PTJeiwGKIHN8t2LPAoVXrTq7qxgGQg4lNn0zHosBSaAy/DblUAOF2S36+yjVxUIRJ3h8sFuIAQnfsny2Yk3BxNWq+fuqF4WAzWS1vPKeS0GJ4DN8tz",
+            );
+            audio.volume = 0.5;
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.catch(e => {
+                console.warn("Audio play failed (autoplay policy?):", e);
+              });
+            }
+          } catch (e) {
+            console.error("Audio setup failed:", e);
+          }
 
           // Show toast notification
+          console.log("Showing toast for connection");
           toast({
             title: "⚡ Components Connected!",
             description: `${movedItem.symbol.name} ↔ ${item.symbol.name}`,
@@ -1762,7 +1843,7 @@ const BlockDiagram = () => {
             position: "top",
           });
         } else {
-          console.log("Already connected:", connectionKey);
+          console.log("Connection already exists in state:", connectionKey);
         }
       }
     });
@@ -1778,16 +1859,18 @@ const BlockDiagram = () => {
     if (savedData) {
       const parsedData = JSON.parse(savedData);
       dispatch(
-        setDroppedItems(
-          parsedData.map((item) => ({
+        setTabSymbolsAndConnections({
+          tabId: activeTabId,
+          symbols: parsedData.map((item) => ({
             ...item,
-            x: item.x || 100, // Preserve original x-position
-            y: item.y || 100, // Preserve original y-position
-            width: item.width || 120, // Preserve width
-            height: item.height || 120, // Preserve height
-            rotation: item.rotation || 0, // Preserve rotation
+            x: item.x || 100,
+            y: item.y || 100,
+            width: item.width || 120,
+            height: item.height || 120,
+            rotation: item.rotation || 0,
           })),
-        ),
+          connections: [] // Assume no connections in manual load for now or update if stored
+        }),
       );
       alert("Design loaded successfully!");
     } else {
@@ -1855,7 +1938,7 @@ const BlockDiagram = () => {
               rotation: 0,
               id: Date.now() + Math.random(),
             };
-            dispatch(addDroppedItem(newSymbol));
+            dispatch(addSymbolToTab({ tabId: activeTabId, symbol: newSymbol }));
             setActiveSymbol(droppedItems.length);
           }
         },
@@ -1906,9 +1989,10 @@ const BlockDiagram = () => {
         const angleChange = newAngle - startAngle;
 
         dispatch(
-          updateDroppedItem({
-            id: symbol.id,
-            rotation: startRotation + angleChange,
+          updateSymbolInTab({
+            tabId: activeTabId,
+            symbolId: symbol.id,
+            updates: { rotation: startRotation + angleChange },
           }),
         );
         setRotatingItem(null);
@@ -1922,12 +2006,15 @@ const BlockDiagram = () => {
       const item = droppedItems[index];
       if (item) {
         dispatch(
-          updateDroppedItem({
-            id: item.id,
-            width: ref.offsetWidth,
-            height: ref.offsetHeight,
-            x: position.x,
-            y: position.y,
+          updateSymbolInTab({
+            tabId: activeTabId,
+            symbolId: item.id,
+            updates: {
+              width: ref.offsetWidth,
+              height: ref.offsetHeight,
+              x: position.x,
+              y: position.y,
+            },
           }),
         );
       }
@@ -2071,10 +2158,10 @@ const BlockDiagram = () => {
                   const updatedItem = { ...item, x: finalX, y: finalY };
 
                   dispatch(
-                    updateDroppedItem({
-                      id: item.id,
-                      x: finalX,
-                      y: finalY,
+                    updateSymbolInTab({
+                      tabId: activeTabId,
+                      symbolId: item.id,
+                      updates: { x: finalX, y: finalY },
                     }),
                   );
 
@@ -2089,6 +2176,7 @@ const BlockDiagram = () => {
                 position: "absolute",
                 cursor: "move",
               }}
+              onContextMenu={(e) => handleContextMenu(e, index)}
             >
               <div
                 style={{ position: "relative", width: "100%", height: "100%" }}
@@ -2245,6 +2333,7 @@ const BlockDiagram = () => {
       </>
     );
   };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flowchart-container">
@@ -2252,7 +2341,7 @@ const BlockDiagram = () => {
         <div
           className="top-controls"
 
-          // style={{ paddingTop: "1px", alignItems: "center" }}
+        // style={{ paddingTop: "1px", alignItems: "center" }}
         >
           <Box display="flex" justifyContent="flex-end" width={"100%"} gap={4}>
             {/* {selectedProject?.name && (
@@ -2283,45 +2372,34 @@ const BlockDiagram = () => {
             </Button> */}
           {/* </Box> */}
 
-          <div>
+          <Box display="flex" alignItems="center" gap={3} justifyContent="flex-end" width="100%">
             <SimulationOne />
-          </div>
-          {/* <button className="control-button">
- <FiTrash size={25} />
- </button>
- <button className="control-button">
- <Maximize size={25} />
- </button>
- <button className="control-button">
- <ZoomIn size={25} />
- </button>
- <button className="control-button">
- <ZoomOut size={25} />
- </button>
- <button className="control-button">
- <ArrowLeft size={25} />
- </button>
- <button className="control-button">
- <ArrowRight size={25} />
- </button> */}
 
-          <Box display={"flex"} gap={4}>
             <SimulationPopup>
-              <Button size={"sm"} colorScheme="teal" className="control-button">
+              <Button
+                size="sm"
+                colorScheme="teal"
+                borderRadius="full"
+                height="32px"
+                px={6}
+                className="control-button"
+              >
                 Code
               </Button>
             </SimulationPopup>
 
-            {/* <CodeDrawer /> */}
-
             <Button
-              width={"auto"}
+              width="auto"
               colorScheme="teal"
               size="sm"
+              borderRadius="full"
+              height="32px"
+              px={6}
               onClick={() => navigate("/view-data")}
             >
               View Data
             </Button>
+            <CreateProductButton />
           </Box>
         </div>
 
@@ -2492,15 +2570,106 @@ const BlockDiagram = () => {
               style={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "flex-end",
+                justifyContent: "space-between",
                 backgroundColor: "#27374D",
                 padding: "8px",
                 borderRadius: "8px",
                 marginBottom: "10px",
                 border: "1px solid rgba(221,230,237,0.2)",
+                position: "relative",
+                zIndex: 1000,
+                pointerEvents: "auto"
               }}
             >
-              <DefineProductButton position="inline" />
+              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', flex: 1, position: 'relative', zIndex: 1001, pointerEvents: 'auto' }}>
+                {tabs.map((tab) => (
+                  <div
+                    key={tab.id}
+                    onClick={(e) => {
+                      console.log("🎯 TAB CLICKED! Event:", e);
+                      e.stopPropagation();
+                      handleSimulationTabClick(tab.id);
+                    }}
+                    onDoubleClick={(e) => {
+                      console.log("🎯 TAB DOUBLE-CLICKED! Event:", e);
+                      startRenaming(e, tab);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      backgroundColor: activeTabId === tab.id ? '#DDE6ED' : 'rgba(221,230,237,0.1)',
+                      color: activeTabId === tab.id ? '#27374D' : '#DDE6ED',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease',
+                      border: '1px solid rgba(221,230,237,0.2)',
+                      whiteSpace: 'nowrap',
+                      minWidth: '120px',
+                      userSelect: 'none',
+                      position: 'relative',
+                      zIndex: 1002,
+                      pointerEvents: 'auto'
+                    }}
+                  >
+                    {editingTabId === tab.id ? (
+                      <input
+                        type="text"
+                        value={tempName}
+                        onChange={handleRenameChange}
+                        onBlur={finishRenaming}
+                        onKeyDown={handleRenameSubmit}
+                        autoFocus
+                        style={{
+                          background: '#ffffff',
+                          color: '#000000',
+                          border: '1px solid #3182ce',
+                          borderRadius: '4px',
+                          outline: 'none',
+                          width: '100px',
+                          padding: '2px 4px',
+                          fontSize: '12px'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span style={{ marginRight: '8px', flex: 1 }}>{tab.name}</span>
+                    )}
+
+                    {!editingTabId && (
+                      <Box
+                        as="span"
+                        onClick={(e) => closeSimulationTab(tab.id, e)}
+                        _hover={{ color: '#ef4444', bg: 'rgba(0,0,0,0.1)', borderRadius: '50%' }}
+                        style={{ marginLeft: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
+                      >
+                        ×
+                      </Box>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  size="xs"
+                  variant="solid" // Changed to solid for visibility
+                  colorScheme="blue" // Distinct color
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addNewSimulationTab();
+                  }}
+                  sx={{
+                    minWidth: '80px',
+                    height: '28px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    zIndex: 10
+                  }}
+                >
+                  + Add Tab
+                </Button>
+              </div>
             </div>
 
             {activeProjectName && (
@@ -2525,4 +2694,5 @@ const BlockDiagram = () => {
     </DndProvider>
   );
 };
+
 export default BlockDiagram;

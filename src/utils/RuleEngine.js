@@ -24,7 +24,7 @@
  */
 
 // ============================================
-// DEVICE STATES
+// DEVICE TRIP STATES
 // ============================================
 export const DeviceStates = {
     TRIP_IDLE: 'TRIP_IDLE',
@@ -34,9 +34,29 @@ export const DeviceStates = {
 };
 
 // ============================================
+// DEVICE LIFECYCLE STATES (Presales/Factory to Customer)
+// ============================================
+/**
+ * Device lifecycle states for CVIP provisioning flow:
+ * FACTORY → CONNECTING → TOKEN_RECEIVED → CERT_CREATION → 
+ * RECONNECTING → PROVISIONED → AUTHORIZED → CUSTOMER
+ */
+export const DeviceLifecycleStates = {
+    FACTORY: 'FACTORY',                    // Initial state after manufacturing
+    CONNECTING: 'CONNECTING',              // Connecting to CVIP with common certs
+    TOKEN_RECEIVED: 'TOKEN_RECEIVED',      // Access token received from CVIP
+    CERT_CREATION: 'CERT_CREATION',        // Creating device-specific certificates
+    RECONNECTING: 'RECONNECTING',          // Reconnecting with device certificates
+    PROVISIONED: 'PROVISIONED',            // Device joined CVIP, registered
+    AUTHORIZED: 'AUTHORIZED',              // CVIP authorized the device
+    CUSTOMER: 'CUSTOMER'                   // Device activated for customer use
+};
+
+// ============================================
 // DEVICE INTERNAL VARIABLES
 // ============================================
 export const DeviceVariables = [
+    // Trip-related variables
     {
         name: 'tripStartTime',
         description: 'Timestamp when trip started',
@@ -71,6 +91,28 @@ export const DeviceVariables = [
         type: 'number',
         defaultValue: 0,
         category: 'ignition'
+    },
+    // Lifecycle tracking variables
+    {
+        name: 'deviceLifecycleState',
+        description: 'Current lifecycle state of the device',
+        type: 'state',
+        defaultValue: 'FACTORY',
+        category: 'lifecycle'
+    },
+    {
+        name: 'stateEntryTime',
+        description: 'Timestamp when current lifecycle state was entered',
+        type: 'timestamp',
+        defaultValue: null,
+        category: 'lifecycle'
+    },
+    {
+        name: 'stateHistory',
+        description: 'Array of previous lifecycle states with timestamps',
+        type: 'array',
+        defaultValue: [],
+        category: 'lifecycle'
     }
 ];
 
@@ -108,7 +150,7 @@ export const ConfigurableParameters = [
 ];
 
 // ============================================
-// STATE TRANSITION DEFINITIONS
+// TRIP STATE TRANSITION DEFINITIONS
 // ============================================
 export const StateTransitions = {
     [DeviceStates.TRIP_IDLE]: {
@@ -149,6 +191,90 @@ export const StateTransitions = {
 };
 
 // ============================================
+// LIFECYCLE STATE TRANSITIONS
+// ============================================
+/**
+ * Device lifecycle state transitions for CVIP provisioning.
+ * Each state defines valid transitions and their conditions.
+ */
+export const LifecycleStateTransitions = {
+    [DeviceLifecycleStates.FACTORY]: {
+        description: 'Initial factory state',
+        transitions: [
+            {
+                to: DeviceLifecycleStates.CONNECTING,
+                condition: 'dongleInserted && commonCertificatesLoaded',
+                description: 'Dongle inserted, ready to connect to CVIP'
+            }
+        ]
+    },
+    [DeviceLifecycleStates.CONNECTING]: {
+        description: 'Connecting to CVIP with common certificates',
+        transitions: [
+            {
+                to: DeviceLifecycleStates.TOKEN_RECEIVED,
+                condition: 'cvipConnected && cvipBundleVerified',
+                description: 'CVIP authentication successful'
+            }
+        ]
+    },
+    [DeviceLifecycleStates.TOKEN_RECEIVED]: {
+        description: 'Access token received from CVIP',
+        transitions: [
+            {
+                to: DeviceLifecycleStates.CERT_CREATION,
+                condition: 'accessTokenReceived && accessTokenValid',
+                description: 'Valid access token available'
+            }
+        ]
+    },
+    [DeviceLifecycleStates.CERT_CREATION]: {
+        description: 'Creating device-specific certificates',
+        transitions: [
+            {
+                to: DeviceLifecycleStates.RECONNECTING,
+                condition: 'deviceCertificateReceived && deviceCertificateValid',
+                description: 'Device certificates created'
+            }
+        ]
+    },
+    [DeviceLifecycleStates.RECONNECTING]: {
+        description: 'Reconnecting to CVIP with device certificates',
+        transitions: [
+            {
+                to: DeviceLifecycleStates.PROVISIONED,
+                condition: 'cvipReconnected && secureConnectionEstablished',
+                description: 'Secure connection established'
+            }
+        ]
+    },
+    [DeviceLifecycleStates.PROVISIONED]: {
+        description: 'Device provisioned in CVIP',
+        transitions: [
+            {
+                to: DeviceLifecycleStates.AUTHORIZED,
+                condition: 'authorizationCommandReceived',
+                description: 'CVIP sends authorization command'
+            }
+        ]
+    },
+    [DeviceLifecycleStates.AUTHORIZED]: {
+        description: 'Device authorized by CVIP',
+        transitions: [
+            {
+                to: DeviceLifecycleStates.CUSTOMER,
+                condition: 'dongleResponseReceived && dongleResponseStatus == "SUCCESS"',
+                description: 'Dongle confirms authorization'
+            }
+        ]
+    },
+    [DeviceLifecycleStates.CUSTOMER]: {
+        description: 'Device activated for customer use',
+        transitions: []
+    }
+};
+
+// ============================================
 // ALL AVAILABLE FACTS FOR RULE BUILDER
 // ============================================
 export const AvailableFacts = [
@@ -178,7 +304,56 @@ export const AvailableFacts = [
     // Parameters (for reference in conditions)
     { name: 'MIN_TRIP_DISTANCE', label: 'Min Trip Distance (km)', type: 'parameter', category: 'parameter' },
     { name: 'MIN_IGN_OFF_TIME', label: 'Min Ign Off Time (s)', type: 'parameter', category: 'parameter' },
-    { name: 'MAX_IGN_OFF_TIME', label: 'Max Ign Off Time (s)', type: 'parameter', category: 'parameter' }
+    { name: 'MAX_IGN_OFF_TIME', label: 'Max Ign Off Time (s)', type: 'parameter', category: 'parameter' },
+
+    // ============================================
+    // LIFECYCLE FACTS (CVIP Integration)
+    // ============================================
+
+    // CVIP Connection & Authentication
+    { name: 'dongleInserted', label: 'Dongle Inserted', type: 'boolean', category: 'lifecycle' },
+    { name: 'commonCertificatesLoaded', label: 'Common Certs Loaded', type: 'boolean', category: 'lifecycle' },
+    { name: 'cvipConnected', label: 'CVIP Connected', type: 'boolean', category: 'lifecycle' },
+    { name: 'authenticationMethod', label: 'Auth Method', type: 'string', category: 'lifecycle' },
+    { name: 'cvipBundleVerified', label: 'CVIP Bundle Verified', type: 'boolean', category: 'lifecycle' },
+
+    // Access Token Management
+    { name: 'accessTokenReceived', label: 'Access Token Received', type: 'boolean', category: 'lifecycle' },
+    { name: 'accessTokenValid', label: 'Access Token Valid', type: 'boolean', category: 'lifecycle' },
+    { name: 'accessTokenExpiry', label: 'Access Token Expiry', type: 'timestamp', category: 'lifecycle' },
+
+    // Device Certificate Management
+    { name: 'deviceCertificateRequested', label: 'Device Cert Requested', type: 'boolean', category: 'lifecycle' },
+    { name: 'deviceCertificateReceived', label: 'Device Cert Received', type: 'boolean', category: 'lifecycle' },
+    { name: 'deviceCertificateValid', label: 'Device Cert Valid', type: 'boolean', category: 'lifecycle' },
+    { name: 'deviceCertificateExpiryDays', label: 'Cert Expiry (days)', type: 'number', category: 'lifecycle' },
+
+    // CVIP Reconnection
+    { name: 'cvipReconnected', label: 'CVIP Reconnected', type: 'boolean', category: 'lifecycle' },
+    { name: 'secureConnectionEstablished', label: 'Secure Connection', type: 'boolean', category: 'lifecycle' },
+
+    // Device Registration
+    { name: 'cvipRegistered', label: 'CVIP Registered', type: 'boolean', category: 'lifecycle' },
+    { name: 'deviceId', label: 'Device ID', type: 'string', category: 'lifecycle' },
+
+    // Authorization
+    { name: 'authorizationCommandReceived', label: 'Auth Command Received', type: 'boolean', category: 'lifecycle' },
+    { name: 'authorizationAckSent', label: 'Auth Ack Sent', type: 'boolean', category: 'lifecycle' },
+
+    // Customer Activation
+    { name: 'dongleResponseReceived', label: 'Dongle Response Received', type: 'boolean', category: 'lifecycle' },
+    { name: 'dongleResponseStatus', label: 'Dongle Response Status', type: 'string', category: 'lifecycle' },
+    { name: 'customerActivationTime', label: 'Customer Activation Time', type: 'timestamp', category: 'lifecycle' },
+
+    // Event Subscriptions
+    { name: 'subscribedToCSRAccessTokenResponse', label: 'Subscribed to CSR Token', type: 'boolean', category: 'lifecycle' },
+    { name: 'imeiPublished', label: 'IMEI Published', type: 'boolean', category: 'lifecycle' },
+    { name: 'imeiValue', label: 'IMEI', type: 'string', category: 'lifecycle' },
+
+    // Lifecycle State
+    { name: 'deviceLifecycleState', label: 'Lifecycle State', type: 'state', category: 'lifecycle' },
+    { name: 'stateEntryTime', label: 'State Entry Time', type: 'timestamp', category: 'lifecycle' },
+    { name: 'elapsedStateTime', label: 'Elapsed State Time (s)', type: 'number', category: 'lifecycle' }
 ];
 
 export class RuleEngine {
@@ -395,6 +570,164 @@ export const defaultRules = [
         event: {
             type: 'trip_status',
             message: 'Trip Stopped (Engine off > 2 mins)',
+            severity: 'info'
+        }
+    },
+
+    // ============================================
+    // LIFECYCLE STATE TRANSITION RULES
+    // ============================================
+    {
+        id: 'lifecycle-connecting',
+        name: 'Lifecycle: Factory → Connecting',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'FACTORY' },
+                { fact: 'dongleInserted', operator: '==', value: true },
+                { fact: 'commonCertificatesLoaded', operator: '==', value: true }
+            ]
+        },
+        event: {
+            type: 'lifecycle_transition',
+            targetState: 'CONNECTING',
+            message: 'Dongle inserted, connecting to CVIP',
+            severity: 'info'
+        }
+    },
+    {
+        id: 'lifecycle-token-received',
+        name: 'Lifecycle: Connecting → Token Received',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'CONNECTING' },
+                { fact: 'cvipConnected', operator: '==', value: true },
+                { fact: 'cvipBundleVerified', operator: '==', value: true }
+            ]
+        },
+        event: {
+            type: 'lifecycle_transition',
+            targetState: 'TOKEN_RECEIVED',
+            message: 'CVIP authentication successful',
+            severity: 'info'
+        }
+    },
+    {
+        id: 'lifecycle-cert-creation',
+        name: 'Lifecycle: Token Received → Cert Creation',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'TOKEN_RECEIVED' },
+                { fact: 'accessTokenReceived', operator: '==', value: true },
+                { fact: 'accessTokenValid', operator: '==', value: true }
+            ]
+        },
+        event: {
+            type: 'lifecycle_transition',
+            targetState: 'CERT_CREATION',
+            message: 'Creating device certificates',
+            severity: 'info'
+        }
+    },
+    {
+        id: 'lifecycle-reconnecting',
+        name: 'Lifecycle: Cert Creation → Reconnecting',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'CERT_CREATION' },
+                { fact: 'deviceCertificateReceived', operator: '==', value: true },
+                { fact: 'deviceCertificateValid', operator: '==', value: true }
+            ]
+        },
+        event: {
+            type: 'lifecycle_transition',
+            targetState: 'RECONNECTING',
+            message: 'Device certificates created, reconnecting',
+            severity: 'info'
+        }
+    },
+    {
+        id: 'lifecycle-provisioned',
+        name: 'Lifecycle: Reconnecting → Provisioned',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'RECONNECTING' },
+                { fact: 'cvipReconnected', operator: '==', value: true },
+                { fact: 'secureConnectionEstablished', operator: '==', value: true },
+                { fact: 'cvipRegistered', operator: '==', value: true }
+            ]
+        },
+        event: {
+            type: 'lifecycle_transition',
+            targetState: 'PROVISIONED',
+            message: 'Device provisioned in CVIP',
+            severity: 'info'
+        }
+    },
+    {
+        id: 'lifecycle-authorized',
+        name: 'Lifecycle: Provisioned → Authorized',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'PROVISIONED' },
+                { fact: 'authorizationCommandReceived', operator: '==', value: true }
+            ]
+        },
+        event: {
+            type: 'lifecycle_transition',
+            targetState: 'AUTHORIZED',
+            message: 'Device authorized by CVIP',
+            severity: 'info'
+        }
+    },
+    {
+        id: 'lifecycle-customer',
+        name: 'Lifecycle: Authorized → Customer',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'AUTHORIZED' },
+                { fact: 'dongleResponseReceived', operator: '==', value: true },
+                { fact: 'dongleResponseStatus', operator: '==', value: 'SUCCESS' }
+            ]
+        },
+        event: {
+            type: 'lifecycle_transition',
+            targetState: 'CUSTOMER',
+            message: 'Device activated for customer',
+            severity: 'info'
+        }
+    },
+
+    // ============================================
+    // LIFECYCLE MONITORING RULES
+    // ============================================
+    {
+        id: 'lifecycle-cert-expiry-warning',
+        name: 'Certificate Expiry Warning',
+        conditions: {
+            all: [
+                { fact: 'deviceCertificateExpiryDays', operator: '<', value: 30 },
+                { fact: 'deviceCertificateExpiryDays', operator: '>', value: 0 }
+            ]
+        },
+        event: {
+            type: 'certificate_warning',
+            message: 'Device certificate expires in less than 30 days',
+            severity: 'warning'
+        }
+    },
+    {
+        id: 'lifecycle-event-subscription',
+        name: 'Event Subscription Active',
+        conditions: {
+            all: [
+                { fact: 'deviceLifecycleState', operator: '==', value: 'CUSTOMER' },
+                { fact: 'subscribedToCSRAccessTokenResponse', operator: '==', value: true },
+                { fact: 'imeiPublished', operator: '==', value: true }
+            ]
+        },
+        event: {
+            type: 'event_subscription_active',
+            message: 'Device subscribed to CSR Access Token Response',
             severity: 'info'
         }
     }

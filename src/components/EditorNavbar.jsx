@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-// import { createPortal } from 'react-dom';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useMeeting } from '../contexts/MeetingContext';
 import {
@@ -130,6 +130,8 @@ const TAB_ICON_MAP = {
   'Rule Engine': Brain,
 };
 
+import { onboardingSteps } from '../data/onboardingSteps';
+
 const EditorNavbar = ({
   tabs = DEFAULT_TABS,
   activeTab,
@@ -159,6 +161,8 @@ const EditorNavbar = ({
     help: useRef(null),
   };
   const [isHelpReferenceOpen, setHelpReferenceOpen] = useState(false);
+  const [helpStep, setHelpStep] = useState(0);
+
   const [isCompiling, setIsCompiling] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
   const [isDebugging, setIsDebugging] = useState(false);
@@ -487,8 +491,8 @@ const EditorNavbar = ({
                 }
               }}
             >
-              {TabIcon && <TabIcon size={16} className="editor-navbar__tab-icon" aria-hidden="true" />}
-              {tabId}
+              {TabIcon && <TabIcon size={18} className="editor-navbar__tab-icon" aria-hidden="true" />}
+              <span className="editor-navbar__tab-label">{tabId}</span>
             </button>
           );
         })}
@@ -621,58 +625,102 @@ const EditorNavbar = ({
         onInvite={handleInviteContributors}
       />
 
-      {isHelpReferenceOpen && (
+      {isHelpReferenceOpen && createPortal(
         <div className="editor-navbar__reference-overlay" role="dialog" aria-modal="true">
           <div className="editor-navbar__reference-modal">
             <header className="editor-navbar__reference-header">
               <BookOpen size={18} />
               <div>
-                <h2>InnoIDE Reference Guide</h2>
-                <p>Quick overview of the integrated development environment.</p>
+                <h2>InnoIDE Walkthrough</h2>
+                <p>Features & Recommended Workflow</p>
               </div>
               <button
                 type="button"
                 className="editor-navbar__reference-close"
-                onClick={() => setHelpReferenceOpen(false)}
+                onClick={() => {
+                  setHelpReferenceOpen(false);
+                  setHelpStep(0);
+                }}
                 aria-label="Close reference"
               >
                 &times;
               </button>
             </header>
-            <div className="editor-navbar__reference-body">
-              <section>
-                <h3>Project Workspace</h3>
-                <p>
-                  Use the File Explorer to organise projects, right-click folders for quick actions, and
-                  access the <strong>File → New Project</strong> menu to create a scaffolded project with default
-                  source files and board configuration.
-                </p>
-              </section>
-              <section>
-                <h3>Build & Debug</h3>
-                <p>
-                  The Tools menu mirrors the sidebar controls, allowing you to build, flash, and debug without
-                  leaving the editor. Keyboard shortcuts include <strong>Ctrl+Shift+B</strong> for build and
-                  <strong>Ctrl+Shift+D</strong> for run &amp; debug.
-                </p>
-              </section>
-              <section>
-                <h3>Diagram Editors</h3>
-                <p>
-                  Switch between Simulation, Flowchart, Block Diagram, and Code Editor tabs to access
-                  specialised editors. Diagram surfaces support drag-and-drop blocks, labelled connectors,
-                  and a right-side properties inspector.
-                </p>
-              </section>
-              <section>
-                <h3>Need More Help?</h3>
-                <p>
-                  Visit the InnoIDE knowledge base or contact support at <a href="mailto:satya@innotrat.com">satya@innotrat.com</a>.
-                </p>
-              </section>
+
+            <div className="editor-navbar__onboarding-body">
+              {/* Media Section */}
+              <div className="editor-navbar__onboarding-media">
+                <div className="editor-navbar__video-placeholder">
+                  {onboardingSteps[helpStep].videoUrl ? (
+                    <video
+                      key={helpStep}
+                      src={onboardingSteps[helpStep].videoUrl}
+                      className="editor-navbar__video-player"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      controls
+                    />
+                  ) : (
+                    <div className="video-empty-state">
+                      <div className="play-icon-circle">
+                        <span className="play-triangle">▶</span>
+                      </div>
+                      <span>Preview: {onboardingSteps[helpStep].title}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Content Section */}
+              <div className="editor-navbar__onboarding-content">
+                <div className="onboarding-step-indicator">
+                  Step {helpStep + 1} of {onboardingSteps.length}
+                </div>
+                <h3>{onboardingSteps[helpStep].title}</h3>
+                <p>{onboardingSteps[helpStep].description}</p>
+              </div>
+
+              {/* Navigation Footer */}
+              <div className="editor-navbar__onboarding-footer">
+                <button
+                  type="button"
+                  className="onboarding-btn secondary"
+                  disabled={helpStep === 0}
+                  onClick={() => setHelpStep(s => Math.max(0, s - 1))}
+                >
+                  Previous
+                </button>
+
+                <div className="onboarding-dots">
+                  {onboardingSteps.map((_, idx) => (
+                    <div
+                      key={idx}
+                      className={`onboarding-dot ${idx === helpStep ? 'active' : ''}`}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  className="onboarding-btn primary"
+                  onClick={() => {
+                    if (helpStep < onboardingSteps.length - 1) {
+                      setHelpStep(s => s + 1);
+                    } else {
+                      setHelpReferenceOpen(false);
+                      setHelpStep(0);
+                    }
+                  }}
+                >
+                  {helpStep === onboardingSteps.length - 1 ? 'Finish' : 'Next'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Persistent Video Call Overlay - Now managed by MeetingContext globally */}

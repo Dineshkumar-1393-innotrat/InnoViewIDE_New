@@ -87,8 +87,8 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
   useEffect(() => {
     if (!selectedDevice) return;
 
-    const newData = groupByDeviceId(devicesData);
-    setTableData(newData[selectedDevice] || []);
+    const newData = groupByDeviceId(devicesData) || {};
+    setTableData(newData?.[selectedDevice] || []);
   }, [selectedDevice, devicesData]);
 
   useEffect(() => {

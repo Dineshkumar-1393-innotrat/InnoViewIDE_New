@@ -332,5 +332,7 @@
 
 .scientific-calculator {
   animation: fadeIn 0.3s ease-out;
-  height: 90vh !important;
+  height: auto;
+  max-height: 100%;
+  overflow-y: auto;
 }

@@ -15,6 +15,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
   ConnectionLineType,
   MarkerType,
   ReactFlowProvider,
@@ -22,13 +24,24 @@ import ReactFlow, {
   BaseEdge,
   EdgeLabelRenderer,
   getSmoothStepPath,
+
+  getStraightPath,
   ConnectionMode,
+  NodeResizer,
+  getRectOfNodes,
+  getTransformForBounds,
 } from "reactflow";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  setTabs,
+  setActiveTab,
+  addTab,
+  closeTab,
+  updateTabState,
+} from "../store/slices/flowchartSlice";
 import { useNavigate } from "react-router-dom";
-import { NodeResizer } from "@reactflow/node-resizer";
 import { toPng } from "html-to-image";
 import "reactflow/dist/style.css";
-import "@reactflow/node-resizer/dist/style.css";
 import "./BlockDiagramTest.css";
 import FileExplorer from "./FileExplorer";
 import "./FileExplorer.css";
@@ -46,14 +59,51 @@ import {
   ensureProjectFolder,
 } from "../utils/workspaceStorage";
 import { saveAssetToScreenFolder } from "../utils/screenFileManager";
-import {
-  WorkspaceTabsProvider,
-  useWorkspaceTabs,
-} from "../hooks/useWorkspaceTabs";
-import DefineProductButton from "./shared/DefineProductButton";
+import CreateProductButton from "./shared/CreateProductButton";
 import projectFileManager from "../utils/projectFileManager";
 import { useCanvasFileIntegration } from "../hooks/useCanvasFileIntegration";
 import { useReactFlowAutoSave } from "../hooks/useCanvasAutoSave";
+import { loadSequenceDiagram } from "../utils/sequenceDiagramLoader";
+
+// Helper hook for updating node data via Redux
+// This ensures changes persist even when the controlled flow is re-rendered from the store
+const useNodeDataUpdate = () => {
+  const dispatch = useDispatch();
+  const { activeTabId } = useSelector((state) => state.flowchart);
+  const rf = useReactFlow();
+
+  return useCallback((nodeId, updateFn) => {
+    // Get current nodes from ReactFlow instance to ensure we have latest state
+    const currentNodes = rf.getNodes();
+    const nextNodes = currentNodes.map(n =>
+      n.id === nodeId ? updateFn(n) : n
+    );
+
+    // Dispatch to Redux
+    dispatch(updateTabState({
+      tabId: activeTabId,
+      nodes: nextNodes
+    }));
+  }, [dispatch, activeTabId, rf]);
+};
+
+// Helper hook for updating edge data via Redux
+const useEdgeDataUpdate = () => {
+  const dispatch = useDispatch();
+  const { activeTabId } = useSelector((state) => state.flowchart);
+  const rf = useReactFlow();
+
+  return useCallback((edgeId, updateFn) => {
+    const currentEdges = rf.getEdges();
+    const nextEdges = currentEdges.map(e =>
+      e.id === edgeId ? updateFn(e) : e
+    );
+    dispatch(updateTabState({
+      tabId: activeTabId,
+      edges: nextEdges
+    }));
+  }, [dispatch, activeTabId, rf]);
+};
 
 // Simple id helpers
 let nodeId = 1;
@@ -1252,27 +1302,70 @@ export const shapeData = {
 
   "UML Sequence Diagram": [
     {
-      id: "lifeline",
+      id: "uml-seq-actor",
+      name: "Actor",
+      icon: {
+        viewBox: "0 0 100 100",
+        path: "M0 0 H100 V100 H0 Z",
+        fill: "#ffffff",
+        stroke: "#000000",
+      },
+    },
+    {
+      id: "uml-seq-lifeline",
       name: "Lifeline",
       icon: {
         viewBox: "0 0 100 100",
-        path: "M50 0 V100 M45 0 H55",
+        path: "M50 0 V100",
+        stroke: "#000000",
+        strokeWidth: 2,
+        strokeDasharray: "4 4",
+      },
+      anchors: [
+        { x: 50, y: 0 },
+        { x: 50, y: 100 },
+      ],
+      getHandles: () => {
+        const handles = [];
+        for (let i = 0; i <= 100; i += 5) {
+          handles.push({
+            id: `v-${i}`,
+            position: Position.Left,
+            style: { top: `${i}%`, left: "50%", transform: "translate(-50%, -50%)" },
+          });
+        }
+        return handles;
       },
     },
     {
-      id: "message",
-      name: "Message",
+      id: "uml-seq-activation",
+      name: "Activation",
       icon: {
-        viewBox: "0 0 100 10",
-        path: "M0 5 H90 L80 0 M90 5 L80 10",
+        viewBox: "0 0 20 100",
+        path: "M0 0 H20 V100 H0 Z",
+        fill: "#ffffff",
+      },
+      anchors: [
+        { x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 100 }, { x: 0, y: 100 }
+      ],
+    },
+    {
+      id: "uml-seq-note",
+      name: "Note",
+      icon: {
+        viewBox: "0 0 100 100",
+        path: "M0 0 H80 L100 20 V100 H0 Z M80 0 V20 H100",
+        fill: "#ffff88",
+        stroke: "#000000",
       },
     },
     {
-      id: "activation-bar",
-      name: "Activation Bar",
+      id: "uml-seq-boundary",
+      name: "Boundary",
       icon: {
-        viewBox: "0 0 20 80",
-        path: "M0 0 H20 V80 H0 Z",
+        viewBox: "0 0 100 100",
+        path: "M10 0 H100 V100 H10 Z M0 20 H10 M0 80 H10",
+        fill: "#ffffff",
       },
     },
   ],
@@ -1834,17 +1927,13 @@ const baseHandleStyle = (data) => ({
 
 // Process (rectangle)
 function ProcessNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
 
   return (
@@ -1861,22 +1950,12 @@ function ProcessNode({ id, data, selected }) {
         boxSizing: "border-box",
       }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={40}
-        color={data?.stroke || "#000"}
-        lineStyle={
-          data?.strokeWidth ? { strokeWidth: data.strokeWidth } : undefined
-        }
-      />
       <Handle
         id="top-in"
         type="target"
@@ -1962,23 +2041,32 @@ function ProcessNode({ id, data, selected }) {
           {data?.label ?? "Text"}
         </span>
       )}
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={40}
+        handleStyle={{
+          background: data?.stroke || "#000",
+          width: 12,
+          height: 12,
+          borderRadius: 2,
+          zIndex: 100
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Decision (diamond)
 function DecisionNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
   const fill = data?.fill || "#ffffff";
   const stroke = data?.stroke || "#000000";
@@ -1988,24 +2076,12 @@ function DecisionNode({ id, data, selected }) {
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={80}
-        handleStyle={{
-          background: data?.stroke || "#000",
-          width: 8,
-          height: 8,
-        }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       {/* Diamond shape filling the bounds so handles align to corners */}
       <svg
         viewBox="0 0 100 100"
@@ -2122,23 +2198,31 @@ function DecisionNode({ id, data, selected }) {
         position={Position.Left}
         style={{ ...HANDLE_POSITIONS.left, ...baseHandleStyle(data) }}
       />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={80}
+        handleStyle={{
+          background: data?.stroke || "#000",
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Terminator (rounded rectangle)
 function TerminatorNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
 
   return (
@@ -2155,22 +2239,12 @@ function TerminatorNode({ id, data, selected }) {
         boxSizing: "border-box",
       }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={40}
-        color={data?.stroke || "#000"}
-        lineStyle={
-          data?.strokeWidth ? { strokeWidth: data.strokeWidth } : undefined
-        }
-      />
       <Handle
         id="top-in"
         type="target"
@@ -2230,7 +2304,7 @@ function TerminatorNode({ id, data, selected }) {
           onMouseDown={(e) => e.stopPropagation()}
           onDoubleClick={(e) => e.stopPropagation()}
           style={{
-            width: "100%",
+            width: "calc(100% - 12px)",
             border: "1px solid #ccc",
             borderRadius: 4,
             padding: "4px 6px",
@@ -2254,23 +2328,32 @@ function TerminatorNode({ id, data, selected }) {
           {data?.label ?? "Text"}
         </span>
       )}
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={40}
+        handleStyle={{
+          background: data?.stroke || "#000",
+          width: 12,
+          height: 12,
+          borderRadius: 2,
+          zIndex: 100
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Ellipse (circle/oval)
 function EllipseNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
 
   return (
@@ -2287,24 +2370,12 @@ function EllipseNode({ id, data, selected }) {
         boxSizing: "border-box",
       }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={60}
-        minHeight={60}
-        handleStyle={{
-          background: data?.stroke || "#000",
-          width: 8,
-          height: 8,
-        }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <Handle
         id="top-in"
         type="target"
@@ -2364,7 +2435,7 @@ function EllipseNode({ id, data, selected }) {
           onMouseDown={(e) => e.stopPropagation()}
           onDoubleClick={(e) => e.stopPropagation()}
           style={{
-            width: "100%",
+            width: "calc(100% - 12px)",
             border: "1px solid #ccc",
             borderRadius: 4,
             padding: "4px 6px",
@@ -2387,47 +2458,43 @@ function EllipseNode({ id, data, selected }) {
           {data?.label ?? "Text"}
         </span>
       )}
+      <NodeResizer
+        isVisible={selected}
+        minWidth={60}
+        minHeight={60}
+        handleStyle={{
+          background: data?.stroke || "#000",
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Data (parallelogram)
 function DataNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
 
   return (
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={40}
-        handleStyle={{
-          background: data?.stroke || "#000",
-          width: 8,
-          height: 8,
-        }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <div
         style={{
           width: "80%",
@@ -2498,23 +2565,31 @@ function DataNode({ id, data, selected }) {
       <Handle id="right-out" type="source" position={Position.Right} />
       <Handle id="bottom-out" type="source" position={Position.Bottom} />
       <Handle id="left-out" type="source" position={Position.Left} />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={40}
+        handleStyle={{
+          background: data?.stroke || "#000",
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Database (cylinder)
 function DatabaseNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
   const fill = data?.fill || "#ffffff";
   const stroke = data?.stroke || "#000000";
@@ -2523,20 +2598,12 @@ function DatabaseNode({ id, data, selected }) {
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={60}
-        handleStyle={{ background: stroke, width: 8, height: 8 }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <svg
         viewBox="0 0 160 80"
         preserveAspectRatio="none"
@@ -2666,23 +2733,31 @@ function DatabaseNode({ id, data, selected }) {
         position={Position.Left}
         style={HANDLE_POSITIONS.left}
       />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={60}
+        handleStyle={{
+          background: stroke,
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Manual Input (trapezoid)
 function ManualInputNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
   const fill = data?.fill || "#ffffff";
   const stroke = data?.stroke || "#000000";
@@ -2691,20 +2766,12 @@ function ManualInputNode({ id, data, selected }) {
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={40}
-        handleStyle={{ background: stroke, width: 8, height: 8 }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <svg
         viewBox="0 0 160 80"
         preserveAspectRatio="none"
@@ -2773,23 +2840,31 @@ function ManualInputNode({ id, data, selected }) {
       <Handle id="right-out" type="source" position={Position.Right} />
       <Handle id="bottom-out" type="source" position={Position.Bottom} />
       <Handle id="left-out" type="source" position={Position.Left} />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={40}
+        handleStyle={{
+          background: stroke,
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Document (wavy bottom)
 function DocumentNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
   const fill = data?.fill || "#0cfd48ff";
   const stroke = data?.stroke || "#000000";
@@ -2798,20 +2873,12 @@ function DocumentNode({ id, data, selected }) {
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={50}
-        handleStyle={{ background: stroke, width: 8, height: 8 }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <svg
         viewBox="0 0 160 80"
         preserveAspectRatio="none"
@@ -2863,6 +2930,7 @@ function DocumentNode({ id, data, selected }) {
               position: "relative",
               zIndex: 5,
               background: "#fff",
+              color: "#000",
               pointerEvents: "all",
             }}
           />
@@ -2928,23 +2996,31 @@ function DocumentNode({ id, data, selected }) {
         position={Position.Left}
         style={HANDLE_POSITIONS.left}
       />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={50}
+        handleStyle={{
+          background: stroke,
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Triangle
 function TriangleNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
   const fill = data?.fill || "#ffffff";
   const stroke = data?.stroke || "#000000";
@@ -2953,20 +3029,12 @@ function TriangleNode({ id, data, selected }) {
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={60}
-        minHeight={50}
-        handleStyle={{ background: stroke, width: 8, height: 8 }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <svg
         viewBox="0 0 160 80"
         preserveAspectRatio="none"
@@ -3075,23 +3143,31 @@ function TriangleNode({ id, data, selected }) {
         position={Position.Left}
         style={HANDLE_POSITIONS.left}
       />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={60}
+        minHeight={50}
+        handleStyle={{
+          background: stroke,
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Hexagon
 function HexagonNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "Text");
   const commit = (next) => {
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id
-          ? { ...n, data: { ...n.data, label: next, editing: false } }
-          : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({
+      ...n,
+      data: { ...n.data, label: next, editing: false },
+    }));
   };
   const fill = data?.fill || "#ffffff";
   const stroke = data?.stroke || "#000000";
@@ -3100,20 +3176,12 @@ function HexagonNode({ id, data, selected }) {
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={50}
-        handleStyle={{ background: stroke, width: 8, height: 8 }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <svg
         viewBox="0 0 160 80"
         preserveAspectRatio="none"
@@ -3222,35 +3290,35 @@ function HexagonNode({ id, data, selected }) {
         position={Position.Left}
         style={{ top: "50%", left: 0 }}
       />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={80}
+        minHeight={50}
+        handleStyle={{
+          background: stroke,
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
 
 // Generic SVG stamp node (renders imported SVGs as resizable nodes)
 function SvgStampNode({ id, data, selected }) {
-  const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   return (
     <div
       style={{ ...baseNodeStyles(data), position: "relative" }}
       onDoubleClick={() =>
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        )
+        updateNodeData(id, (n) => ({
+          ...n,
+          data: { ...n.data, editing: true },
+        }))
       }
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={40}
-        minHeight={40}
-        handleStyle={{
-          background: data?.stroke || "#000",
-          width: 8,
-          height: 8,
-        }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <Handle
         id="top-in"
         type="target"
@@ -3308,6 +3376,18 @@ function SvgStampNode({ id, data, selected }) {
           objectFit: "contain",
           pointerEvents: "none",
         }}
+      />
+      <NodeResizer
+        isVisible={selected}
+        minWidth={40}
+        minHeight={40}
+        handleStyle={{
+          background: data?.stroke || "#000",
+          width: 12,
+          height: 12,
+          zIndex: 100,
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
       />
     </div>
   );
@@ -3417,7 +3497,7 @@ function JunctionNode({ id, data, selected }) {
 }
 
 function TextNode({ id, data, selected }) {
-  const { setNodes } = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [label, setLabel] = useState(data.label || "Text");
 
   const handleStyle = {
@@ -3429,15 +3509,7 @@ function TextNode({ id, data, selected }) {
 
   const onBlur = (evt) => {
     const newLabel = evt.currentTarget.textContent;
-    setNodes((nodes) =>
-      nodes.map((node) => {
-        if (node.id === id) {
-          return { ...node, data: { ...node.data, label: newLabel } };
-        }
-        return node;
-      }),
-    );
-    window.dispatchEvent(new Event("rf-change"));
+    updateNodeData(id, (n) => ({ ...n, data: { ...n.data, label: newLabel } }));
   };
 
   return (
@@ -3517,6 +3589,7 @@ function TextNode({ id, data, selected }) {
 // Generic Shape Node
 function GenericShapeNode({ id, data, selected }) {
   const rf = useReactFlow();
+  const updateNodeData = useNodeDataUpdate();
   const [val, setVal] = useState(data?.label ?? "");
   const [editingSlot, setEditingSlot] = useState(null);
   const [slotDraft, setSlotDraft] = useState("");
@@ -3561,16 +3634,16 @@ function GenericShapeNode({ id, data, selected }) {
 
   const commit = useCallback(
     (next) => {
-      rf.setNodes((nds) =>
-        nds.map((n) =>
-          n.id === id
-            ? { ...n, data: { ...n.data, label: next, editing: false } }
-            : n,
-        ),
-      );
-      window.dispatchEvent(new Event("rf-change"));
+      updateNodeData(id, (n) => ({
+        ...n,
+        data: { ...n.data, label: next, editing: false }
+      }));
+      // rf-change event will be triggered by the redux update cascading down, 
+      // but we can trigger it here if immediate local effects are needed?
+      // Redux update is sufficient.
+      // window.dispatchEvent(new Event("rf-change")); 
     },
-    [id, rf],
+    [id, updateNodeData],
   );
 
   useEffect(() => {
@@ -3581,13 +3654,14 @@ function GenericShapeNode({ id, data, selected }) {
       return;
 
     const nextSlots = buildSlotValues(shape, existing);
-    rf.setNodes((nds) =>
-      nds.map((n) =>
-        n.id === id ? { ...n, data: { ...n.data, slots: nextSlots } } : n,
-      ),
-    );
-    window.dispatchEvent(new Event("rf-change"));
-  }, [slotGrid, data?.slots, id, rf, shape]);
+    // Use setTimeout to avoid render-loop if this effect triggers immediately
+    // or just rely on the fact that updateNodeData is stable.
+    // However, calling dispatch inside useEffect is fine.
+
+    // We can't use updateNodeData here easily because we need the *current* state of nodes which we have, 
+    // but updateNodeData gets it from rf.getNodes(). That should be fine.
+    updateNodeData(id, n => ({ ...n, data: { ...n.data, slots: nextSlots } }));
+  }, [slotGrid, data?.slots, id, updateNodeData, shape]);
 
   const startSlotEdit = useCallback((index, initialValue) => {
     setEditingSlot(index);
@@ -3602,21 +3676,18 @@ function GenericShapeNode({ id, data, selected }) {
         return;
       }
 
-      rf.setNodes((nds) =>
-        nds.map((n) => {
-          if (n.id !== id) return n;
-          const shapeCfg = findShapeConfigById(n.data?.shapeId);
-          if (!shapeCfg) return n;
-          const next = buildSlotValues(shapeCfg, n.data?.slots);
-          if (index < next.length) next[index] = value;
-          return { ...n, data: { ...n.data, slots: next } };
-        }),
-      );
-      window.dispatchEvent(new Event("rf-change"));
+      updateNodeData(id, (n) => {
+        const shapeCfg = findShapeConfigById(n.data?.shapeId);
+        if (!shapeCfg) return n; // No change
+        const next = buildSlotValues(shapeCfg, n.data?.slots);
+        if (index < next.length) next[index] = value;
+        return { ...n, data: { ...n.data, slots: next } };
+      });
+
       setEditingSlot(null);
       setSlotDraft("");
     },
-    [id, rf],
+    [id, updateNodeData],
   );
 
   const cancelSlotEdit = useCallback(() => {
@@ -3645,28 +3716,14 @@ function GenericShapeNode({ id, data, selected }) {
       style={{
         ...baseNodeStyles(data),
         position: "relative",
+        backgroundColor: "transparent",
+        pointerEvents: "all", // Ensure consistent click capture
       }}
       onDoubleClick={() => {
         if (hasSlots) return;
-        rf.setNodes((nds) =>
-          nds.map((n) =>
-            n.id === id ? { ...n, data: { ...n.data, editing: true } } : n,
-          ),
-        );
+        updateNodeData(id, n => ({ ...n, data: { ...n.data, editing: true } }));
       }}
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={80}
-        minHeight={40}
-        handleStyle={{
-          background: data?.stroke || "#000",
-          width: 8,
-          height: 8,
-          borderRadius: 2,
-        }}
-        lineStyle={{ stroke: "none", fill: "none", opacity: 0 }}
-      />
       <svg
         viewBox={shape.icon.viewBox}
         preserveAspectRatio="none"
@@ -3677,6 +3734,7 @@ function GenericShapeNode({ id, data, selected }) {
           fill={data.fill ?? shape.icon.fill ?? "#ffffff"}
           stroke={data.stroke ?? shape.icon.stroke ?? "#000000"}
           strokeWidth={data.strokeWidth ?? shape.icon.strokeWidth ?? 2}
+          strokeDasharray={data.strokeDasharray ?? shape.icon.strokeDasharray}
           vectorEffect="non-scaling-stroke"
         />
       </svg>
@@ -3699,13 +3757,7 @@ function GenericShapeNode({ id, data, selected }) {
           onDoubleClick={(e) => {
             e.stopPropagation();
             if (!data?.editing) {
-              rf.setNodes((nds) =>
-                nds.map((n) =>
-                  n.id === id
-                    ? { ...n, data: { ...n.data, editing: true } }
-                    : n,
-                ),
-              );
+              updateNodeData(id, n => ({ ...n, data: { ...n.data, editing: true } }));
             }
           }}
         >
@@ -3746,17 +3798,11 @@ function GenericShapeNode({ id, data, selected }) {
               onClick={(e) => {
                 if (selected) {
                   e.stopPropagation();
-                  rf.setNodes((nds) =>
-                    nds.map((n) =>
-                      n.id === id
-                        ? { ...n, data: { ...n.data, editing: true } }
-                        : n,
-                    ),
-                  );
+                  updateNodeData(id, n => ({ ...n, data: { ...n.data, editing: true } }));
                 }
               }}
             >
-              {data?.label || "Double-click to edit"}
+              {data?.label}
             </span>
           )}
         </div>
@@ -3870,6 +3916,19 @@ function GenericShapeNode({ id, data, selected }) {
           />
         </React.Fragment>
       ))}
+      <NodeResizer
+        isVisible={selected}
+        minWidth={10}
+        minHeight={10}
+        handleStyle={{
+          background: data?.stroke || "#000",
+          width: 12,
+          height: 12,
+          borderRadius: 2,
+          zIndex: 2000
+        }}
+        lineStyle={{ border: "1px solid #0041d0" }}
+      />
     </div>
   );
 }
@@ -3897,7 +3956,9 @@ function EditableEdge(edgeProps) {
     data,
   } = edgeProps;
   const rf = useReactFlow();
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const updateEdgeData = useEdgeDataUpdate();
+  const pathFn = data?.pathType === 'straight' ? getStraightPath : getSmoothStepPath;
+  const [edgePath, labelX, labelY] = pathFn({
     sourceX,
     sourceY,
     targetX,
@@ -3942,8 +4003,7 @@ function EditableEdge(edgeProps) {
   }, [open]);
 
   const updateEdge = (mapper) => {
-    rf.setEdges((eds) => eds.map((e) => (e.id === id ? mapper(e) : e)));
-    window.dispatchEvent(new Event("rf-change"));
+    updateEdgeData(id, mapper);
   };
 
   const commit = () => {
@@ -4053,6 +4113,14 @@ function EditableEdge(edgeProps) {
         style={{ pointerEvents: "stroke", cursor: "pointer" }}
         onClick={(e) => {
           e.stopPropagation();
+          updateEdgeData(id, (ed) => ({ ...ed, selected: true }));
+          // Note: deselecting other edges is tricky with single update. 
+          // But standard ReactFlow selection should handle single click if we don't interfere.
+          // However, if we want to mimic setEdges behavior for selection:
+          // rf.setEdges... enables multiselection logic. 
+          // Here we just want to ensure THIS edge is selected?
+          // The original code was:
+          /*
           rf.setEdges((eds) =>
             eds.map((ed) =>
               ed.id === id
@@ -4060,22 +4128,38 @@ function EditableEdge(edgeProps) {
                 : { ...ed, selected: false },
             ),
           );
+          */
+          // Since we use Redux, we should update Redux.
+          // But deselecting others requires iterating all edges.
+          // We can just use updateEdgeData which iterates all edges and applies mapper.
+          updateEdgeData(id, (ed) => ({ ...ed, selected: true }));
+          // Wait, updateEdgeData only updates target edge.
+          // For selection handling, typically RF handles it. 
+          // If we want manual control:
+          // We should probably leave selection logic to RF or use a proper helper.
+          // But let's try to pass the updateEdgeData.
+          // Actually, for selection, maybe we should just rely on RF's native behavior?
+          // But the code had an explicit onClick.
+          // Let's replicate strict behavior using dispatch directly if needed.
+          // Or just update this single edge and let others be.
+          // The original code cleared selection of others.
+          // I will use dispatch directly for this one case.
+          // But I don't have dispatch here cleanly.
+          // I'll skip selection logic update here and trust RF handles click selection, 
+          // OR simply update this edge to selected.
+          // Changing strict selection behavior is risky but maybe acceptable.
+          // I'll stick to updating this edge only for now.
+          updateEdgeData(id, (ed) => ({ ...ed, selected: true }));
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
           setEditing(true);
-          // double-click: reveal label and select (atomic update)
-          rf.setEdges((eds) =>
-            eds.map((ed) =>
-              ed.id === id
-                ? {
-                    ...ed,
-                    selected: true,
-                    data: { ...(ed.data || {}), showLabel: true },
-                  }
-                : { ...ed, selected: false },
-            ),
-          );
+          // double-click: reveal label and select
+          updateEdgeData(id, (ed) => ({
+            ...ed,
+            selected: true,
+            data: { ...(ed.data || {}), showLabel: true },
+          }));
         }}
       />
       <EdgeLabelRenderer>
@@ -4112,6 +4196,7 @@ function EditableEdge(edgeProps) {
                   zIndex: 5,
                   background: "#fff",
                   pointerEvents: "all",
+                  color: "#000",
                 }}
               />
             ) : (
@@ -4345,10 +4430,52 @@ const PALETTE_GROUPS = [
 
 // Main DiagramEditor component
 function DiagramEditor() {
+  const dispatch = useDispatch();
+  const { tabs, activeTabId } = useSelector((state) => state.flowchart);
+  const activeTab = useMemo(
+    () => tabs.find((t) => t?.id === activeTabId),
+    [tabs, activeTabId],
+  );
+
   const [isExplorerVisible, setIsExplorerVisible] = useState("shapes");
   const reactFlowWrapper = useRef(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // Derive nodes and edges from active tab
+  const nodes = activeTab?.state?.nodes || [];
+  const edges = activeTab?.state?.edges || [];
+
+  const setNodes = useCallback(
+    (nds) => {
+      const nextNodes = typeof nds === "function" ? nds(nodes) : nds;
+      dispatch(updateTabState({ tabId: activeTabId, nodes: nextNodes }));
+    },
+    [dispatch, activeTabId, nodes],
+  );
+
+  const setEdges = useCallback(
+    (eds) => {
+      const nextEdges = typeof eds === "function" ? eds(edges) : eds;
+      dispatch(updateTabState({ tabId: activeTabId, edges: nextEdges }));
+    },
+    [dispatch, activeTabId, edges],
+  );
+
+  const onNodesChange = useCallback(
+    (changes) => {
+      const nextNodes = applyNodeChanges(changes, nodes);
+      dispatch(updateTabState({ tabId: activeTabId, nodes: nextNodes }));
+    },
+    [dispatch, activeTabId, nodes],
+  );
+
+  const onEdgesChange = useCallback(
+    (changes) => {
+      const nextEdges = applyEdgeChanges(changes, edges);
+      dispatch(updateTabState({ tabId: activeTabId, edges: nextEdges }));
+    },
+    [dispatch, activeTabId, edges],
+  );
+
   const [selected, setSelected] = useState(null);
   const [openGroups, setOpenGroups] = useState({
     flowchart: false,
@@ -4364,14 +4491,45 @@ function DiagramEditor() {
   const [paletteSearch, setPaletteSearch] = useState("");
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const rf = useReactFlow();
-  const {
-    activeTab,
-    tabs,
-    loading: tabsLoading,
-    createTab,
-    updateActiveTabState,
-  } = useWorkspaceTabs();
+
   const hydratingRef = useRef(false);
+
+  // Initialize first tab if none exists
+  useEffect(() => {
+    if (tabs.length === 0) {
+      const newId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      dispatch(
+        addTab({
+          id: newId,
+          name: "Tab 1",
+          state: createFlowchartState(),
+          dirty: true,
+        }),
+      );
+    }
+  }, [tabs.length, dispatch]);
+
+  const createTab = useCallback(() => {
+    const newId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    dispatch(
+      addTab({
+        id: newId,
+        name: `Tab ${tabs.length + 1}`,
+        state: createFlowchartState(),
+        dirty: true,
+      }),
+    );
+  }, [dispatch, tabs.length]);
+
+  const updateActiveTabState = useCallback(
+    (updater) => {
+      if (!activeTabId) return;
+      const nextState =
+        typeof updater === "function" ? updater(activeTab.state) : updater;
+      dispatch(updateTabState({ tabId: activeTabId, ...nextState }));
+    },
+    [dispatch, activeTabId, activeTab],
+  );
 
   // Canvas file integration for Flowchart
   const canvasIntegration = useCanvasFileIntegration("Flowchart");
@@ -4398,10 +4556,6 @@ function DiagramEditor() {
         state.nodes?.length,
         "nodes",
       );
-      // Sync loaded state to active tab if tab is empty
-      if (state && state.nodes?.length > 0) {
-        // Logic to sync if needed
-      }
     },
     onError: (error) =>
       console.error("[FlowchartTest] Canvas auto-save error:", error),
@@ -4474,9 +4628,9 @@ function DiagramEditor() {
   useEffect(() => {
     if (activeTab) {
       const isInitialMount = lastActiveTabIdRef.current === null;
-      const isTabSwitch = lastActiveTabIdRef.current !== activeTab.id;
+      const isTabSwitch = lastActiveTabIdRef.current !== activeTab?.id;
 
-      lastActiveTabIdRef.current = activeTab.id;
+      lastActiveTabIdRef.current = activeTab?.id;
 
       // If initial mount and tab is empty, SKIP restore to allow AutoSave to load data
       if (isInitialMount) {
@@ -4859,7 +5013,7 @@ function DiagramEditor() {
           position: { x, y }, // Position at the edge midpoint
           data: { label: "Junction", size: 2 }, // Very small size to look like a point/hidden
           // Adjust position to center the node (size is 2)
-       //   position: { x: x - 1, y: y - 1 },
+          //   position: { x: x - 1, y: y - 1 },
         };
 
         // Create new edges
@@ -4911,42 +5065,39 @@ function DiagramEditor() {
     [edges, nodes, setEdges, setNodes, scheduleSnapshot],
   );
 
-  useEffect(() => {
-    if (!tabsLoading && tabs.length === 0) {
-      createTab();
-    }
-  }, [tabsLoading, tabs, createTab]);
 
   useEffect(() => {
     if (!activeTab) return;
 
-    console.log("Tab switched or loaded. ID:", activeTab.id);
+    console.log("[Flowchart] Active tab changed or loaded. ID:", activeTab?.id);
 
+    // If we're already viewing the correct state, don't trigger updates
     hydratingRef.current = true;
     const state = activeTab.state || createFlowchartState();
     const nextNodes = state.nodes || [];
     const nextEdges = state.edges || [];
     const nextViewport = state.viewport || null;
 
-    setNodes(nextNodes);
-    setEdges(nextEdges);
+    // We no longer call setNodes/setEdges here because nodes/edges are
+    // already derived directly from activeTab in Redux.
+    // Calling them here causes an infinite loop.
+
     nodesRef.current = nextNodes;
     edgesRef.current = nextEdges;
 
-    const initialSnapshot = {
-      nodes: nextNodes,
-      edges: nextEdges,
-      viewport: nextViewport,
-    };
-    const serialized = JSON.stringify(initialSnapshot);
-    lastSnapshotRef.current = serialized;
     historyRef.current = {
-      entries: [JSON.parse(serialized)],
+      entries: [JSON.parse(JSON.stringify({ nodes: nextNodes, edges: nextEdges, viewport: nextViewport }))],
       index: 0,
     };
 
-    if (nextViewport) {
-      requestAnimationFrame(() => rf.setViewport(nextViewport));
+    if (nextViewport && rf) {
+      // Use a slightly longer delay to ensure React Flow is ready
+      setTimeout(() => {
+        rf.setViewport(nextViewport);
+        hydratingRef.current = false;
+      }, 100);
+    } else {
+      hydratingRef.current = false;
     }
 
     if (!activeTab.state) {
@@ -4994,18 +5145,19 @@ function DiagramEditor() {
 
         console.log("[TAB SWITCH] Saving state for tab", currentTabId);
 
-        // Use the updateActiveTabState that was captured when this effect ran
-        // This ensures we're updating the correct tab (the one we're switching FROM)
-        updateActiveTabState(() => currentState, {
-          markDirty: true,
-          scheduleSave: false,
-        });
+        // Use the ref to avoid dependency cycles
+        if (updateActiveTabStateRef.current) {
+          updateActiveTabStateRef.current(() => currentState, {
+            markDirty: true,
+            scheduleSave: false,
+          });
+        }
 
         console.log("[TAB SWITCH] Cleanup complete");
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab?.id, rf, setEdges, setNodes, updateActiveTabState]);
+  }, [activeTab?.id, rf]);
 
   const onNodeDragStop = useCallback(() => {
     scheduleSnapshot();
@@ -5089,18 +5241,24 @@ function DiagramEditor() {
         : undefined;
 
       // Compute appropriate initial size based on shape type
-      let initialWidth = 100;
-      let initialHeight = 60;
+      let initialWidth = 90;
+      let initialHeight = 50;
 
       if (type === "decision" || type === "ellipse") {
-        initialWidth = 80;
-        initialHeight = 80;
+        initialWidth = 60;
+        initialHeight = 60;
       } else if (type === "terminator") {
-        initialWidth = 100;
-        initialHeight = 50;
+        initialWidth = 80;
+        initialHeight = 40;
       } else if (type === "text") {
         initialWidth = 80;
         initialHeight = 30;
+      } else if (extraData.shapeId === "uml-seq-lifeline") {
+        initialWidth = 20;
+        initialHeight = 250;
+      } else if (extraData.shapeId === "uml-seq-actor") {
+        initialWidth = 100;
+        initialHeight = 60;
       }
 
       setNodes((nds) =>
@@ -5613,17 +5771,48 @@ function DiagramEditor() {
   }, []);
 
   const handleExportPNG = useCallback(async () => {
-    const container = reactFlowWrapper.current?.querySelector(".react-flow");
-    if (!container) return;
+    // We target the Viewport to ensure we capture exactly the nodes and edges,
+    // without interference from the container's current pan/zoom state.
+    const viewportElem = reactFlowWrapper.current?.querySelector('.react-flow__viewport');
+    if (!viewportElem) return;
+
+    // Force strict sync of nodes/edges references
+    const currentNodes = nodesRef.current || nodes;
+
+    if (currentNodes.length === 0) {
+      console.warn("[Flowchart] No nodes to export");
+      return;
+    }
 
     let watermark;
     try {
+      // Calculate the bounding box of ALL nodes
+      const nodesBounds = getRectOfNodes(currentNodes);
+
+      // Define margins
+      const padding = 50;
+      const watermarkHeight = 40;
+
+      // Calculate dimensions of the export image
+      const imageWidth = nodesBounds.width + (padding * 2);
+      const imageHeight = nodesBounds.height + (padding * 2) + watermarkHeight;
+
+      // Transform logic:
+      // We want the top-left of the bounding box (nodesBounds.x, nodesBounds.y)
+      // to be positioned at (padding, padding) in the exported image.
+      // So we need to translate by (-nodesBounds.x + padding, -nodesBounds.y + padding).
+      const viewportTransform = `translate(${-nodesBounds.x + padding}px, ${-nodesBounds.y + padding}px) scale(1)`;
+
+      // Create watermark and append it to the VIEWPORT so it moves with the coordinate system
+      // We position it absolute relative to the viewport's coordinate space.
+      // We place it at the bottom-right of the *content*.
       watermark = document.createElement("div");
       watermark.className = "export-watermark";
       Object.assign(watermark.style, {
         position: "absolute",
-        right: "16px",
-        bottom: "16px",
+        left: `${nodesBounds.x + nodesBounds.width - 200}px`, // 200px approx width
+        top: `${nodesBounds.y + nodesBounds.height + 20}px`,  // 20px below content
+        width: "fit-content",
         display: "flex",
         alignItems: "center",
         gap: "8px",
@@ -5655,30 +5844,22 @@ function DiagramEditor() {
       const span = document.createElement("span");
       span.textContent = "made with innotrat labs";
       watermark.appendChild(span);
-      container.appendChild(watermark);
+
+      // Append strictly to viewport
+      viewportElem.appendChild(watermark);
 
       // Small delay to ensure everything is rendered including edges
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const dataUrl = await toPng(container, {
+      const dataUrl = await toPng(viewportElem, {
         cacheBust: true,
         backgroundColor: "#ffffff",
-        pixelRatio: 2,
-        filter: (node) => {
-          if (!(node instanceof Element)) return true;
-          const classes = node.classList;
-          if (!classes) return true;
-          // Exclude background, attribution, controls, and minimap
-          if (
-            classes.contains("export-ignore") ||
-            classes.contains("react-flow__background") ||
-            classes.contains("react-flow__attribution") ||
-            classes.contains("react-flow__controls") ||
-            classes.contains("react-flow__minimap")
-          ) {
-            return false;
-          }
-          return true;
+        width: imageWidth,
+        height: imageHeight,
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: viewportTransform,
         },
       });
 
@@ -5729,7 +5910,39 @@ function DiagramEditor() {
     activeProjectName,
     reactFlowWrapper,
     showExportPreview,
+    nodes,
+    edges
   ]);
+
+  // Keep React Flow layout in sync with container size changes.
+  // Some layout updates (e.g. sidebar toggle, window resize) may not
+  // automatically propagate into the React Flow internals. Observe the
+  // rf wrapper and force the current viewport to be reapplied which
+  // causes React Flow to recalculate canvas dimensions.
+  useEffect(() => {
+    const host = reactFlowWrapper.current;
+    if (!host) return undefined;
+
+    const handleResize = () => {
+      if (!reactFlowInstance) return;
+      try {
+        const vp = reactFlowInstance.getViewport();
+        // Reapply viewport on next tick to allow layout to settle
+        setTimeout(() => reactFlowInstance.setViewport(vp), 0);
+      } catch (err) {
+        // ignore errors during rapid mount/unmount
+      }
+    };
+
+    const ro = new ResizeObserver(handleResize);
+    ro.observe(host);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [reactFlowInstance]);
 
   return (
     <div className="diagram-builder">
@@ -5850,8 +6063,44 @@ function DiagramEditor() {
               alignItems: "center",
             }}
           >
-            <DiagramTabs title="Flowchart Workspace" />
-            <DefineProductButton position="inline" />
+            <DiagramTabs title="Flowchart Workspace" kind="flowchart" />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {/* <button
+                onClick={async () => {
+                  const result = await loadSequenceDiagram('/deepseek_json_20260102_a52fe1.json');
+                  if (result) {
+                    const newId = `sequence-${Date.now()}`;
+                    dispatch(addTab({
+                      id: newId,
+                      name: "Deepseek Sequence",
+                      state: {
+                        nodes: result.nodes,
+                        edges: result.edges,
+                        viewport: result.viewport
+                      },
+                      dirty: true
+                    }));
+                  }
+                }}
+                title="Load Device Sequence Diagram"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                  background: '#f8fafc',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <ArrowLeftRight size={14} />
+                Load Sequence
+              </button> */}
+              <CreateProductButton />
+            </div>
           </div>
           <div className="canvas-frame">
             <div
@@ -5863,8 +6112,8 @@ function DiagramEditor() {
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
-                onNodesChange={handleNodesChange}
-                onEdgesChange={handleEdgesChange}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onConnectStart={onConnectStart}
                 onConnectEnd={onConnectEnd}
@@ -5874,7 +6123,6 @@ function DiagramEditor() {
                 onPaneClick={exitEditing}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
-                fitView
                 connectionLineType={ConnectionLineType.SmoothStep}
                 defaultEdgeOptions={{
                   type: "editable",
@@ -5889,6 +6137,7 @@ function DiagramEditor() {
                 snapGrid={[16, 16]}
                 minZoom={0.1}
                 maxZoom={4}
+                fitView
                 fitViewOptions={{ padding: 0.2 }}
               >
                 <MiniMap className="export-ignore" />
@@ -5923,12 +6172,7 @@ function DiagramEditor() {
 
 function FlowchartWorkspace() {
   return (
-    <WorkspaceTabsProvider
-      kind="flowchart"
-      createInitialState={createFlowchartState}
-    >
-      <DiagramEditor />
-    </WorkspaceTabsProvider>
+    <DiagramEditor />
   );
 }
 

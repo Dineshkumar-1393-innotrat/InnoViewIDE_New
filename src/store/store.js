@@ -3,6 +3,11 @@ import { persistStore, persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage"; // defaults to localStorage for web
 import { combineReducers } from "redux";
 import simulationReducer from "./slices/simulationSlice";
+import flowchartReducer from "./slices/flowchartSlice";
+import blockDiagramReducer from "./slices/blockDiagramSlice";
+import blockProgrammingReducer from "./slices/blockProgrammingSlice";
+import editorReducer from "./slices/editorSlice";
+import mathEditorReducer from "./slices/mathEditorSlice";
 import {
   createAutoSaveMiddleware,
   autoSaveEventMiddleware,
@@ -11,12 +16,24 @@ import { autoSaveManager } from "../utils/autoSaveManager";
 
 const rootReducer = combineReducers({
   simulation: simulationReducer,
+  flowchart: flowchartReducer,
+  blockDiagram: blockDiagramReducer,
+  blockProgramming: blockProgrammingReducer,
+  editor: editorReducer,
+  mathEditor: mathEditorReducer,
 });
 
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["simulation"], // only persist simulation state for now
+  whitelist: [
+    "simulation",
+    "flowchart",
+    "blockDiagram",
+    "blockProgramming",
+    "editor",
+    "mathEditor",
+  ], // persist state for all relevant screens
 };
 
 // Create auto-save middleware with custom configuration

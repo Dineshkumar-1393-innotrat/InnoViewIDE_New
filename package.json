@@ -39,6 +39,7 @@
     "frame": "^1.0.0-alpha.2",
     "framer-motion": "^11.18.2",
     "html-to-image": "^1.11.11",
+    "html2canvas": "^1.4.1",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.447.0",
     "monaco-editor": "^0.52.0",

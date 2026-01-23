@@ -76,7 +76,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/${productID}/definition`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -258,7 +258,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/${productID}/definition`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -465,7 +465,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/${productID}/definition`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -680,7 +680,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/${productID}/definition`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -851,10 +851,10 @@ const DefineProductOne = () => {
   useEffect(() => {
     const storedProductID = sessionStorage.getItem("productID");
     const storedDeviceName = sessionStorage.getItem("deviceName");
-    
+
     if (storedProductID) setProductID(storedProductID);
     if (storedDeviceName) setDeviceName(storedDeviceName);
-    
+
     if (location.state?.userId) {
       setUserId(location.state.userId);
     }
@@ -916,7 +916,7 @@ const DefineProductOne = () => {
 
     try {
       const response = await axios.post(
-        `https://eureka.innotrat.in/product/${productID}/definition`,
+        `https://eureka.innotrat.in/product/:productID/definitionNew`,
         {
           productID,
           productName: deviceName,

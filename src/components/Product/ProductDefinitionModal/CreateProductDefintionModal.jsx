@@ -95,7 +95,9 @@ const CreateProductDefintionModal = ({
         onClick={onOpen}
         size={"sm"}
         colorScheme="teal"
-        float={"inline-end"}
+        borderRadius="full"
+        height="32px"
+        px={6}
         zIndex={999}
       >
         Define Product
@@ -109,7 +111,7 @@ const CreateProductDefintionModal = ({
           <ModalCloseButton />
           <ModalBody>
             <CreateProductDefinition
-             setIsProductDefined={setIsProductDefined}
+              setIsProductDefined={setIsProductDefined}
               productID={activeProductId}
               productName={activeProjectName}
               onClose={onClose}

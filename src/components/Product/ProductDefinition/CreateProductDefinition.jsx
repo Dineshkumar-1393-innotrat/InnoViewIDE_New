@@ -49,7 +49,7 @@
 
 // //     try {
 // //       const response = await axios.post(
-// //         `https://eureka.innotrat.in/product/${productId}/definition`,
+// //         `https://eureka.innotrat.in/product/:productID/definitionNew`,
 // //         resultData
 // //       );
 // //       console.log("Data successfully sent to the server:", response.data);

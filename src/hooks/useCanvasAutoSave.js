@@ -177,9 +177,13 @@ export const useCanvasAutoSave = (options = {}) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState(null);
 
-    // Refs to avoid stale closures
+    // Refs to avoid stale closures and prevent infinite loops from unstable callbacks
     const getStateRef = useRef(getState);
     const setStateRef = useRef(setState);
+    const onSaveRef = useRef(onSave);
+    const onLoadRef = useRef(onLoad);
+    const onErrorRef = useRef(onError);
+
     const saveTimerRef = useRef(null);
     const storageKeyRef = useRef('');
     const isUnmountingRef = useRef(false);
@@ -187,11 +191,11 @@ export const useCanvasAutoSave = (options = {}) => {
     // Update refs when callbacks change
     useEffect(() => {
         getStateRef.current = getState;
-    }, [getState]);
-
-    useEffect(() => {
         setStateRef.current = setState;
-    }, [setState]);
+        onSaveRef.current = onSave;
+        onLoadRef.current = onLoad;
+        onErrorRef.current = onError;
+    }, [getState, setState, onSave, onLoad, onError]);
 
     // Calculate storage key
     // We use a ref to track the previous key to handle switching correctly
@@ -220,10 +224,10 @@ export const useCanvasAutoSave = (options = {}) => {
 
             if (success) {
                 setLastSaveTime(Date.now());
-                onSave?.(currentState);
+                onSaveRef.current?.(currentState);
             } else {
                 setError('Failed to save');
-                onError?.(new Error('Failed to save to localStorage'));
+                onErrorRef.current?.(new Error('Failed to save to localStorage'));
             }
 
             setIsSaving(false);
@@ -232,10 +236,10 @@ export const useCanvasAutoSave = (options = {}) => {
             console.error('[CanvasAutoSave] Save error:', err);
             setError(err.message);
             setIsSaving(false);
-            onError?.(err);
+            onErrorRef.current?.(err);
             return false;
         }
-    }, [enabled, onSave, onError]);
+    }, [enabled]); // Removed onSave, onError
 
     /**
      * Schedule a debounced save
@@ -270,7 +274,7 @@ export const useCanvasAutoSave = (options = {}) => {
 
             if (loadedState && setStateRef.current) {
                 setStateRef.current(loadedState);
-                onLoad?.(loadedState);
+                onLoadRef.current?.(loadedState);
                 setIsLoaded(true);
                 return loadedState;
             }
@@ -280,11 +284,11 @@ export const useCanvasAutoSave = (options = {}) => {
         } catch (err) {
             console.error('[CanvasAutoSave] Load error:', err);
             setError(err.message);
-            onError?.(err);
+            onErrorRef.current?.(err);
             setIsLoaded(true);
             return null;
         }
-    }, [enabled, screenPath, onLoad, onError]);
+    }, [enabled, screenPath]); // Removed onLoad, onError
 
     /**
      * Clear saved state

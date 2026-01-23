@@ -9,6 +9,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
   ConnectionLineType,
   MarkerType,
   ReactFlowProvider,
@@ -17,7 +19,17 @@ import ReactFlow, {
   EdgeLabelRenderer,
   getSmoothStepPath,
   ConnectionMode,
+  getRectOfNodes,
+  getTransformForBounds,
 } from 'reactflow';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  setTabs,
+  setActiveTab,
+  addTab,
+  closeTab,
+  updateTabState,
+} from '../store/slices/blockDiagramSlice';
 import { NodeResizer } from '@reactflow/node-resizer';
 import { toPng } from 'html-to-image';
 import 'reactflow/dist/style.css';
@@ -33,7 +45,6 @@ import DiagramTabs from './DiagramTabs';
 import MobileMenuButton from './MobileMenuButton';
 import { useResponsiveSidebar } from '../hooks/useResponsiveSidebar';
 import { saveAssetToScreenFolder } from '../utils/screenFileManager';
-import { useAutoSaveTabs } from '../hooks/useAutoSaveTabs';
 import { canvasIntegration, ReactFlowCanvasHandler } from '../utils/canvasIntegration';
 import { Settings, ArrowLeftRight, RotateCcw, RotateCw } from 'lucide-react';
 import hexBg from '../assets/hex_bg.png';
@@ -43,8 +54,7 @@ import { saveProjectFile, sanitizeSegment, ensureProjectFolder } from '../utils/
 import { projectManager } from '../utils/projectManager';
 import projectFileManager from '../utils/projectFileManager';
 import { useCanvasFileIntegration } from '../hooks/useCanvasFileIntegration';
-import { WorkspaceTabsProvider, useWorkspaceTabs } from '../hooks/useWorkspaceTabs';
-import DefineProductButton from './shared/DefineProductButton';
+import CreateProductButton from './shared/CreateProductButton';
 import { useNavigate } from 'react-router-dom';
 import { useReactFlowAutoSave } from '../hooks/useCanvasAutoSave';
 
@@ -1581,10 +1591,52 @@ const PALETTE_GROUPS = [
 ];
 
 function DiagramEditor() {
+  const dispatch = useDispatch();
+  const { tabs, activeTabId } = useSelector((state) => state.blockDiagram);
+  const activeTab = useMemo(
+    () => tabs.find((t) => t?.id === activeTabId),
+    [tabs, activeTabId],
+  );
+
   const [isExplorerVisible, setIsExplorerVisible] = useState('explorer');
   const reactFlowWrapper = useRef(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // Derive nodes and edges from active tab
+  const nodes = activeTab?.state?.nodes || [];
+  const edges = activeTab?.state?.edges || [];
+
+  const setNodes = useCallback(
+    (nds) => {
+      const nextNodes = typeof nds === "function" ? nds(nodes) : nds;
+      dispatch(updateTabState({ tabId: activeTabId, nodes: nextNodes }));
+    },
+    [dispatch, activeTabId, nodes],
+  );
+
+  const setEdges = useCallback(
+    (eds) => {
+      const nextEdges = typeof eds === "function" ? eds(edges) : eds;
+      dispatch(updateTabState({ tabId: activeTabId, edges: nextEdges }));
+    },
+    [dispatch, activeTabId, edges],
+  );
+
+  const onNodesChange = useCallback(
+    (changes) => {
+      const nextNodes = applyNodeChanges(changes, nodes);
+      dispatch(updateTabState({ tabId: activeTabId, nodes: nextNodes }));
+    },
+    [dispatch, activeTabId, nodes],
+  );
+
+  const onEdgesChange = useCallback(
+    (changes) => {
+      const nextEdges = applyEdgeChanges(changes, edges);
+      dispatch(updateTabState({ tabId: activeTabId, edges: nextEdges }));
+    },
+    [dispatch, activeTabId, edges],
+  );
+
   const [selected, setSelected] = useState(null);
   const [hasProjects, setHasProjects] = useState(false);
   const [clipboard, setClipboard] = useState({ nodes: [], edges: [] });
@@ -1605,12 +1657,6 @@ function DiagramEditor() {
     onSave: (state) => console.log("[BlockDiagram] Canvas auto-saved:", state.nodes?.length, "nodes"),
     onLoad: (state) => {
       console.log("[BlockDiagram] Canvas state restored:", state.nodes?.length, "nodes");
-      // Sync loaded state to active tab if tab is empty
-      if (state && (state.nodes?.length > 0)) {
-        // We can't access activeTab directly here due to closure, but checking it in effect is better?
-        // Actually, we can just trigger a sync action or let the effect handle it?
-        // Best to leave this simple logging for now and rely on the skip-restore logic.
-      }
     },
     onError: (error) => console.error("[BlockDiagram] Canvas auto-save error:", error),
   });
@@ -1620,27 +1666,40 @@ function DiagramEditor() {
   const nodesRef = useRef([]);
   const edgesRef = useRef([]);
   const debounceRef = useRef(null);
-  
+
   const hydratingRef = useRef(false);
   const lastSnapshotRef = useRef('');
   const lastActiveTabIdRef = useRef(null);
 
-  // Add auto-save tabs functionality
-  const {
-    tabs: autoSaveTabs,
-    activeTab: activeAutoSaveTab,
-    addNewTab: addNewAutoSaveTab,
-    closeTab: closeAutoSaveTab,
-    updateTabContent: updateAutoSaveTabContent,
-    openFileAsTab,
-    tabManager
-  } = useAutoSaveTabs([
-    { id: 1, name: "diagram.json", content: "{}", dirty: false }
-  ], {
-    maxTabs: 5,
-    defaultTabName: "diagram",
-    defaultContent: "{}"
-  });
+  // Unify tabs functionality into Redux
+  const createTab = useCallback(() => {
+    const newId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    dispatch(
+      addTab({
+        id: newId,
+        name: `Tab ${tabs.length + 1}`,
+        state: createBlockDiagramState(),
+        dirty: true,
+      }),
+    );
+  }, [dispatch, tabs.length]);
+
+  const updateActiveTabState = useCallback(
+    (updater) => {
+      if (!activeTabId) return;
+      const nextState =
+        typeof updater === "function" ? updater(activeTab.state) : updater;
+      dispatch(updateTabState({ tabId: activeTabId, ...nextState }));
+    },
+    [dispatch, activeTabId, activeTab],
+  );
+
+  // Initialize first tab if none exists
+  useEffect(() => {
+    if (tabs.length === 0) {
+      createTab();
+    }
+  }, [tabs.length, createTab]);
 
   // Enhanced file click handler for project management
   const handleFileClick = useCallback(async (filePath, fileName, parsedContent, fileData) => {
@@ -1667,7 +1726,20 @@ function DiagramEditor() {
         }
 
         // Also open as tab for editing
-        await openFileAsTab(filePath, fileName, result.content);
+        const newId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        dispatch(
+          addTab({
+            id: newId,
+            name: fileName,
+            fileId: filePath, // Using filePath as fileId link
+            state: {
+              nodes: parsedContent?.nodes || [],
+              edges: parsedContent?.edges || [],
+              viewport: parsedContent?.viewport || null
+            },
+            dirty: false
+          })
+        );
         console.log(`Loaded ${fileName} into Block Diagram canvas and opened as tab`);
       } else {
         console.error('Failed to load file:', result.error);
@@ -1675,16 +1747,15 @@ function DiagramEditor() {
     } catch (error) {
       console.error('Failed to handle file click:', error);
     }
-  }, [canvasIntegration, setNodes, setEdges, rf, openFileAsTab]);
+  }, [canvasIntegration, setNodes, setEdges, rf, dispatch, tabs]);
 
   // Get currently open file IDs for highlighting in explorer
-  const currentScreenFiles = autoSaveTabs
+  const currentScreenFiles = tabs
     .filter(tab => tab.fileId)
     .map(tab => tab.fileId);
 
   const [openGroups, setOpenGroups] = useState({ blocks: true });
   const [paletteSearch, setPaletteSearch] = useState('');
-  const { activeTab, tabs, loading: tabsLoading, createTab, updateActiveTabState } = useWorkspaceTabs();
 
   const navigate = useNavigate();
   const { user, activeProjectId, activeProjectName, setActiveProjectId } = useProject?.() ?? {};
@@ -1720,47 +1791,33 @@ function DiagramEditor() {
 
   // PART 2: Restore state when active tab changes
   useEffect(() => {
-    if (activeTab) {
-      const isInitialMount = lastActiveTabIdRef.current === null;
-      const isTabSwitch = lastActiveTabIdRef.current !== activeTab.id;
+    if (!activeTab) return;
 
-      lastActiveTabIdRef.current = activeTab.id;
+    const isInitialMount = lastActiveTabIdRef.current === null;
+    const isTabSwitch = lastActiveTabIdRef.current !== activeTab?.id;
 
-      // If initial mount and tab is empty, SKIP restore to allow AutoSave to load data
-      if (isInitialMount) {
-        const isEmpty = !activeTab.state || !activeTab.state.nodes || activeTab.state.nodes.length === 0;
-        if (isEmpty) {
-          console.log('[BlockDiagram] Initial mount with empty tab - Skipping restore to let AutoSave load');
-          return;
-        }
+    lastActiveTabIdRef.current = activeTab?.id;
+
+    if ((isTabSwitch || isInitialMount) && activeTab.state) {
+      console.log('[BlockDiagram] Active tab changed, restoring viewport:', activeTab.name);
+
+      const newState = activeTab.state;
+      // We no longer call setNodes/setEdges here because they are derived from Redux.
+      // We just update the refs for snapshots.
+      if (newState.nodes) {
+        nodesRef.current = newState.nodes;
+      }
+      if (newState.edges) {
+        edgesRef.current = newState.edges;
       }
 
-      // Only restore if it's a switch or initial mount (non-empty)
-      // We check activeTab.state existence too
-      if ((isTabSwitch || isInitialMount) && activeTab.state) {
-        console.log('[BlockDiagram] Active tab changed, restoring canvas state:', activeTab.name);
-
-        // Stop rendering/auto-saving while we restore
-        // Optional: clear canvas first if needed
-
-
-        const newState = activeTab.state;
-        if (newState.nodes) {
-          setNodes(newState.nodes);
-          nodesRef.current = newState.nodes;
-        }
-        if (newState.edges) {
-          setEdges(newState.edges);
-          edgesRef.current = newState.edges;
-        }
-        if (newState.viewport && rf) {
-          setTimeout(() => {
-            rf.setViewport(newState.viewport);
-          }, 50);
-        }
+      if (newState.viewport && rf) {
+        setTimeout(() => {
+          rf.setViewport(newState.viewport);
+        }, 100);
       }
     }
-  }, [activeTab, setNodes, setEdges, rf]);
+  }, [activeTab?.id, rf]); // Use ID for stability
 
   // Canvas file integration
   // Check for existing projects and manage project state
@@ -1806,48 +1863,6 @@ function DiagramEditor() {
     };
   }, [activeProjectId, setActiveProjectId, userId]);
 
-  // Setup auto-save functionality
-  useEffect(() => {
-    const activeProject = projectFileManager.getActiveProject();
-    if (!activeProject) return;
-
-    const filePath = 'BlockDiagram/system_diagram.json';
-
-    // Function to get current canvas content
-    const getCanvasContent = () => ({
-      nodes,
-      edges,
-      viewport: rf.getViewport()
-    });
-
-    // Setup auto-save on changes (debounced)
-    const autoSave = canvasIntegration.setupAutoSaveOnChange(
-      getCanvasContent,
-      activeProject.id,
-      filePath,
-      2000 // 2 second debounce
-    );
-
-    return autoSave?.cleanup;
-  }, [nodes, edges, rf, canvasIntegration]);
-
-  // Trigger auto-save when nodes or edges change
-  useEffect(() => {
-    const activeProject = projectFileManager.getActiveProject();
-    if (!activeProject) return;
-
-    // Debounced save trigger
-    const timer = setTimeout(() => {
-      const content = {
-        nodes,
-        edges,
-        viewport: rf.getViewport()
-      };
-      canvasIntegration.saveCanvasToFile(content, 'BlockDiagram/system_diagram.json', activeProject.id);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [nodes, edges, rf, canvasIntegration]);
 
   const handleTabChange = useCallback((tab) => {
     const routes = {
@@ -1914,7 +1929,7 @@ function DiagramEditor() {
           position: { x, y }, // Position at the edge midpoint
           data: { label: 'Junction', size: 2 }, // Very small size to look like a point/hidden
           // Adjust position to center the node (size is 2)
-       //   position: { x: x - 1, y: y - 1 },
+          //   position: { x: x - 1, y: y - 1 },
         };
 
         // Create new edges
@@ -2446,19 +2461,54 @@ function DiagramEditor() {
   }, []);
 
   const handleExportPNG = useCallback(async () => {
-    const rfContainer = reactFlowWrapper.current?.querySelector('.react-flow');
-    if (!rfContainer) return;
+    // We target the Viewport to ensure we capture exactly the nodes and edges, 
+    // without interference from the container's current pan/zoom state.
+    const viewportElem = reactFlowWrapper.current?.querySelector('.react-flow__viewport');
+    if (!viewportElem) return;
+
+    // Force strict sync of nodes/edges references
+    const currentNodes = nodesRef.current || nodes;
+
+    if (currentNodes.length === 0) {
+      console.warn("No nodes to export");
+      return;
+    }
 
     let watermark;
 
     try {
-      // Create watermark
+      // Calculate the bounding box of ALL nodes
+      const nodesBounds = getRectOfNodes(currentNodes);
+
+      // Define margins
+      const padding = 50;
+      const watermarkHeight = 40;
+
+      // Calculate dimensions of the export image
+      const imageWidth = nodesBounds.width + (padding * 2);
+      const imageHeight = nodesBounds.height + (padding * 2) + watermarkHeight;
+
+      // Transform logic:
+      // We want the top-left of the bounding box (nodesBounds.x, nodesBounds.y) 
+      // to be positioned at (padding, padding) in the exported image.
+      // So we need to translate by (-nodesBounds.x + padding, -nodesBounds.y + padding).
+      const viewportTransform = `translate(${-nodesBounds.x + padding}px, ${-nodesBounds.y + padding}px) scale(1)`;
+
+      // Create watermark and append it to the VIEWPORT so it moves with the coordinate system
+      // We position it absolute relative to the viewport's coordinate space.
+      // We place it at the bottom-right of the *content*.
       watermark = document.createElement('div');
       watermark.className = 'export-watermark';
       Object.assign(watermark.style, {
         position: 'absolute',
-        right: '16px',
-        bottom: '16px',
+        // Coordinate space is the same as nodes. 
+        // We want it at (nodesBounds.x + nodesBounds.width, nodesBounds.y + nodesBounds.height)
+        // But adjusted for padding in the final image?
+        // No, `toPng` will capture the viewport children as they are configured.
+        // If we append to viewport, we use absolute positioning in the graph coordinates.
+        left: `${nodesBounds.x + nodesBounds.width - 200}px`, // 200px approx width of watermark
+        top: `${nodesBounds.y + nodesBounds.height + 20}px`,  // 20px below content
+        width: 'fit-content',
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
@@ -2469,7 +2519,7 @@ function DiagramEditor() {
         fontSize: '13px',
         fontWeight: '500',
         color: '#111',
-        pointerEvents: 'none',
+        pointerEvents: 'none', // dont block mouse while it exists briefly
         zIndex: '9999',
       });
 
@@ -2496,30 +2546,22 @@ function DiagramEditor() {
       span.textContent = 'made with innotrat labs';
       span.style.whiteSpace = 'nowrap';
       watermark.appendChild(span);
-      rfContainer.appendChild(watermark);
 
-      // Wait for render
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Append strictly to viewport
+      viewportElem.appendChild(watermark);
 
-      // Capture the entire react-flow container
-      const dataUrl = await toPng(rfContainer, {
+      // Small delay to ensure render
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const dataUrl = await toPng(viewportElem, {
         cacheBust: true,
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        filter: (node) => {
-          if (!(node instanceof Element)) return true;
-          const classes = node.classList;
-          if (!classes) return true;
-          // Exclude controls, minimap, and background
-          if (
-            classes.contains('react-flow__controls') ||
-            classes.contains('react-flow__minimap') ||
-            classes.contains('react-flow__background') ||
-            classes.contains('react-flow__attribution')
-          ) {
-            return false;
-          }
-          return true;
+        backgroundColor: '#ffffff', // Set background since viewport is transparent
+        width: imageWidth,
+        height: imageHeight,
+        style: {
+          width: `${imageWidth}px`,
+          height: `${imageHeight}px`,
+          transform: viewportTransform,
         },
       });
 
@@ -2560,7 +2602,7 @@ function DiagramEditor() {
         watermark.parentNode.removeChild(watermark);
       }
     }
-  }, [canvasIntegration, activeProjectName, reactFlowWrapper, showExportPreview]);
+  }, [canvasIntegration, activeProjectName, reactFlowWrapper, showExportPreview, nodes, edges]);
 
   // UI
   return (
@@ -2675,8 +2717,10 @@ function DiagramEditor() {
             justifyContent: 'space-between',
             alignItems: 'center'
           }}>
-            <DiagramTabs title="Block Diagram Workspace" />
-            <DefineProductButton position="inline" />
+            <DiagramTabs title="Block Diagram Workspace" kind="blockDiagram" />
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <CreateProductButton />
+            </div>
           </div>
           <div className="canvas-frame">
             <div
@@ -2711,6 +2755,8 @@ function DiagramEditor() {
                 connectionMode={ConnectionMode.Strict}
                 snapToGrid
                 snapGrid={[16, 16]}
+                fitView
+                fitViewOptions={{ padding: 0.2 }}
               >
                 <MiniMap className="export-ignore" />
                 <Controls className="export-ignore">
@@ -2744,9 +2790,7 @@ function DiagramEditor() {
 
 function BlockDiagramWorkspace() {
   return (
-    <WorkspaceTabsProvider kind="blockdiagram" createInitialState={createBlockDiagramState}>
-      <DiagramEditor />
-    </WorkspaceTabsProvider>
+    <DiagramEditor />
   );
 }
 

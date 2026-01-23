@@ -1256,40 +1256,43 @@
 
 
 // const LOGIC_GROUPS = [
-//   {
-//     id: 'logic',
+// {
+//   id: 'logic',
 //     title: 'Logic Blocks',
-//     category: 'logic',
-//     items: [
-//       { type: 'logic', label: 'IF', variant: 'rectangle', category: 'logic' },
-//       { type: 'logic', label: 'ELSE IF', variant: 'rectangle', category: 'logic' },
-//       { type: 'logic', label: 'ELIF', variant: 'rectangle', category: 'logic' },
-//       { type: 'logic', label: 'SWITCH', variant: 'rectangle', category: 'logic' },
-//       { type: 'logic', label: 'CASE', variant: 'rectangle', category: 'logic' },
-//       { type: 'logic', label: 'ELSE', variant: 'rectangle', category: 'logic' },
-//     ],
+//       category: 'logic',
+//         items: [
+//           { type: 'logic', label: 'IF', variant: 'rectangle', category: 'logic' },
+//           { type: 'logic', label: 'ELSE IF', variant: 'rectangle', category: 'logic' },
+//           { type: 'logic', label: 'SWITCH', variant: 'rectangle', category: 'logic' },
+//           { type: 'logic', label: 'CASE', variant: 'rectangle', category: 'logic' },
+//           { type: 'logic', label: 'ELSE', variant: 'rectangle', category: 'logic' },
+//           { type: 'logic', label: 'DEFAULT', variant: 'rectangle', category: 'logic' },
+//         ],
 //   },
-//   {
-//     id: 'io',
+// {
+//   id: 'io',
 //     title: 'Input / Output',
-//     category: 'io',
-//     items: [
-//       { type: 'logic', label: 'READ INPUT', variant: 'rectangle', category: 'io' },
-//       { type: 'logic', label: 'READ GPIO', variant: 'rectangle', category: 'io' },
-//       { type: 'logic', label: 'READ SWITCH', variant: 'rectangle', category: 'io' },
-//       { type: 'logic', label: 'LED ON', variant: 'rectangle', category: 'io' },
-//       { type: 'logic', label: 'LED OFF', variant: 'rectangle', category: 'io' },
-//     ],
+//       category: 'io',
+//         items: [
+//           { type: 'logic', label: 'READ INPUT', variant: 'rectangle', category: 'io' },
+//           { type: 'logic', label: 'READ GPIO', variant: 'rectangle', category: 'io' },
+//           { type: 'logic', label: 'READ SWITCH', variant: 'rectangle', category: 'io' },
+//           { type: 'logic', label: 'LED ON', variant: 'rectangle', category: 'io' },
+//           { type: 'logic', label: 'LED OFF', variant: 'rectangle', category: 'io' },
+//         ],
 //   },
-//   {
-//     id: 'flow',
+// {
+//   id: 'flow',
 //     title: 'Flow Helpers',
-//     category: 'flow',
-//     items: [
-//       { type: 'logic', label: 'START', variant: 'rectangle', category: 'flow' },
-//       { type: 'logic', label: 'STOP', variant: 'rectangle', category: 'flow' },
-//       { type: 'logic', label: 'LOOP', variant: 'rectangle', category: 'flow' },
-//     ],
+//       category: 'flow',
+//         items: [
+//           { type: 'logic', label: 'START', variant: 'rectangle', category: 'flow' },
+//           { type: 'logic', label: 'STOP', variant: 'rectangle', category: 'flow' },
+//           { type: 'logic', label: 'LOOP', variant: 'rectangle', category: 'flow' },
+//           { type: 'logic', label: 'BREAK', variant: 'rectangle', category: 'flow' },
+//           { type: 'logic', label: 'CONTINUE', variant: 'rectangle', category: 'flow' },
+//           { type: 'logic', label: 'DELAY', variant: 'rectangle', category: 'flow' },
+//         ],
 //   },
 // ];
 
@@ -2466,6 +2469,8 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
   MarkerType,
   ReactFlowProvider,
   useReactFlow,
@@ -2474,6 +2479,14 @@ import ReactFlow, {
   Panel,
   useKeyPress,
 } from 'reactflow';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  setTabs,
+  setActiveTab,
+  addTab,
+  closeTab,
+  updateTabState,
+} from '../store/slices/blockProgrammingSlice';
 import { NodeResizer } from '@reactflow/node-resizer';
 import 'reactflow/dist/style.css';
 import '@reactflow/node-resizer/dist/style.css';
@@ -2489,19 +2502,31 @@ import { saveProjectFile, sanitizeSegment, ensureProjectFolder } from '../utils/
 import { saveAssetToScreenFolder } from '../utils/screenFileManager';
 import { useProject } from '../ProjectContext';
 import DiagramTabs from './DiagramTabs';
-import { WorkspaceTabsProvider, useWorkspaceTabs } from '../hooks/useWorkspaceTabs';
 import projectFileManager from '../utils/projectFileManager';
 import { useCanvasFileIntegration } from '../hooks/useCanvasFileIntegration';
 import ProjectFileExplorer from './ProjectFileExplorer';
+
+// Sound effect paths (Blockly inspired)
+const SOUND_PATHS = {
+  CLICK: 'https://github.com/google/blockly/raw/master/media/click.mp3',
+  DELETE: 'https://github.com/google/blockly/raw/master/media/delete.mp3',
+  DISCONNECT: 'https://github.com/google/blockly/raw/master/media/disconnect.mp3',
+};
+
+const playSound = (path) => {
+  const audio = new Audio(path);
+  audio.volume = 0.5;
+  audio.play().catch(e => console.warn('Sound play failed:', e));
+};
 
 // Block color scheme - each block type has unique colors
 const BLOCK_COLORS = {
   "IF": { fill: "#DBEAFE", stroke: "#1E40AF", text: "#1E3A8A" },
   "ELSE IF": { fill: "#FED7AA", stroke: "#C2410C", text: "#7C2D12" },
-  "ELIF": { fill: "#FEF3C7", stroke: "#A16207", text: "#713F12" },
   "SWITCH": { fill: "#E9D5FF", stroke: "#6B21A8", text: "#581C87" },
   "CASE": { fill: "#FECACA", stroke: "#B91C1C", text: "#7F1D1D" },
   "ELSE": { fill: "#BBF7D0", stroke: "#15803D", text: "#14532D" },
+  "DEFAULT": { fill: "#FEE2E2", stroke: "#991B1B", text: "#7F1D1D" },
   "READ INPUT": { fill: "#BFDBFE", stroke: "#1D4ED8", text: "#1E3A8A" },
   "READ GPIO": { fill: "#93C5FD", stroke: "#2563EB", text: "#1E40AF" },
   "READ SWITCH": { fill: "#60A5FA", stroke: "#3B82F6", text: "#1E40AF" },
@@ -2510,6 +2535,9 @@ const BLOCK_COLORS = {
   "START": { fill: "#D1FAE5", stroke: "#059669", text: "#064E3B" },
   "STOP": { fill: "#FECDD3", stroke: "#DC2626", text: "#7F1D1D" },
   "LOOP": { fill: "#C7D2FE", stroke: "#4F46E5", text: "#312E81" },
+  "BREAK": { fill: "#F1F5F9", stroke: "#475569", text: "#1E293B" },
+  "CONTINUE": { fill: "#F1F5F9", stroke: "#475569", text: "#1E293B" },
+  "DELAY": { fill: "#E0F2FE", stroke: "#0369A1", text: "#0C4A6E" },
 };
 
 const DEFAULT_NODE_DATA = {
@@ -2546,10 +2574,10 @@ const LOGIC_GROUPS = [
     items: [
       { type: 'logic', label: 'IF', variant: 'rectangle' },
       { type: 'logic', label: 'ELSE IF', variant: 'rectangle' },
-      { type: 'logic', label: 'ELIF', variant: 'rectangle' },
       { type: 'logic', label: 'SWITCH', variant: 'rectangle' },
       { type: 'logic', label: 'CASE', variant: 'rectangle' },
       { type: 'logic', label: 'ELSE', variant: 'rectangle' },
+      { type: 'logic', label: 'DEFAULT', variant: 'rectangle' },
     ],
   },
   {
@@ -2570,6 +2598,9 @@ const LOGIC_GROUPS = [
       { type: 'logic', label: 'START', variant: 'rectangle' },
       { type: 'logic', label: 'STOP', variant: 'rectangle' },
       { type: 'logic', label: 'LOOP', variant: 'rectangle' },
+      { type: 'logic', label: 'BREAK', variant: 'rectangle' },
+      { type: 'logic', label: 'CONTINUE', variant: 'rectangle' },
+      { type: 'logic', label: 'DELAY', variant: 'rectangle' },
     ],
   },
 ];
@@ -2596,6 +2627,7 @@ function LogicBlockNode({ id, data, selected }) {
     strokeWidth = 3,
     fontSize = 16,
     rotation = 0,
+    isActive = false, // Added isActive property
   } = data || {};
 
   const editLabel = useCallback(() => {
@@ -2620,9 +2652,14 @@ function LogicBlockNode({ id, data, selected }) {
   );
 
   return (
-    <div className="logic-node" onDoubleClick={editLabel}>
+    <div className={`logic-node ${isActive ? 'active-executing' : ''}`} onDoubleClick={editLabel}>
       <NodeResizer isVisible={selected} minWidth={80} minHeight={40} color={stroke} />
-      <div className="logic-node__content" style={{ transform: `rotate(${rotation}deg)` }}>
+      <div className="logic-node__content" style={{
+        transform: `rotate(${rotation}deg)`,
+        boxShadow: isActive ? `0 0 15px ${stroke}` : 'none',
+        border: isActive ? `4px solid ${stroke}` : 'none',
+        borderRadius: '8px'
+      }}>
         <svg viewBox="0 0 120 50" width="100%" height="100%">
           <rect
             x="0"
@@ -2639,7 +2676,8 @@ function LogicBlockNode({ id, data, selected }) {
         <div className="logic-node__label" style={{
           color: text,
           fontSize: `${fontSize * 0.8}px`,
-          padding: '4px'
+          padding: '4px',
+          fontWeight: isActive ? 'bold' : 'normal'
         }}>
           {label}
         </div>
@@ -2652,42 +2690,69 @@ function LogicBlockNode({ id, data, selected }) {
 const nodeTypes = { logic: LogicBlockNode };
 
 function BlockProgrammingCanvas() {
+  const dispatch = useDispatch();
+  const { tabs, activeTabId } = useSelector((state) => state.blockProgramming);
+  const activeTab = useMemo(
+    () => tabs.find((t) => t.id === activeTabId),
+    [tabs, activeTabId],
+  );
+
   const reactFlowWrapper = useRef(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // Derive nodes and edges from active tab
+  const nodes = activeTab?.state?.nodes || [];
+  const edges = activeTab?.state?.edges || [];
+
   const [openGroups, setOpenGroups] = useState({ logic: true, io: true, flow: true });
   const [paletteSearch, setPaletteSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [isExplorerVisible, setIsExplorerVisible] = useState('blocks');
+
+  // Execution state
+  const [isRunning, setIsRunning] = useState(false);
+  const [activeNodeId, setActiveNodeId] = useState(null);
+  const [executionLogs, setExecutionLogs] = useState([]);
+  const [ledState, setLedState] = useState(false);
+  const [switchState, setSwitchState] = useState(false); // Added switchState for logic verification
+
+  // Refs for logic execution to avoid closure issues
+  const ledStateRef = useRef(ledState);
+  const switchStateRef = useRef(switchState);
+  const logContainerRef = useRef(null);
+
+  useEffect(() => { ledStateRef.current = ledState; }, [ledState]);
+  useEffect(() => { switchStateRef.current = switchState; }, [switchState]);
+
+  // Auto-scroll logs
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [executionLogs]);
+
   const deletePressed = useKeyPress('Delete');
   const backspacePressed = useKeyPress('Backspace');
   const rf = useReactFlow();
-  const { activeTab, tabs, loading: tabsLoading, createTab, updateActiveTabState, activeTabId, selectTab } = useWorkspaceTabs();
   const hydratingRef = useRef(false);
   const navigate = useNavigate();
   const { user, activeProjectId, activeProjectName, setActiveProjectId } = useProject?.() ?? {};
   const userId = user?.userId || user?._id || user?.id;
 
-  // Canvas file integration for Block Programming
-  const canvasIntegration = useCanvasFileIntegration('Block Programming');
-
-  // Project management state
-  const [hasProjects, setHasProjects] = useState(false);
-
+  // Refs for stable state tracking
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
   const snapshotTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    nodesRef.current = nodes;
-  }, [nodes]);
-
-  useEffect(() => {
-    edgesRef.current = edges;
-  }, [edges]);
-
+  const isRunningRef = useRef(false);
+  const activeTabRef = useRef(activeTab);
+  const activeTabIdRef = useRef(activeTabId);
   const historyRef = useRef({ entries: [], index: -1 });
 
+  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+  useEffect(() => { edgesRef.current = edges; }, [edges]);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => { activeTabIdRef.current = activeTabId; }, [activeTabId]);
+
+  // Base snapshot utility
   const pushSnapshot = useCallback(() => {
     const snapshot = {
       nodes: nodesRef.current,
@@ -2699,6 +2764,83 @@ function BlockProgrammingCanvas() {
     historyRef.current.entries = entries;
     historyRef.current.index = entries.length - 1;
   }, [rf]);
+
+  // Dispatch utilities
+  const updateActiveTabState = useCallback(
+    (updater) => {
+      const tabId = activeTabIdRef.current;
+      const tab = activeTabRef.current;
+      if (!tabId || !tab) return;
+      const nextState =
+        typeof updater === "function" ? updater(tab.state) : updater;
+      dispatch(updateTabState({ tabId, ...nextState }));
+    },
+    [dispatch],
+  );
+
+  const persistCurrentState = useCallback(() => {
+    if (hydratingRef.current) return;
+    updateActiveTabState((prev = createBlockProgrammingState()) => ({
+      ...prev,
+      nodes: nodesRef.current,
+      edges: edgesRef.current,
+      viewport: rf.getViewport(),
+      idSeed: logicId,
+    }));
+  }, [rf, updateActiveTabState]);
+
+  const scheduleSnapshot = useCallback(() => {
+    if (snapshotTimeoutRef.current) {
+      clearTimeout(snapshotTimeoutRef.current);
+    }
+    snapshotTimeoutRef.current = setTimeout(() => {
+      pushSnapshot();
+      persistCurrentState();
+      snapshotTimeoutRef.current = null;
+    }, 300);
+  }, [persistCurrentState, pushSnapshot]);
+
+  // Canvas setters
+  const setNodes = useCallback(
+    (nds) => {
+      const currentNodes = nodesRef.current;
+      const nextNodes = typeof nds === "function" ? nds(currentNodes) : nds;
+      dispatch(updateTabState({ tabId: activeTabIdRef.current, nodes: nextNodes }));
+    },
+    [dispatch],
+  );
+
+  const setEdges = useCallback(
+    (eds) => {
+      const currentEdges = edgesRef.current;
+      const nextEdges = typeof eds === "function" ? eds(currentEdges) : eds;
+      dispatch(updateTabState({ tabId: activeTabIdRef.current, edges: nextEdges }));
+    },
+    [dispatch],
+  );
+
+  const handleNodesChange = useCallback(
+    (changes) => {
+      const meaningfulChanges = changes.filter(c => c.type !== 'dimensions');
+      if (meaningfulChanges.length === 0) return;
+      const nextNodes = applyNodeChanges(meaningfulChanges, nodesRef.current);
+      dispatch(updateTabState({ tabId: activeTabIdRef.current, nodes: nextNodes }));
+    },
+    [dispatch],
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes) => {
+      const nextEdges = applyEdgeChanges(changes, edgesRef.current);
+      dispatch(updateTabState({ tabId: activeTabIdRef.current, edges: nextEdges }));
+    },
+    [dispatch],
+  );
+
+  // Canvas file integration for Block Programming
+  const canvasIntegration = useCanvasFileIntegration('Block Programming');
+  const [hasProjects, setHasProjects] = useState(false);
+
 
   // Project management integration
   useEffect(() => {
@@ -2741,6 +2883,232 @@ function BlockProgrammingCanvas() {
     };
   }, [activeProjectId, setActiveProjectId, userId]);
 
+  // Execution utilities
+  const logMessage = useCallback((msg) => {
+    setExecutionLogs(prev => [...prev.slice(-9), `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  }, []);
+
+  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Run Program logic
+  const runProgram = async () => {
+    if (isRunning) return;
+    setIsRunning(true);
+    setExecutionLogs([]);
+    logMessage("🚀 Program started...");
+
+    const startNode = nodes.find(n => n.data.label === 'START');
+    if (!startNode) {
+      logMessage("❌ Error: No START block found!");
+      setIsRunning(false);
+      return;
+    }
+
+    let currentNode = startNode;
+    const visited = new Set();
+
+    try {
+      while (currentNode && isRunning === false) { // This is tricky due to closure, let's use a ref or just follow the flow
+        // Actually since this is an async function in a component, 
+        // we should check a ref for 'isRunning' if we want to stop it mid-execution.
+      }
+      // Re-implementing with isRunningRef
+    } catch (err) {
+      logMessage(`💥 Error: ${err.message}`);
+    }
+
+    // For now, let's keep it simple and just do a base implementation first
+  };
+
+  // Improved runProgram
+
+  const handleRun = async () => {
+    if (isRunningRef.current) return;
+    isRunningRef.current = true;
+    setIsRunning(true);
+    setExecutionLogs([]);
+    logMessage("🚀 Program started...");
+
+    const startNode = nodes.find(n => n.data.label === 'START');
+    if (!startNode) {
+      logMessage("❌ Error: No START block found!");
+      isRunningRef.current = false;
+      setIsRunning(false);
+      return;
+    }
+
+    let currentNode = startNode;
+    let iterationCount = 0;
+    const MAX_ITERATIONS = 50;
+
+    while (currentNode && isRunningRef.current) {
+      const nodeId = currentNode.id;
+      iterationCount++;
+
+      if (iterationCount > MAX_ITERATIONS) {
+        logMessage("⚠️ Loop limit reached (50). Stopping.");
+        break;
+      }
+
+      // Highlight current block
+      setNodes(nds => nds.map(n => ({
+        ...n,
+        data: { ...n.data, isActive: n.id === nodeId }
+      })));
+
+      const label = currentNode.data.label;
+      const upperLabel = label.toUpperCase();
+
+      logMessage(`⚡ Executing: ${label}`);
+
+      // --- Part 1: Action Processing (Non-exclusive) ---
+
+      // LED Controls
+      if (upperLabel.includes('LED ON')) {
+        setLedState(true);
+        ledStateRef.current = true;
+        playSound(SOUND_PATHS.CLICK);
+      }
+      if (upperLabel.includes('LED OFF')) {
+        setLedState(false);
+        ledStateRef.current = false;
+        playSound(SOUND_PATHS.CLICK);
+      }
+
+      // Read Controls
+      if (upperLabel.includes('READ SWITCH') || upperLabel.includes('READ INPUT')) {
+        const newState = Math.random() > 0.5;
+        setSwitchState(newState);
+        switchStateRef.current = newState;
+        logMessage(`🔌 Read Input: ${newState ? 'HIGH' : 'LOW'}`);
+      }
+
+      // Delay
+      if (upperLabel.includes('DELAY')) {
+        await sleep(1000);
+      }
+
+      // --- Part 2: Flow Control & Branching ---
+
+      let nextEdge = null;
+
+      if (upperLabel.includes('STOP')) {
+        break;
+      }
+
+      // Logic Branching (IF, ELSE IF, CASE) with Semantic Label Matching
+      if (upperLabel.includes('IF') || upperLabel.includes('CASE')) {
+        // Detect polarity: if user wrote "LOW" or "OFF", invert the logic
+        const isInverted = upperLabel.includes('LOW') || upperLabel.includes('OFF');
+        const rawCondition = switchStateRef.current;
+        const result = isInverted ? !rawCondition : rawCondition;
+
+        logMessage(`❔ ${label}: Result is ${result ? 'YES' : 'NO'}`);
+
+        // Get all outgoing edges from this node
+        const outgoingEdges = edgesRef.current.filter(e => e.source === nodeId);
+
+        // Semantic matching: find edges based on target node labels
+        const yesKeywords = ['YES', 'TRUE', 'HIGH', '(IF)'];
+        const noKeywords = ['NO', 'FALSE', 'LOW', 'ELSE', 'OFF'];
+
+        let yesEdge = null;
+        let noEdge = null;
+
+        for (const edge of outgoingEdges) {
+          const targetNode = nodesRef.current.find(n => n.id === edge.target);
+          if (targetNode) {
+            const targetLabel = targetNode.data.label.toUpperCase();
+            // Check for YES-type keywords
+            if (yesKeywords.some(kw => targetLabel.includes(kw))) {
+              yesEdge = edge;
+            }
+            // Check for NO-type keywords
+            if (noKeywords.some(kw => targetLabel.includes(kw))) {
+              noEdge = edge;
+            }
+          }
+        }
+
+        // Select path based on result
+        if (result && yesEdge) {
+          nextEdge = yesEdge;
+        } else if (!result && noEdge) {
+          nextEdge = noEdge;
+        } else {
+          // Fallback to handle-based logic if semantic matching fails
+          const handle = result ? 'right' : 'bottom';
+          nextEdge = outgoingEdges.find(e => e.sourceHandle === handle);
+          // Also try left handle as fallback
+          if (!nextEdge) {
+            nextEdge = outgoingEdges.find(e => e.sourceHandle === (result ? 'left' : 'bottom'));
+          }
+        }
+
+        if (!nextEdge) {
+          logMessage(`ℹ️ No ${result ? 'Yes' : 'No'} branch connected.`);
+        }
+      }
+      // Unconditional Branching / Default Flow
+      else if (upperLabel.includes('ELSE') || upperLabel.includes('DEFAULT') || upperLabel.includes('LOOP')) {
+        if (upperLabel.includes('LOOP')) logMessage("🔄 Loop point...");
+        // Follow standard path out
+      }
+
+      // Determine next node for standard flow (if not already branched by logic)
+      if (!nextEdge) {
+        nextEdge = edgesRef.current.find(e => e.source === nodeId && e.sourceHandle === 'bottom') ||
+          edgesRef.current.find(e => e.source === nodeId && e.sourceHandle === 'right');
+      }
+
+      if (!nextEdge) {
+        logMessage("🏁 End of path.");
+        break;
+      }
+
+      currentNode = nodesRef.current.find(n => n.id === nextEdge.target);
+      await sleep(300); // Visual gap
+    }
+
+    setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, isActive: false } })));
+    isRunningRef.current = false;
+    setIsRunning(false);
+    logMessage("🏁 Program finished.");
+  };
+
+  const handleStop = () => {
+    isRunningRef.current = false;
+    setIsRunning(false);
+    logMessage("🛑 Program stopped.");
+  };
+
+  const handleReset = () => {
+    handleStop();
+    setLedState(false);
+    setExecutionLogs([]);
+    setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, isActive: false } })));
+    logMessage("♻️ Program reset.");
+  };
+
+  // Stabilized sound on deletion
+  useEffect(() => {
+    if ((deletePressed || backspacePressed) && selected) {
+      if (selected.kind === 'node' || selected.kind === 'edge') {
+        playSound(SOUND_PATHS.DELETE);
+
+        // Deletion logic
+        if (selected.kind === 'node') {
+          setNodes(nds => nds.filter(n => n.id !== selected.id));
+        } else if (selected.kind === 'edge') {
+          setEdges(eds => eds.filter(e => e.id !== selected.id));
+        }
+
+        setSelected(null);
+        scheduleSnapshot();
+      }
+    }
+  }, [deletePressed, backspacePressed, selected, setNodes, setEdges, scheduleSnapshot]);
+
   // File click handler for project integration
   const handleFileClick = useCallback(async (filePath, fileName, parsedContent, fileData) => {
     try {
@@ -2750,42 +3118,54 @@ function BlockProgrammingCanvas() {
 
       if (result.success) {
         if (fileName.endsWith('.json') && parsedContent && typeof parsedContent === 'object') {
+          let loadedNodes = [];
+          let loadedEdges = [];
+          let loadedViewport = null;
+
           if (parsedContent.blocks && parsedContent.connections) {
-            const nodes = parsedContent.blocks || [];
-            const edges = parsedContent.connections || [];
-
-            setNodes(nodes);
-            setEdges(edges);
-
-            if (parsedContent.canvas?.position && parsedContent.canvas?.zoom && rf) {
-              setTimeout(() => {
-                rf.setViewport({
-                  x: parsedContent.canvas.position.x || 0,
-                  y: parsedContent.canvas.position.y || 0,
-                  zoom: parsedContent.canvas.zoom || 1
-                });
-              }, 100);
+            loadedNodes = parsedContent.blocks || [];
+            loadedEdges = parsedContent.connections || [];
+            if (parsedContent.canvas?.position && parsedContent.canvas?.zoom) {
+              loadedViewport = {
+                x: parsedContent.canvas.position.x || 0,
+                y: parsedContent.canvas.position.y || 0,
+                zoom: parsedContent.canvas.zoom || 1
+              };
             }
           } else if (parsedContent.nodes && parsedContent.edges) {
-            setNodes(parsedContent.nodes || []);
-            setEdges(parsedContent.edges || []);
+            loadedNodes = parsedContent.nodes || [];
+            loadedEdges = parsedContent.edges || [];
+            loadedViewport = parsedContent.viewport || null;
+          }
 
-            if (parsedContent.viewport && rf) {
-              setTimeout(() => {
-                rf.setViewport(parsedContent.viewport);
-              }, 100);
-            }
+          const newId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+          dispatch(
+            addTab({
+              id: newId,
+              name: fileName,
+              fileId: filePath,
+              state: {
+                nodes: loadedNodes,
+                edges: loadedEdges,
+                viewport: loadedViewport
+              },
+              dirty: false
+            })
+          );
+
+          if (loadedViewport && rf) {
+            setTimeout(() => rf.setViewport(loadedViewport), 100);
           }
         }
 
-        console.log(`Loaded ${fileName} into Block Programming canvas`);
+        console.log(`Loaded ${fileName} into Block Programming canvas and opened as tab`);
       } else {
         console.error('Failed to load file:', result.error);
       }
     } catch (error) {
       console.error('Failed to handle file click:', error);
     }
-  }, [canvasIntegration, setNodes, setEdges, rf]);
+  }, [canvasIntegration, setNodes, setEdges, rf, dispatch]);
 
   // Setup auto-save functionality
   useEffect(() => {
@@ -2810,84 +3190,21 @@ function BlockProgrammingCanvas() {
     return () => clearTimeout(timer);
   }, [nodes, edges, rf, canvasIntegration]);
 
-  useEffect(() => {
-    pushSnapshot();
-  }, [pushSnapshot]);
+  // Unify tabs functionality into Redux
+  const createTab = useCallback(() => {
+    const newId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    dispatch(
+      addTab({
+        id: newId,
+        name: `Tab ${tabs.length + 1}`,
+        state: createBlockProgrammingState(),
+        dirty: true,
+      }),
+    );
+  }, [dispatch, tabs.length]);
 
-  useEffect(() => {
-    if (!tabsLoading && tabs.length === 0) {
-      createTab();
-    }
-  }, [tabsLoading, tabs, createTab]);
+  // persistCurrentState, scheduleSnapshot moved up
 
-  useEffect(() => {
-    if (!activeTab) return;
-    hydratingRef.current = true;
-    const state = activeTab.state || createBlockProgrammingState();
-    logicId = state.idSeed || 1;
-    const nextNodes = state.nodes || [];
-    const nextEdges = state.edges || [];
-    const nextViewport = state.viewport || null;
-
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    nodesRef.current = nextNodes;
-    edgesRef.current = nextEdges;
-
-    historyRef.current = {
-      entries: [JSON.parse(JSON.stringify({ nodes: nextNodes, edges: nextEdges, viewport: nextViewport }))],
-      index: 0,
-    };
-
-    if (nextViewport) {
-      requestAnimationFrame(() => rf.setViewport(nextViewport));
-    }
-
-    if (!activeTab.state) {
-      updateActiveTabState(
-        () => ({
-          nodes: nextNodes,
-          edges: nextEdges,
-          viewport: nextViewport || rf.getViewport(),
-          idSeed: logicId,
-        }),
-        { markDirty: false, scheduleSave: false }
-      );
-    }
-
-    const frame = requestAnimationFrame(() => {
-      hydratingRef.current = false;
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [activeTab, rf, setEdges, setNodes, updateActiveTabState]);
-
-  const persistCurrentState = useCallback(() => {
-    if (hydratingRef.current) return;
-    updateActiveTabState((prev = createBlockProgrammingState()) => ({
-      ...prev,
-      nodes: nodesRef.current,
-      edges: edgesRef.current,
-      viewport: rf.getViewport(),
-      idSeed: logicId,
-    }));
-  }, [rf, updateActiveTabState]);
-
-  useEffect(() => () => {
-    if (snapshotTimeoutRef.current) {
-      clearTimeout(snapshotTimeoutRef.current);
-    }
-  }, []);
-
-  const scheduleSnapshot = useCallback(() => {
-    if (snapshotTimeoutRef.current) {
-      clearTimeout(snapshotTimeoutRef.current);
-    }
-    snapshotTimeoutRef.current = setTimeout(() => {
-      pushSnapshot();
-      persistCurrentState();
-      snapshotTimeoutRef.current = null;
-    }, 300);
-  }, [persistCurrentState, pushSnapshot]);
 
   // Undo functionality
   const undo = useCallback(() => {
@@ -2915,6 +3232,7 @@ function BlockProgrammingCanvas() {
 
   const onConnect = useCallback(
     (params) => {
+      playSound(SOUND_PATHS.CLICK);
       setEdges((eds) =>
         addEdge(
           {
@@ -2966,6 +3284,7 @@ function BlockProgrammingCanvas() {
           data: {
             ...DEFAULT_NODE_DATA,
             label: item.label,
+            blockType: item.label, // Store original label as functional type
             variant: item.variant,
             fill: colors.fill,
             stroke: colors.stroke,
@@ -2993,21 +3312,6 @@ function BlockProgrammingCanvas() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleNodesChange = useCallback(
-    (changes) => {
-      onNodesChange(changes);
-      scheduleSnapshot();
-    },
-    [onNodesChange, scheduleSnapshot],
-  );
-
-  const handleEdgesChange = useCallback(
-    (changes) => {
-      onEdgesChange(changes);
-      scheduleSnapshot();
-    },
-    [onEdgesChange, scheduleSnapshot],
-  );
 
   const onSelectionChange = useCallback(({ nodes: selectedNodes, edges: selectedEdges }) => {
     if (selectedNodes?.length) {
@@ -3288,18 +3592,8 @@ function BlockProgrammingCanvas() {
     }
   }, [canvasIntegration, activeProjectName, reactFlowWrapper, showExportPreview]);
 
-  // Keyboard deletion handler
-  useEffect(() => {
-    if ((deletePressed || backspacePressed) && selected) {
-      if (selected.kind === 'node') {
-        setNodes(nodes => nodes.filter(n => n.id !== selected.id));
-      } else if (selected.kind === 'edge') {
-        setEdges(edges => edges.filter(e => e.id !== selected.id));
-      }
-      setSelected(null);
-      scheduleSnapshot();
-    }
-  }, [deletePressed, backspacePressed, selected, setNodes, setEdges, scheduleSnapshot]);
+  // Keyboard deletion handler - removed as it's merged above
+
 
   return (
     <div className="diagram-builder">
@@ -3383,7 +3677,10 @@ function BlockProgrammingCanvas() {
                                     key={`${group.id}-${item.label}`}
                                     className="shape-card"
                                     draggable
-                                    onDragStart={(e) => onDragStart(e, item)}
+                                    onDragStart={(e) => {
+                                      playSound(SOUND_PATHS.CLICK);
+                                      onDragStart(e, item);
+                                    }}
                                     style={{
                                       backgroundColor: colors.fill || '#ffffff',
                                       border: `2px solid ${colors.stroke || '#111827'}`,
@@ -3434,7 +3731,7 @@ function BlockProgrammingCanvas() {
 
         <div className="diagram-container" style={{ flex: 1 }}>
           <div style={{ padding: '8px 12px', background: '#ffffff', borderBottom: '1px solid #e5e7eb' }}>
-            <DiagramTabs title="Block Programming Workspace" />
+            <DiagramTabs title="Block Programming Workspace" kind="blockProgramming" />
           </div>
           <div className="canvas-frame">
             <div
@@ -3457,7 +3754,118 @@ function BlockProgrammingCanvas() {
                 snapToGrid
                 snapGrid={[16, 16]}
               >
+                <style>{`
+                  @keyframes pulse-executing {
+                    0% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.4); }
+                    70% { box-shadow: 0 0 0 10px rgba(0, 0, 0, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+                  }
+                  .active-executing .logic-node__content {
+                    animation: pulse-executing 1s infinite;
+                    transform: scale(1.05);
+                    transition: all 0.2s ease;
+                  }
+                  .rf-wrapper .react-flow__pane {
+                    cursor: crosshair;
+                  }
+                `}</style>
                 <Background className="export-ignore" gap={16} size={1} />
+                <Panel position="top-right" style={{
+                  background: 'rgba(255,255,255,0.9)',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  width: '240px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#1e293b' }}>Execution Control</div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '50%',
+                        background: ledState ? '#ef4444' : '#94a3b8',
+                        boxShadow: ledState ? '0 0 10px #ef4444' : 'none',
+                        transition: 'all 0.3s'
+                      }} title={ledState ? "LED is ON" : "LED is OFF"} />
+                      <div style={{
+                        width: '12px',
+                        height: '12px',
+                        borderRadius: '2px',
+                        background: switchState ? '#3b82f6' : '#94a3b8',
+                        boxShadow: switchState ? '0 0 10px #3b82f6' : 'none',
+                        transition: 'all 0.3s'
+                      }} title={switchState ? "Switch is HIGH" : "Switch is LOW"} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {!isRunning ? (
+                      <button
+                        onClick={handleRun}
+                        style={{
+                          flex: 1,
+                          background: '#22c55e',
+                          color: 'white',
+                          border: 'none',
+                          padding: '6px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >Run Program</button>
+                    ) : (
+                      <button
+                        onClick={handleStop}
+                        style={{
+                          flex: 1,
+                          background: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          padding: '6px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}
+                      >Stop</button>
+                    )}
+                    <button
+                      onClick={handleReset}
+                      style={{
+                        flex: 0.5,
+                        background: '#94a3b8',
+                        color: 'white',
+                        border: 'none',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}
+                    >Reset</button>
+                  </div>
+                  <div
+                    ref={logContainerRef}
+                    style={{
+                      background: '#f8fafc',
+                      height: '140px',
+                      borderRadius: '4px',
+                      padding: '8px',
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                      overflowY: 'auto',
+                      border: '1px solid #e2e8f0',
+                      color: '#334155'
+                    }}>
+                    {executionLogs.length === 0 && <div style={{ color: '#94a3b8' }}>Logs will appear here...</div>}
+                    {executionLogs.map((log, i) => <div key={i} style={{ marginBottom: '2px' }}>{log}</div>)}
+                  </div>
+                </Panel>
               </ReactFlow>
             </div>
           </div>
@@ -3469,9 +3877,7 @@ function BlockProgrammingCanvas() {
 
 function BlockProgrammingWorkspace() {
   return (
-    <WorkspaceTabsProvider kind="blockprogramming" createInitialState={createBlockProgrammingState}>
-      <BlockProgrammingCanvas />
-    </WorkspaceTabsProvider>
+    <BlockProgrammingCanvas />
   );
 }
 

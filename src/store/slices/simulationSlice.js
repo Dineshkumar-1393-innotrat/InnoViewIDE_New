@@ -1,10 +1,15 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-    droppedItems: [],
-    connections: [],
     tabs: [
-        { id: 1, name: "simulation.c", content: "// Simulation code\n", dirty: false }
+        {
+            id: 1,
+            name: "Simulation 1",
+            symbols: [],
+            connections: [],
+            content: "// Simulation code\n",
+            dirty: false
+        }
     ],
     activeTab: 1,
 };
@@ -13,32 +18,64 @@ const simulationSlice = createSlice({
     name: 'simulation',
     initialState,
     reducers: {
-        setDroppedItems: (state, action) => {
-            state.droppedItems = action.payload;
-        },
-        addDroppedItem: (state, action) => {
-            state.droppedItems.push(action.payload);
-        },
-        updateDroppedItem: (state, action) => {
-            const index = state.droppedItems.findIndex(item => item.id === action.payload.id);
-            if (index !== -1) {
-                state.droppedItems[index] = { ...state.droppedItems[index], ...action.payload };
-            }
-        },
-        removeDroppedItem: (state, action) => {
-            state.droppedItems = state.droppedItems.filter(item => item.id !== action.payload);
-        },
-        setConnections: (state, action) => {
-            state.connections = action.payload;
-        },
-        addConnection: (state, action) => {
-            state.connections.push(action.payload);
-        },
         setTabs: (state, action) => {
             state.tabs = action.payload;
         },
+        addTab: (state, action) => {
+            state.tabs.push(action.payload);
+        },
+        closeTab: (state, action) => {
+            const tabId = action.payload;
+            state.tabs = state.tabs.filter(tab => tab.id !== tabId);
+            if (state.activeTab === tabId) {
+                state.activeTab = state.tabs.length > 0 ? state.tabs[state.tabs.length - 1].id : null;
+            }
+            if (state.tabs.length === 0) {
+                state.tabs = [{ id: Date.now(), name: "Simulation 1", symbols: [], connections: [], content: "// Simulation code\n", dirty: false }];
+                state.activeTab = state.tabs[0].id;
+            }
+        },
         setActiveTab: (state, action) => {
             state.activeTab = action.payload;
+        },
+        addSymbolToTab: (state, action) => {
+            const { tabId, symbol } = action.payload;
+            const tab = state.tabs.find(t => t.id === tabId);
+            if (tab) {
+                tab.symbols.push(symbol);
+            }
+        },
+        updateSymbolInTab: (state, action) => {
+            const { tabId, symbolId, updates } = action.payload;
+            const tab = state.tabs.find(t => t.id === tabId);
+            if (tab) {
+                const index = tab.symbols.findIndex(s => s.id === symbolId);
+                if (index !== -1) {
+                    tab.symbols[index] = { ...tab.symbols[index], ...updates };
+                }
+            }
+        },
+        removeSymbolFromTab: (state, action) => {
+            const { tabId, symbolId } = action.payload;
+            const tab = state.tabs.find(t => t.id === tabId);
+            if (tab) {
+                tab.symbols = tab.symbols.filter(s => s.id !== symbolId);
+            }
+        },
+        addConnectionToTab: (state, action) => {
+            const { tabId, connection } = action.payload;
+            const tab = state.tabs.find(t => t.id === tabId);
+            if (tab && !tab.connections.includes(connection)) {
+                tab.connections.push(connection);
+            }
+        },
+        setTabSymbolsAndConnections: (state, action) => {
+            const { tabId, symbols, connections } = action.payload;
+            const tab = state.tabs.find(t => t.id === tabId);
+            if (tab) {
+                tab.symbols = symbols || [];
+                tab.connections = connections || [];
+            }
         },
         updateTabContent: (state, action) => {
             const { id, content } = action.payload;
@@ -47,20 +84,29 @@ const simulationSlice = createSlice({
                 tab.content = content;
                 tab.dirty = true;
             }
+        },
+        renameTab: (state, action) => {
+            const { tabId, newName } = action.payload;
+            const tab = state.tabs.find(t => t.id === tabId);
+            if (tab) {
+                tab.name = newName;
+            }
         }
     },
 });
 
 export const {
-    setDroppedItems,
-    addDroppedItem,
-    updateDroppedItem,
-    removeDroppedItem,
-    setConnections,
-    addConnection,
     setTabs,
+    addTab,
+    closeTab,
     setActiveTab,
-    updateTabContent
+    addSymbolToTab,
+    updateSymbolInTab,
+    removeSymbolFromTab,
+    addConnectionToTab,
+    setTabSymbolsAndConnections,
+    updateTabContent,
+    renameTab
 } = simulationSlice.actions;
 
 export default simulationSlice.reducer;
