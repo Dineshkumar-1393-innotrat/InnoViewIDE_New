@@ -225,7 +225,7 @@ export default function ProductDefinition({ onSuccess }) {
   const fetchVariables = async () => {
     try {
       const res = await fetch(
-        "http://localhost:5004/api/v2/parameterVariables"
+        "https://eureka.innotrat.in/api/v2/parameterVariables"
       );
       const result = await res.json();
 
@@ -812,7 +812,7 @@ export default function ProductDefinition({ onSuccess }) {
 
     try {
       const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
-      // const url = `http://localhost:5004/product/${productId}/definitionNew`; // Local testing if needed
+      // const url = `https://eureka.innotrat.in/product/${productId}/definitionNew`; // Local testing if needed
 
       const resp = await axios.post(url, payload);
       console.log("📥 Definition Response:", resp.data);
@@ -1728,7 +1728,7 @@ export default function ProductDefinition({ onSuccess }) {
 
                 try {
                   const res = await fetch(
-                    "http://localhost:5004/api/v2/parameterVariables",
+                    "https://eureka.innotrat.in/api/v2/parameterVariables",
                     {
                       method: "POST",
                       headers: {
@@ -1767,7 +1767,7 @@ export default function ProductDefinition({ onSuccess }) {
                 try {
                   // 🔹 POST API
                   await fetch(
-                    "http://localhost:5004/api/v2/parameterVariables",
+                    "https://eureka.innotrat.in/api/v2/parameterVariables",
                     {
                       method: "POST",
                       headers: {

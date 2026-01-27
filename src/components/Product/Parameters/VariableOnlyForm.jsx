@@ -48,7 +48,7 @@ const VariableOnlyForm = ({ onSubmit }) => {
                 variableName: variables.trim()
             };
 
-            const resp = await axios.post('http://localhost:5004/api/v2/parameterVariables', payload);
+            const resp = await axios.post('https://eureka.innotrat.in/api/v2/parameterVariables', payload);
 
             toast({
                 title: "Variable Added",
