@@ -94,7 +94,7 @@ const EditProductDefinition = () => {
   const fetchProductDefinition = async (productID) => {
     try {
       const response = await axios.get(
-        `${baseURL}/product/${productID}/definition`
+        `${baseURL}/product/${productID}/definitionNew`
       );
 
       const convertedComponents = convertDataFromApi(response.data);
@@ -113,14 +113,26 @@ const EditProductDefinition = () => {
 
     return Object.keys(apiData.components).map((componentName) => {
       const component = apiData.components[componentName];
-      const componentType = component.type
-        ? component.type[0].toUpperCase() + component.type.slice(1)
-        : "";
+
+      // Try to find a match in electronicComponents for type normalization
+      let componentType = component.type || "";
+      const match = electronicComponents.find(
+        (c) => c.type.toLowerCase() === componentType.toLowerCase().trim()
+      );
+      if (match) {
+        componentType = match.type;
+      } else {
+        if (componentType) {
+          componentType = componentType.charAt(0).toUpperCase() + componentType.slice(1);
+        }
+      }
 
       let formattedComponent = {
         componentID: component.componentID || "",
         componentType,
         componentName,
+        note: component.note || "",
+        urls: Array.isArray(component.urls) ? component.urls : (component.urls ? [component.urls] : []),
       };
 
       // Ensure 'unit' is always an array if present
@@ -130,7 +142,7 @@ const EditProductDefinition = () => {
           : [component.unit];
       }
 
-      // Only add min/max if the component is an Actuator or other types that need it
+      // Only add min/max if they exist
       if (component.min !== undefined && component.max !== undefined) {
         formattedComponent.min = component.min;
         formattedComponent.max = component.max;
@@ -232,6 +244,10 @@ const EditProductDefinition = () => {
                                 <option value="" disabled>
                                   -- Select Component Type --
                                 </option>
+                                {/* Support custom/existing value */}
+                                {component.componentType && !electronicComponents.some(c => c.type === component.componentType) && (
+                                  <option value={component.componentType}>{component.componentType}</option>
+                                )}
                                 {electronicComponents.map((category, idx) => (
                                   <option key={idx} value={category.type}>
                                     {category.type}
@@ -285,6 +301,11 @@ const EditProductDefinition = () => {
                                   <option value="" disabled>
                                     -- Select Component --
                                   </option>
+                                  {/* Support custom name if it doesn't exist in standard list for this type */}
+                                  {component.componentName &&
+                                    !(electronicComponents.find(c => c.type === component.componentType)?.components.some(comp => comp.name === component.componentName)) && (
+                                      <option value={component.componentName}>{component.componentName}</option>
+                                    )}
                                   {electronicComponents
                                     .find(
                                       (category) =>
@@ -369,6 +390,29 @@ const EditProductDefinition = () => {
                               </>
                             )}
 
+                            <div className="form-floating mb-3">
+                              <Field
+                                as="textarea"
+                                className="form-control"
+                                name={`components[${index}].note`}
+                                style={{ height: "70px" }}
+                              />
+                              <label htmlFor={`components[${index}].note`}>
+                                Note
+                              </label>
+                            </div>
+
+                            <div className="form-floating mb-3">
+                              <Field
+                                type="text"
+                                className="form-control"
+                                name={`components[${index}].urls[0]`}
+                              />
+                              <label htmlFor={`components[${index}].urls[0]`}>
+                                URL
+                              </label>
+                            </div>
+
                             <Button
                               type="button"
                               className="w-100 mb-3"
@@ -393,6 +437,8 @@ const EditProductDefinition = () => {
                               componentID: "",
                               componentType: "",
                               componentName: "",
+                              note: "",
+                              urls: [],
                               unit: undefined,
                               min: undefined,
                               max: undefined,
@@ -406,13 +452,6 @@ const EditProductDefinition = () => {
                   )}
                 </FieldArray>
 
-                {/* <div
-                  style={{
-                    display: "flex",
-
-                    justifyContent: "center",
-                  }}
-                > */}
                 <Button
                   type="submit"
                   className="w-100 "
@@ -421,7 +460,6 @@ const EditProductDefinition = () => {
                 >
                   {formik.isSubmitting ? "Updating..." : "Update"}
                 </Button>
-                {/* </div> */}
               </Form>
             )}
           </Formik>

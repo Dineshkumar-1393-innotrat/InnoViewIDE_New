@@ -86,7 +86,7 @@ const AddProductComponent = ({ productID, productName }) => {
   const fetchProductDefinition = async (productID) => {
     try {
       const response = await axios.get(
-        `${baseURL}/product/${productID}/definition`
+        `${baseURL}/product/${productID}/definitionNew`
       );
 
       const convertedComponents = convertDataFromApi(response.data);
@@ -105,14 +105,26 @@ const AddProductComponent = ({ productID, productName }) => {
 
     return Object.keys(apiData.components).map((componentName) => {
       const component = apiData.components[componentName];
-      const componentType = component.type
-        ? component.type[0].toUpperCase() + component.type.slice(1)
-        : "";
+
+      // Try to find a match in electronicComponents for type normalization
+      let componentType = component.type || "";
+      const match = electronicComponents.find(
+        (c) => c.type.toLowerCase() === componentType.toLowerCase().trim()
+      );
+      if (match) {
+        componentType = match.type;
+      } else {
+        if (componentType) {
+          componentType = componentType.charAt(0).toUpperCase() + componentType.slice(1);
+        }
+      }
 
       let formattedComponent = {
         componentID: component.componentID || "",
         componentType,
         componentName,
+        note: component.note || "",
+        urls: Array.isArray(component.urls) ? component.urls : (component.urls ? [component.urls] : []),
       };
 
       // Ensure 'unit' is always an array if present
@@ -122,7 +134,7 @@ const AddProductComponent = ({ productID, productName }) => {
           : [component.unit];
       }
 
-      // Only add min/max if the component is an Actuator or other types that need it
+      // Only add min/max if they exist
       if (component.min !== undefined && component.max !== undefined) {
         formattedComponent.min = component.min;
         formattedComponent.max = component.max;
@@ -136,7 +148,7 @@ const AddProductComponent = ({ productID, productName }) => {
     if (initialValues?.productID !== null) {
       fetchProductDefinition(initialValues.productID);
     }
-  });
+  }, [initialValues?.productID]);
 
   // useEffect(() => {
   //   // const values = getStoredValues();
@@ -361,15 +373,38 @@ const AddProductComponent = ({ productID, productName }) => {
                               </>
                             )}
 
+                            <div className="form-floating mb-3">
+                              <Field
+                                as="textarea"
+                                className="form-control"
+                                name={`components[${index}].note`}
+                                style={{ height: "70px" }}
+                              />
+                              <label htmlFor={`components[${index}].note`}>
+                                Note
+                              </label>
+                            </div>
+
+                            <div className="form-floating mb-3">
+                              <Field
+                                type="text"
+                                className="form-control"
+                                name={`components[${index}].urls[0]`}
+                              />
+                              <label htmlFor={`components[${index}].urls[0]`}>
+                                URL
+                              </label>
+                            </div>
+
                             {/* <Button
-                              type="button"
-                              className="w-100 mb-3"
-                              colorScheme="yellow"
-                              variant={"outline"}
-                              onClick={() => helperMethod.remove(index)}
-                            >
-                              Remove Component
-                            </Button> */}
+                                type="button"
+                                className="w-100 mb-3"
+                                colorScheme="yellow"
+                                variant={"outline"}
+                                onClick={() => helperMethod.remove(index)}
+                              >
+                                Remove Component
+                              </Button> */}
                           </div>
                         </div>
                       ))}
@@ -385,6 +420,8 @@ const AddProductComponent = ({ productID, productName }) => {
                               componentID: "",
                               componentType: "",
                               componentName: "",
+                              note: "",
+                              urls: [],
                               unit: undefined,
                               min: undefined,
                               max: undefined,

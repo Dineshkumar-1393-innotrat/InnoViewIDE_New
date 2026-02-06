@@ -19,7 +19,7 @@ const SelectProduct = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const { user } = useProject();
+  const { user, activeProjectName, activeProductId } = useProject();
 
   const navigate = useNavigate();
 
@@ -103,6 +103,27 @@ const SelectProduct = () => {
     getAllRunningDevices();
   }, [products]);
 
+  // Auto-select product based on activeProductId
+  useEffect(() => {
+    if (activeProductId && products.length > 0 && !selectedProduct) {
+      const found = products.find((p) => p.productId === activeProductId);
+      if (found) {
+        setSelectedProduct(activeProductId);
+        setSelectedProductName(found.productName);
+      }
+    }
+  }, [activeProductId, products, selectedProduct]);
+
+  // Update available devices when runningDevices or selectedProduct changes
+  useEffect(() => {
+    if (selectedProduct && runningDevices.length > 0) {
+      const deviceData = runningDevices.find(
+        (item) => item.productID === selectedProduct
+      );
+      setAvailableDevices(deviceData?.runningDevices ?? []);
+    }
+  }, [selectedProduct, runningDevices]);
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p>Error: {error}</p>;
 
@@ -119,11 +140,7 @@ const SelectProduct = () => {
       console.log("No matching product found for ID:", productID);
     }
 
-    // Find the running devices for the selected product
-    const deviceData = runningDevices.find(
-      (item) => item.productID === productID
-    );
-    setAvailableDevices(deviceData?.runningDevices ?? []);
+    // Logic for available devices is now handled by useEffect
     setSelectedDevice(""); // Reset selected device
   };
 
@@ -134,10 +151,18 @@ const SelectProduct = () => {
 
   return (
     <Box>
+      {activeProjectName && (
+        <Box mt={4} mb={4}>
+          <Center>
+            <Heading size={"md"}>{activeProjectName}</Heading>
+          </Center>
+        </Box>
+      )}
       <Box width="100%" maxW="300px" style={{ display: "flex" }}>
         {/* Product Dropdown */}
         <Select
           placeholder="Select Product"
+          value={selectedProduct}
           onChange={handleProductChange}
           width="100%"
           size={"sm"}

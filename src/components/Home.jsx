@@ -29,11 +29,12 @@ import {
   ModalFooter,
   useDisclosure,
 } from "@chakra-ui/react";
-import { FaEye, FaEyeSlash, FaClock, FaCalendar, FaPlayCircle } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaClock, FaCalendar, FaPlayCircle, FaLock } from "react-icons/fa";
 import loginImage from "../images/image.jpg";
 import Ellipse521 from "../images/Ellipse 521.svg";
 import { Link as ChakraLink } from "@chakra-ui/react";
 import { onboardingSteps } from "../data/onboardingSteps";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Home = () => {
   const [show, setShow] = useState(false);
@@ -334,37 +335,52 @@ const Home = () => {
 
                 <FormControl id="password" isRequired width="full">
                   <FormLabel fontWeight="bold" mb={3}>Password</FormLabel>
-                  <InputGroup width="full">
-                    <Input
-                      pr="3.5rem"
-                      type={show ? "text" : "password"}
-                      placeholder="Password"
+                  <HStack spacing={2} alignItems="stretch">
+                    <Flex
+                      width="90px"
                       height="45px"
                       borderRadius="lg"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      color="black"
                       bg="gray.50"
                       border="1px solid"
                       borderColor="gray.200"
-                      _placeholder={{ color: "gray.400" }}
-                      fontSize="md"
-                      fontWeight="medium"
-                      _focus={{ borderColor: "purple.500", boxShadow: "0 0 0 1px #805ad5" }}
-                    />
-                    <InputRightElement height="45px" width="3.5rem">
-                      <IconButton
-                        h="1.75rem"
-                        size="sm"
-                        onClick={() => setShow(!show)}
-                        aria-label={show ? "Hide password" : "Show password"}
-                        icon={show ? <FaEyeSlash /> : <FaEye />}
-                        variant="ghost"
-                        color="gray.500"
-                        _hover={{ bg: "gray.100" }}
+                      alignItems="center"
+                      justifyContent="center"
+                      color="gray.400"
+                    >
+                      <FaLock />
+                    </Flex>
+                    <InputGroup flex={1}>
+                      <Input
+                        pr="3.5rem"
+                        type={show ? "text" : "password"}
+                        placeholder="Password"
+                        height="45px"
+                        borderRadius="lg"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        color="black"
+                        bg="gray.50"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        _placeholder={{ color: "gray.400" }}
+                        fontSize="md"
+                        fontWeight="medium"
+                        _focus={{ borderColor: "purple.500", boxShadow: "0 0 0 1px #805ad5" }}
                       />
-                    </InputRightElement>
-                  </InputGroup>
+                      <InputRightElement height="45px" width="3.5rem">
+                        <IconButton
+                          h="1.75rem"
+                          size="sm"
+                          onClick={() => setShow(!show)}
+                          aria-label={show ? "Hide password" : "Show password"}
+                          icon={show ? <FaEyeSlash /> : <FaEye />}
+                          variant="ghost"
+                          color="gray.500"
+                          _hover={{ bg: "gray.100" }}
+                        />
+                      </InputRightElement>
+                    </InputGroup>
+                  </HStack>
                 </FormControl>
 
                 <Button
@@ -400,7 +416,62 @@ const Home = () => {
                     Create an account
                   </ChakraLink>
                 </Flex>
-                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_Rev0.9_23-01-2026 (C) Innotrat Labs</Text>
+                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_Rev1.0_06-02-2026 (C) Innotrat Labs</Text>
+
+                <Box width="full" mt={4} display="flex" justifyContent="center">
+                  <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                      try {
+                        //http://192.168.0.16:5004/auth/google//
+                        const response = await fetch("https://eureka.innotrat.in/auth/google", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            token: credentialResponse.credential,
+                          }),
+                        });
+
+                        const data = await response.json();
+
+                        if (data.status === "success") {
+                          sessionStorage.setItem("token", data.token);
+                          sessionStorage.setItem("userId", data.userData.userId);
+                          localStorage.setItem("token", data.token);
+                          localStorage.setItem("userData", JSON.stringify(data.userData));
+
+                          toast({
+                            title: "Success",
+                            description: "Google Signin successful",
+                            status: "success",
+                            duration: 3000,
+                            isClosable: true,
+                          });
+
+                          navigate("/editor", { state: { userId: data.userData.userId } });
+                        } else {
+                          throw new Error(data.message || "Google Sign in failed");
+                        }
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: error.message || "Google Sign in failed",
+                          status: "error",
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }
+                    }}
+                    onError={() => {
+                      toast({
+                        title: "Error",
+                        description: "Google Login Failed",
+                        status: "error",
+                        duration: 3000,
+                        isClosable: true,
+                      });
+                    }}
+                  />
+                </Box>
               </VStack>
             </Flex>
           </Box>

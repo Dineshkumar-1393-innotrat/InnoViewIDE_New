@@ -18,7 +18,7 @@
 //     if (!token) return;
 
 //     try {
-//       await axios.post("http://localhost:5004/api/v1/auth/logout", { token });
+//       await axios.post("https://eureka.innotrat.in/api/v1/auth/logout", { token });
 
 //       // Remove token from session storage
 //       sessionStorage.removeItem("token");

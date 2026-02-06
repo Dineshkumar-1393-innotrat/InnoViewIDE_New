@@ -83,7 +83,7 @@ const ViewProductDefinition = ({ productID, productName }) => {
 
     try {
       const response = await axios.get(
-        `${baseURL}/product/${productID}/definition`
+        `${baseURL}/product/${productID}/definitionNew`
       );
 
       const convertedComponents = convertDataFromApi(response.data);
@@ -102,14 +102,27 @@ const ViewProductDefinition = ({ productID, productName }) => {
 
     return Object.keys(apiData.components).map((componentName) => {
       const component = apiData.components[componentName];
-      const componentType = component.type
-        ? component.type[0].toUpperCase() + component.type.slice(1)
-        : "";
+
+      // Try to find a match in electronicComponents for type normalization
+      let componentType = component.type || "";
+      const match = electronicComponents.find(
+        (c) => c.type.toLowerCase() === componentType.toLowerCase().trim()
+      );
+      if (match) {
+        componentType = match.type;
+      } else {
+        // Fallback for custom types: avoid aggressive plural/singular logic if no match found
+        if (componentType) {
+          componentType = componentType.charAt(0).toUpperCase() + componentType.slice(1);
+        }
+      }
 
       let formattedComponent = {
         componentID: component.componentID || "",
         componentType,
         componentName,
+        note: component.note || "",
+        urls: Array.isArray(component.urls) ? component.urls : (component.urls ? [component.urls] : []),
       };
 
       // Ensure 'unit' is always an array if present
@@ -119,7 +132,7 @@ const ViewProductDefinition = ({ productID, productName }) => {
           : [component.unit];
       }
 
-      // Only add min/max if the component is an Actuator or other types that need it
+      // Only add min/max if they exist
       if (component.min !== undefined && component.max !== undefined) {
         formattedComponent.min = component.min;
         formattedComponent.max = component.max;
@@ -135,7 +148,7 @@ const ViewProductDefinition = ({ productID, productName }) => {
     if (initialValues?.productID !== null) {
       fetchProductDefinition(initialValues.productID);
     }
-  });
+  }, [initialValues?.productID]);
 
   useEffect(() => {
     // const values = getStoredValues();
@@ -168,7 +181,7 @@ const ViewProductDefinition = ({ productID, productName }) => {
               onSubmit={async (values, { setSubmitting }) => {
                 try {
                   await convertDataToAPIFormat(values);
-                  alert("Product updated successfuly");
+                  alert("Product updated successfully");
                 } catch (error) {
                   console.error("Form submission error:", error);
                 } finally {
@@ -188,47 +201,16 @@ const ViewProductDefinition = ({ productID, productName }) => {
                             className="border p-3 mb-3 bg-light rounded"
                           >
                             <div>
-                              {/* <div className="form-floating mb-3">
-                                <Field
-                                  type="text"
-                                  className="form-control"
-                                  name={`components[${index}].componentID`}
-                                  required
-                                  disabled
-                                />
-                                <label
-                                  htmlFor={`components[${index}].componentID`}
-                                >
-                                  Component ID
-                                </label>
-                                <ErrorMessage
-                                  name={`components[${index}].componentID`}
-                                  component="div"
-                                  className="text-danger"
-                                />
-                              </div> */}
-
                               <div className="form-floating mb-3">
                                 <Field
                                   disabled
                                   as="select"
                                   className="form-select"
                                   name={`components[${index}].componentType`}
-                                  onChange={(e) => {
-                                    formik.handleChange(e);
-                                    helperMethod.replace(index, {
-                                      ...component,
-                                      componentType: e.target.value,
-                                      componentName: "",
-                                      unit: undefined,
-                                      min: undefined,
-                                      max: undefined,
-                                    });
-                                    disabled;
-                                  }}
                                 >
-                                  <option value="" disabled>
-                                    -- Select Component Type --
+                                  {/* Ensure custom values from API are shown even if not in standard list */}
+                                  <option value={component.componentType}>
+                                    {component.componentType}
                                   </option>
                                   {electronicComponents.map((category, idx) => (
                                     <option key={idx} value={category.type}>
@@ -241,75 +223,36 @@ const ViewProductDefinition = ({ productID, productName }) => {
                                 >
                                   Component Type
                                 </label>
-                                <ErrorMessage
-                                  name={`components[${index}].componentType`}
-                                  component="div"
-                                  className="text-danger"
-                                />
                               </div>
 
-                              {component.componentType && (
-                                <div className="form-floating mb-3">
-                                  <Field
-                                    disabled
-                                    as="select"
-                                    className="form-select"
-                                    name={`components[${index}].componentName`}
-                                    onChange={(e) => {
-                                      formik.handleChange(e);
-                                      const selectedComponent =
-                                        electronicComponents
-                                          .find(
-                                            (cat) =>
-                                              cat.type ===
-                                              component.componentType
-                                          )
-                                          ?.components.find(
-                                            (comp) =>
-                                              comp.name === e.target.value
-                                          );
-
-                                      helperMethod.replace(index, {
-                                        ...component,
-                                        componentName: e.target.value,
-                                        unit:
-                                          selectedComponent?.unit || undefined,
-                                        min: selectedComponent?.unit
-                                          ? ""
-                                          : undefined,
-                                        max: selectedComponent?.unit
-                                          ? ""
-                                          : undefined,
-                                      });
-                                    }}
-                                  >
-                                    <option value="" disabled>
-                                      -- Select Component --
-                                    </option>
-                                    {electronicComponents
-                                      .find(
-                                        (category) =>
-                                          category.type ===
-                                          component.componentType
-                                      )
-                                      ?.components.map((comp, idx) => (
-                                        <option key={idx} value={comp.name}>
-                                          {comp.name}
-                                        </option>
-                                      ))}
-                                  </Field>
-                                  <label
-                                    htmlFor={`components[${index}].componentName`}
-                                  >
-                                    Component Name
-                                  </label>
-                                  <ErrorMessage
-                                    name={`components[${index}].componentName`}
-                                    component="div"
-                                    className="text-danger"
-                                  />
-                                </div>
-                              )}
+                              <div className="form-floating mb-3">
+                                <Field
+                                  disabled
+                                  as="select"
+                                  className="form-select"
+                                  name={`components[${index}].componentName`}
+                                >
+                                  <option value={component.componentName}>
+                                    {component.componentName}
+                                  </option>
+                                  {electronicComponents
+                                    .find(
+                                      (category) =>
+                                        category.type ===
+                                        component.componentType
+                                    )
+                                    ?.components.map((comp, idx) => (
+                                      <option key={idx} value={comp.name}>
+                                        {comp.name}
+                                      </option>
+                                    ))}
+                                </Field>
+                                <label
+                                  htmlFor={`components[${index}].componentName`}
+                                >
+                                  Component Name
+                                </label>
+                              </div>
 
                               {Array.isArray(component.unit) &&
                                 component.unit.length > 0 && (
@@ -320,9 +263,6 @@ const ViewProductDefinition = ({ productID, productName }) => {
                                       name={`components[${index}].unit`}
                                       disabled
                                     >
-                                      <option value="" disabled>
-                                        -- Select Unit --
-                                      </option>
                                       {component.unit.map((unitOption, idx) => (
                                         <option key={idx} value={unitOption}>
                                           {unitOption}
@@ -337,8 +277,8 @@ const ViewProductDefinition = ({ productID, productName }) => {
                                   </div>
                                 )}
 
-                              {component.unit &&
-                                component.unit !== "boolean" && (
+                              {component.min !== undefined &&
+                                component.max !== undefined && (
                                   <>
                                     <div className="form-floating mb-3">
                                       <Field
@@ -352,13 +292,7 @@ const ViewProductDefinition = ({ productID, productName }) => {
                                       >
                                         Minimum
                                       </label>
-                                      <ErrorMessage
-                                        name={`components[${index}].min`}
-                                        component="div"
-                                        className="text-danger"
-                                      />
                                     </div>
-
                                     <div className="form-floating mb-3">
                                       <Field
                                         type="number"
@@ -371,68 +305,40 @@ const ViewProductDefinition = ({ productID, productName }) => {
                                       >
                                         Maximum
                                       </label>
-                                      <ErrorMessage
-                                        name={`components[${index}].max`}
-                                        component="div"
-                                        className="text-danger"
-                                      />
                                     </div>
                                   </>
                                 )}
 
-                              {/* <Button
-                      type="button"
-                      className="w-100 mb-3"
-                      colorScheme="yellow"
-                      variant={"outline"}
-                      onClick={() => helperMethod.remove(index)}
-                    >
-                      Remove Component
-                    </Button> */}
+                              <div className="form-floating mb-3">
+                                <Field
+                                  as="textarea"
+                                  className="form-control"
+                                  name={`components[${index}].note`}
+                                  style={{ height: "70px" }}
+                                  disabled
+                                />
+                                <label htmlFor={`components[${index}].note`}>
+                                  Note
+                                </label>
+                              </div>
+
+                              <div className="form-floating mb-3">
+                                <Field
+                                  type="text"
+                                  className="form-control"
+                                  name={`components[${index}].urls[0]`}
+                                  disabled
+                                />
+                                <label htmlFor={`components[${index}].urls[0]`}>
+                                  URL
+                                </label>
+                              </div>
                             </div>
                           </div>
                         ))}
-
-                        {/* <div>
-                <Button
-                  type="button"
-                  className="w-100 mb-3 "
-                  colorScheme="teal"
-                  variant="outline"
-                  onClick={() =>
-                    helperMethod.push({
-                      componentID: "",
-                      componentType: "",
-                      componentName: "",
-                      unit: undefined,
-                      min: undefined,
-                      max: undefined,
-                    })
-                  }
-                >
-                  Add Component
-                </Button>
-              </div> */}
                       </div>
                     )}
                   </FieldArray>
-
-                  {/* <div
-          style={{
-            display: "flex",
-
-            justifyContent: "center",
-          }}
-        > */}
-                  {/* <Button
-          type="submit"
-          className="w-100 "
-          disabled={formik.isSubmitting}
-          colorScheme="blue"
-        >
-          {formik.isSubmitting ? "Updating..." : "Update"}
-        </Button> */}
-                  {/* </div> */}
                 </Form>
               )}
             </Formik>

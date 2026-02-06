@@ -42,15 +42,8 @@ export default function ProductDefinition({ onSuccess }) {
   // Component Names list
   const [componentNames, setComponentNames] = useState([]);
   console.log(componentNames, "componentNames---");
-  // Component Names cache: { [typeId]: [{ _id, name }] }
-  const [componentNamesMap, setComponentNamesMap] = useState({});
-
-  // Selected Component & Component Name (Legacy single selection state - used for determining "active" tab if needed, 
-  // but we will render all components now. We might still use this to track which one is "active" or just render all)
-  const [selectedComponent, setSelectedComponent] = useState(""); // Sensor / Actuator
-  const [selectedComponentName, setSelectedComponentName] = useState(""); // e.g. Flame Sensor
-  const [selectedComponentId, setSelectedComponentId] = useState(""); // ID of the selected component name
-
+  const [selectedComponentId, setSelectedComponentId] = useState("");
+  console.log(selectedComponentId, "selectedComponentId---");
   const [specificParams, setSpecificParams] = useState([]);
 
   const parameterOptions = specificParams
@@ -58,13 +51,8 @@ export default function ProductDefinition({ onSuccess }) {
 
   console.log(parameterOptions, "parameterOptions---");
 
+  console.log(specificParams, "specificParams---");
   const [parameterNames, setParameterNames] = useState(["temperature", "humidity"]);
-
-  // component types from API
-  const [componentTypes, setComponentTypes] = useState([]);
-  console.log(componentTypes, "componentTypes---");
-
-  const [loadingComponentType, setLoadingComponentType] = useState(true);
 
   // const submitParameters = async () => {
   //   if (!selectedComponentId) {
@@ -279,7 +267,13 @@ export default function ProductDefinition({ onSuccess }) {
   const [variableOptions, setVariableOptions] = useState([]);
   console.log(variableOptions, "variableOptions---");
 
+  // component types from API
+  const [componentTypes, setComponentTypes] = useState([]);
+  console.log(componentTypes, "componentTypes---");
 
+  const [selectedComponentTypes, setSelectedComponentTypes] = useState('');
+  console.log(selectedComponentTypes, "selectedComponentTypes---");
+  const [loadingComponentType, setLoadingComponentType] = useState(true);
 
   // basic states
   const [urlLink, setUrlLink] = useState("");
@@ -293,37 +287,34 @@ export default function ProductDefinition({ onSuccess }) {
   const [description, setDescription] = useState("");
 
   // Basic Info - Step 2
-  // Basic Info - Step 2
   const [numDevices, setNumDevices] = useState(1); // numeric
-  const [numComponents, setNumComponents] = useState(1); // numeric
 
-  // We will fetch component names for a specific type and store in map
+  // Selected Component & Component Name
+  const [selectedComponent, setSelectedComponent] = useState(""); // Sensor / Actuator
+  const [selectedComponentName, setSelectedComponentName] = useState(""); // e.g. Flame Sensor
+
   const fetchComponentNames = async (typeId) => {
     if (!typeId) return;
-    if (componentNamesMap[typeId]) return; // already fetched
 
     try {
       const res = await axios.get(
         `https://eureka.innotrat.in/api/v2/componentNames/${typeId}`
       );
-      setComponentNamesMap((prev) => ({
-        ...prev,
-        [typeId]: res.data.data || []
-      }));
+      setComponentNames(res.data.data || []);
     } catch (err) {
       console.error("Fetch component names failed", err);
     }
   };
 
-  // This useEffect is no longer needed as component names are fetched per row
-  // useEffect(() => {
-  //   if (!selectedComponentTypes) return;
-  //   fetchComponentNames(selectedComponentTypes);
-  // }, [selectedComponentTypes]);
+  useEffect(() => {
+    if (!selectedComponentTypes) return;
 
-  const handleAddComponentName = async (typeId, rowIndex) => {
+    fetchComponentNames(selectedComponentTypes);
+  }, [selectedComponentTypes]);
+
+  const handleAddComponentName = async () => {
     const name = prompt("Enter Component Name", "Buzzer");
-    if (!name || !typeId) {
+    if (!name || !selectedComponentTypes) {
       alert("Select Component Type first");
       return;
     }
@@ -332,103 +323,36 @@ export default function ProductDefinition({ onSuccess }) {
       await axios.post(
         "https://eureka.innotrat.in/api/v2/componentNames",
         {
-          typeId: typeId,
+          typeId: selectedComponentTypes,
           name,
         }
       );
 
-      // force re-fetch
-      const res = await axios.get(
-        `https://eureka.innotrat.in/api/v2/componentNames/${typeId}`
-      );
-      setComponentNamesMap((prev) => ({
-        ...prev,
-        [typeId]: res.data.data || []
-      }));
+      // ✅ POST finished → GET /componentNames/:typeId again
+      await fetchComponentNames(selectedComponentTypes);
 
-      // auto select newly added name for that row
-      updateComponentRow(rowIndex, "name", name, res.data.data?.find(x => x.name === name)?._id);
+      // auto select newly added name
+      setSelectedComponentName(name);
     } catch (err) {
       console.error("Component name create failed", err);
     }
   };
 
   // Components list (type + name + parameters) - FORM COMPONENTS
-  // Structure: { typeId, typeName, nameId, nameName, parameters: [] }
   const [formComponents, setFormComponents] = useState([
     {
       name: "",
       type: "Sensor",
-      typeId: "",
-      typeName: "Sensor",
-      nameId: "",
-      nameName: "",
       parameters: [],
     }
   ]);
   console.log(formComponents, "formComponents---");
 
-  // Sync formComponents with numComponents
-  useEffect(() => {
-    const n = Math.max(1, Number(numComponents) || 1);
-    setFormComponents((prev) => {
-      const copy = [...prev];
-      if (copy.length === n) return copy;
-      if (copy.length < n) {
-        // add new
-        const added = Array.from({ length: n - copy.length }, () => ({
-          name: "",
-          type: "Sensor",
-          typeId: "",
-          typeName: "Sensor", // default
-          nameId: "",
-          nameName: "",
-          parameters: [],
-        }));
-        return [...copy, ...added];
-      }
-      // remove from end
-      return copy.slice(0, n);
-    });
-  }, [numComponents]);
-
-  const updateComponentRow = (index, field, value, extraId = null) => {
-    setFormComponents((prev) => {
-      const copy = [...prev];
-      if (!copy[index]) return prev;
-
-      const row = { ...copy[index] };
-
-      if (field === "type") {
-        row.typeId = extraId; // id
-        row.typeName = value; // name (e.g. Sensor)
-        row.type = value;      // LEGACY COMPAT
-
-        // reset name if type changes
-        row.nameId = "";
-        row.nameName = "";
-        row.name = "";         // LEGACY COMPAT
-
-        // fetch names for this new type
-        if (extraId) fetchComponentNames(extraId);
-      } else if (field === "name") {
-        row.nameName = value;
-        row.name = value;      // LEGACY COMPAT
-        row.nameId = extraId;
-        // Optionally fetch parameters for this component ID if needed for "Specific Parameters"
-        // ex: fetchComponentParameters(extraId)
-      }
-
-      copy[index] = row;
-      return copy;
-    });
-  };
-
   // deviceInfos is an array of device identity objects (one per device)
   const [deviceInfos, setDeviceInfos] = useState([{ imei: "", iccid: "", phone: "" }]);
 
-  // Popup for adding a new Component (type + name) -> REMOVING OLD POPUP 
-  const [showComponentPopup, setShowComponentPopup] = useState(false); // keeping specific state just in case, but flow changes
+  // Popup for adding a new Component (type + name)
+  const [showComponentPopup, setShowComponentPopup] = useState(false);
   const [newComponent, setNewComponent] = useState({
     name: "",
     type: "Sensor", // Sensor / Actuator
@@ -436,7 +360,7 @@ export default function ProductDefinition({ onSuccess }) {
 
   // small editing states for inline edit controls
   const [editingParam, setEditingParam] = useState(null); // { compIndex, paramIndex } or null
-  // const [editingComponentIndex, setEditingComponentIndex] = useState(null); // index or null - No longer needed
+  const [editingComponentIndex, setEditingComponentIndex] = useState(null); // index or null
 
   const inputStyles = {
     bg: "white",
@@ -965,18 +889,22 @@ export default function ProductDefinition({ onSuccess }) {
 
     try {
       // 1. Submit Devices
-      // const devUrl = `https://eureka.innotrat.in/product/${productId}/devicesNew`;
-      // Ensure you are using backticks (`) and ${} to insert the variable
-      const devUrl = `https://eureka.innotrat.in/product/${productId}/devicesNew`;
+      const devUrl = `http://192.168.0.6:5004/product/${productId}/devicesNew`;
       const devResp = await axios.post(devUrl, devicePayload);
 
       console.log("📥 Devices Response:", devResp.data);
 
+      toast({
+        title: "Devices Saved",
+        description: devResp?.data?.message || "Device list updated",
+        status: "success",
+        duration: 2000,
+      });
+
       // 2. Submit Definition (Chained)
       await submitProductDefinition();
 
-      // onSuccess is handled inside submitProductDefinition
-      // if (onSuccess) onSuccess(); 
+      if (onSuccess) onSuccess();
 
     } catch (error) {
       console.error("❌ API Error:", error);
@@ -1085,29 +1013,39 @@ export default function ProductDefinition({ onSuccess }) {
   };
 
   //newly added end 11/12/2025
-  //newly added end 11/12/2025
   const handleCancel = () => {
     setProductName("");
     setDescription("");
     setNumDevices(1);
-    setNumComponents(1); // RESET Component count
     setSelectedComponent("");
     setSelectedComponentName("");
     setFormComponents([
       {
-        typeId: "",
-        typeName: "Sensor",
-        nameId: "",
-        nameName: "",
+        name: "Flame Sensor",
+        type: "Sensor",
+        parameters: [
+          {
+            type: "inconstant",
+            name: "Flame Intensity",
+            min: "",
+            max: "",
+            unit: "",
+            value: "",
+          },
+        ],
+      },
+      {
+        name: "Vibration Motor",
+        type: "Actuator",
         parameters: [],
-      }
+      },
     ]);
     setDeviceInfos([{ imei: "", iccid: "", phone: "" }]);
     setUrlLink("");
     setNote("");
     setStep(1);
     setEditingParam(null);
-    // setEditingComponentIndex(null); // removed
+    setEditingComponentIndex(null);
   };
 
   // popup handlers
@@ -1221,8 +1159,8 @@ export default function ProductDefinition({ onSuccess }) {
               Basic Information
             </Text>
 
-            <Grid templateColumns="repeat(2, 1fr)" gap={6} mb={6}>
-              {/* No. Of Devices */}
+            <Grid templateColumns="repeat(3, 1fr)" gap={4} mb={3}>
+              {/* No. of Devices */}
               <GridItem>
                 <Text fontSize="sm" mb={1} fontWeight="medium">
                   No. Of Devices{" "}
@@ -1239,7 +1177,7 @@ export default function ProductDefinition({ onSuccess }) {
                   onChange={(valueString) => {
                     const n = parseInt(valueString || "0", 10) || 0;
                     setNumDevices(n);
-                    // adjustDeviceInfosToCount(n); // (effect handles this now)
+                    adjustDeviceInfosToCount(n); // keep deviceInfos in sync
                   }}
                   clampValueOnBlur={true}
                 >
@@ -1251,343 +1189,361 @@ export default function ProductDefinition({ onSuccess }) {
                 </NumberInput>
               </GridItem>
 
-              {/* No. Of Component */}
               <GridItem>
-                <Text fontSize="sm" mb={1} fontWeight="medium">
-                  No. Of Component
-                </Text>
+                <HStack justify="space-between" mb={1}>
+                  <Text fontSize="sm" fontWeight="medium">
+                    Components{" "}
+                    <Text as="span" color="red.500">
+                      *
+                    </Text>
+                  </Text>
+                  <IconButton
+                    aria-label="Add component"
+                    icon={<AddIcon boxSize={3} />}
+                    size="xs"
+                    variant="ghost"
+                    onClick={handleAddComponentPrompt}
+                  />
+                </HStack>
                 <Select
-                  size="sm"
-                  value={numComponents}
-                  onChange={(e) => setNumComponents(parseInt(e.target.value, 10))}
-                  sx={inputStyles}
+                  value={selectedComponentTypes}
+                  onChange={(e) => setSelectedComponentTypes(e.target.value)}
+                  color={selectedComponentTypes ? "black" : "black"}
+                  _focus={{ color: "black" }}
                 >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>
-                      {n}
+                  <option value="" style={{ color: "black" }}>
+                    {loadingComponentType ? "Loading..." : "Select type"}
+                  </option>
+
+                  {componentTypes?.map((item) => (
+                    <option key={item?._id} value={item?._id} style={{ color: "black" }}>
+                      {item?.componentName}
                     </option>
                   ))}
                 </Select>
               </GridItem>
+
+              {/* COMPONENT NAME */}
+              <GridItem>
+                <HStack justify="space-between" mb={1} align="center">
+                  <Text fontSize="sm" fontWeight="medium">
+                    Component Name{" "}
+                    <Text as="span" color="red.500">
+                      *
+                    </Text>
+                  </Text>
+
+                  <HStack spacing={1}>
+                    <IconButton
+                      size="xs"
+                      aria-label="Edit component"
+                      icon={<EditIcon />}
+                      variant="ghost"
+                      onClick={() => {
+                        const idx = formComponents.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
+                        if (idx === -1) return;
+                        setEditingComponentIndex(idx);
+                      }}
+                    />
+                    <IconButton
+                      size="xs"
+                      aria-label="Delete component"
+                      icon={<DeleteIcon />}
+                      variant="ghost"
+                      onClick={() => {
+                        const idx = formComponents.findIndex((c) => c.name === selectedComponentName && c.type === selectedComponent);
+                        if (idx === -1) return alert("No component selected");
+                        deleteComponent(idx);
+                      }}
+                    />
+                    <IconButton
+                      aria-label="Add component name"
+                      icon={<AddIcon boxSize={3} />}
+                      size="xs"
+                      variant="ghost"
+                      onClick={handleAddComponentName}
+                    />
+                  </HStack>
+                </HStack>
+
+                {editingComponentIndex !== null ? (
+                  <HStack>
+                    <Input
+                      size="sm"
+                      value={formComponents[editingComponentIndex]?.name || ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setFormComponents((prev) => {
+                          const c = [...prev];
+                          c[editingComponentIndex] = { ...c[editingComponentIndex], name: v };
+                          return c;
+                        });
+                        setSelectedComponentName(v);
+                      }}
+                      sx={inputStyles}
+                    />
+                    <Button size="xs" onClick={() => setEditingComponentIndex(null)}>
+                      Done
+                    </Button>
+                  </HStack>
+                ) : (
+
+                  <Select
+                    size="sm"
+                    placeholder="Select Component Name"
+                    value={selectedComponentId}
+                    onChange={(e) => setSelectedComponentId(e.target.value)}
+                    sx={inputStyles}
+                  >
+                    <option value="">Select Component Name</option>
+
+                    {componentNames.map((comp) => (
+                      <option key={comp._id} value={comp._id}>
+                        {comp.name}
+                      </option>
+                    ))}
+                  </Select>
+
+                )}
+              </GridItem>
             </Grid>
 
-            {/* Dynamic Component Rows */}
-            {formComponents.map((comp, index) => (
-              <Grid key={index} templateColumns="repeat(2, 1fr)" gap={6} mb={4} p={2} borderWidth="1px" borderRadius="md" bg="white">
-                <GridItem colSpan={2}>
-                  <Text fontSize="xs" color="gray.500" fontWeight="bold">Component {index + 1}</Text>
-                </GridItem>
+            <Button size="xs" colorScheme="blue" variant="outline" leftIcon={<AddIcon />} onClick={() => {
+              console.log("clicked");
+              addParameter(activeComponentIndex, "inconstant");
+            }}>
 
-                {/* Component Name (Type in code, but used as Parent Category) or Type? 
-                    Let's stick to Type -> Name flow but label as requested if needed.
-                    Code flow: Select Type (get ID) -> Then Select Name (from ID).
-                    I will label "Component Type" for the Parent, "Component Name" for the Child.
-                */}
-
-                {/* Component Type (Parent Category) */}
-                <GridItem>
-                  <HStack justify="space-between" mb={1}>
-                    <Text fontSize="sm" fontWeight="medium">
-                      Component Type{" "}
-                      <Text as="span" color="red.500">
-                        *
-                      </Text>
-                    </Text>
-                  </HStack>
-                  <Select
-                    size="sm"
-                    value={comp.typeId || ""}
-                    onChange={(e) => {
-                      const selectedId = e.target.value;
-                      const typeObj = componentTypes.find(t => t._id === selectedId);
-                      updateComponentRow(index, "type", typeObj?.componentName || "", selectedId);
-                    }}
-                    sx={inputStyles}
-                    placeholder={loadingComponentType ? "Loading..." : "Select Type"}
-                  >
-                    {componentTypes?.map((item) => (
-                      <option key={item?._id} value={item?._id}>
-                        {item?.componentName}
-                      </option>
-                    ))}
-                  </Select>
-                  <Text
-                    fontSize="xs"
-                    color="blue.500"
-                    cursor="pointer"
-                    textAlign="right"
-                    mt={1}
-                    onClick={handleAddComponentPrompt}
-                  >
-                    +Add
-                  </Text>
-                </GridItem>
-
-                {/* Component Name (Specific Item) */}
-                <GridItem>
-                  <HStack justify="space-between" mb={1}>
-                    <Text fontSize="sm" fontWeight="medium">
-                      Component Name{" "}
-                      <Text as="span" color="red.500">
-                        *
-                      </Text>
-                    </Text>
-                  </HStack>
-
-                  <Select
-                    size="sm"
-                    value={comp.nameId || ""}
-                    onChange={(e) => {
-                      const selectedId = e.target.value;
-                      // find name in the cached list
-                      const list = componentNamesMap[comp.typeId] || [];
-                      const nameObj = list.find(x => x._id === selectedId);
-                      updateComponentRow(index, "name", nameObj?.name || "", selectedId);
-
-                      // Also fetch params if needed? Logic for specific params currently relies on user adding them manually or fetching.
-                      // If we need to fetch params for this new component:
-                      // fetchComponentParameters(selectedId, index); // TODO implement if needed
-                      // For now, simple selection.
-                      if (selectedId) {
-                        // trigger param fetch if that logic exists? 
-                        // The original code had `fetchComponentParameters(selectedComponentId)`.
-                        // We should probably allow fetching standard params.
-                      }
-                    }}
-                    sx={inputStyles}
-                    placeholder="Select Name"
-                    isDisabled={!comp.typeId}
-                  >
-                    {(componentNamesMap[comp.typeId] || []).map((c) => (
-                      <option key={c._id} value={c._id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <Text
-                    fontSize="xs"
-                    color="blue.500"
-                    cursor="pointer"
-                    textAlign="right"
-                    mt={1}
-                    onClick={() => handleAddComponentName(comp.typeId, index)}
-                  >
-                    +Add
-                  </Text>
-                </GridItem>
-              </Grid>
-            ))}
-
-            {/* Old Single Row Logic Removed */}
+              Add Parameters
+            </Button>
           </Box>
 
-          {/* Parameters Section - Loop over all components */}
-          {formComponents.map((comp, compIndex) => (
-            <Box key={compIndex} mb={8} borderTop="1px" borderColor="gray.300" pt={4}>
-              <HStack justify="space-between" mb={4}>
-                <Text fontSize="md" fontWeight="bold">
-                  Specific Parameters - {comp.typeName} {comp.nameName}
-                </Text>
-                <Button
-                  size="xs"
-                  colorScheme="blue"
-                  leftIcon={<AddIcon />}
-                  onClick={() => addParameter(compIndex, "inconstant")}
-                >
-                  Add Parameters
-                </Button>
-              </HStack>
+          {/* Specific Parameters (Inconstant) */}
+          <Box>
+            <Text fontSize="md" fontWeight="bold" mb={1}>
+              Specific Parameters
+            </Text>
+            <Text fontSize="xs" mb={3} color="gray.600">
+              Inconstant parameters for the selected component.
+            </Text>
 
-              {/* Inconstant Parameters List */}
-              <Box bg="gray.50" p={2} borderRadius="md" mb={4}>
-                {comp.parameters && comp.parameters.length === 0 && (
-                  <Text fontSize="sm" color="gray.500" fontStyle="italic">No parameters added yet.</Text>
-                )}
+            {activeComponent?.parameters?.map(
+              (param, paramIndex) =>
+                param.type !== "inconstant" ? null : (
+                  <Box key={paramIndex} bg="white" p={3} borderRadius="md" borderWidth="1px" position="relative" mb={3}>
+                    <HStack position="absolute" top="8px" right="8px" spacing={1}>
+                      <IconButton
+                        size="xs"
+                        aria-label="Edit parameter"
+                        icon={<EditIcon />}
+                        onClick={() => setEditingParam({ compIndex: activeComponentIndex, paramIndex })}
+                        variant="ghost"
+                      />
+                      <IconButton size="xs" aria-label="Delete parameter" icon={<DeleteIcon />} onClick={() => deleteParameter(activeComponentIndex, paramIndex)} variant="ghost" />
+                    </HStack>
 
-                {comp.parameters?.map((param, paramIndex) =>
-                  param.type !== "inconstant" ? null : (
-                    <Box key={paramIndex} bg="white" p={3} borderRadius="md" borderWidth="1px" position="relative" mb={3}>
-                      <HStack position="absolute" top="8px" right="8px" spacing={1}>
+                    <Grid templateColumns="repeat(4, 1fr)" gap={4}>
+                      <GridItem>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          Specific Parameter
+                        </Text>
                         <IconButton
                           size="xs"
-                          aria-label="Edit parameter"
-                          icon={<EditIcon />}
-                          onClick={() => setEditingParam({ compIndex, paramIndex })}
+                          aria-label="Add parameter"
+                          icon={<AddIcon />}
                           variant="ghost"
+                          onClick={() => setIsParamModalOpen(true)}
                         />
-                        <IconButton size="xs" aria-label="Delete parameter" icon={<DeleteIcon />} onClick={() => deleteParameter(compIndex, paramIndex)} variant="ghost" />
-                      </HStack>
 
-                      <Grid templateColumns="repeat(4, 1fr)" gap={4}>
-                        {/* Specific Parameter Name */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Specific Parameter
-                          </Text>
-                          {/* Add New Param Option Button */}
-                          <IconButton
-                            size="xs"
-                            aria-label="Add parameter option"
-                            icon={<AddIcon />}
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedComponentId(comp.nameId); // Set context for modal if needed
-                              setIsParamModalOpen(true);
-                            }}
-                            mb={1}
-                          />
-
-                          {editingParam && editingParam.compIndex === compIndex && editingParam.paramIndex === paramIndex ? (
-                            <Select
-                              size="sm"
-                              value={param.name}
-                              sx={inputStyles}
-                              onChange={(e) => {
-                                updateParameter(
-                                  compIndex,
-                                  paramIndex,
-                                  "name",
-                                  e.target.value
-                                );
-                                setEditingParam(null);
-                              }}
-                              onBlur={() => setEditingParam(null)}
-                              placeholder="Select Parameter"
-                            >
-                              {/* We should ideally show params relevant to *this* component. 
-                                  For now using global parameterOptions or specificParams if fetched.
-                                  TODO: Make parameterOptions specific to the component type/id. 
-                              */}
-                              {parameterOptions.map((name, idx) => (
-                                <option key={idx} value={name}>
-                                  {name}
-                                </option>
-                              ))}
-                            </Select>
-                          ) : (
-                            <Text
-                              fontSize="sm"
-                              cursor="pointer"
-                              fontWeight="bold"
-                              onClick={() =>
-                                setEditingParam({ compIndex, paramIndex })
-                              }
-                            >
-                              {param.name || "Select Parameter"}
-                            </Text>
-                          )}
-                        </GridItem>
-
-                        {/* Variables */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Variables
-                          </Text>
-                          <IconButton
-                            size="xs"
-                            aria-label="Add variable"
-                            icon={<AddIcon />}
-                            variant="ghost"
-                            onClick={() => setIsVariableModalOpen(true)}
-                            mb={1}
-                          />
-
+                        {editingParam ? (
+                          // <Select
+                          //   size="sm"
+                          //   value={param.name}
+                          //   sx={inputStyles}
+                          //   autoFocus
+                          //   onChange={(e) => {
+                          //     updateParameter(activeComponentIndex, paramIndex, "name", e.target.value);
+                          //     setEditingParam(null);
+                          //   }}
+                          //   onBlur={() => setEditingParam(null)}
+                          // >
+                          //   <option value="">Select Parameterss</option>
+                          //   {specificParamOptions.map((opt, i) => (
+                          //     <option key={i} value={opt}>
+                          //       {opt}
+                          //     </option>
+                          //   ))}
+                          // </Select>
                           <Select
                             size="sm"
-                            value={param.variable || ""}
-                            onChange={(e) =>
-                              handleVariableChange(
-                                compIndex,
-                                paramIndex,
-                                e.target.value
-                              )
-                            }
+                            value={param.name}
                             sx={inputStyles}
+                            onChange={(e) => {
+                              updateParameter(
+                                activeComponentIndex,
+                                paramIndex,
+                                "name",
+                                e.target.value
+                              );
+                              setEditingParam(null);
+                            }}
+                            onBlur={() => setEditingParam(null)}
                           >
-                            <option value="">Select Variable</option>
-                            <option value="Constant">Constant</option>
-                            <option value="Inconstant">Inconstant</option>
-                            {variableOptions.map((opt, i) => (
-                              <option key={i} value={opt}>
-                                {opt}
+                            <option value="">Select Parameters</option>
+
+                            {parameterOptions.map((name, index) => (
+                              <option key={index} value={name}>
+                                {name}
                               </option>
                             ))}
                           </Select>
-                        </GridItem>
 
-                        {/* Range */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Range
+                        ) : (
+                          <Text
+                            fontSize="sm"
+                            cursor="pointer"
+                            onClick={() =>
+                              setEditingParam({ compIndex: activeComponentIndex, paramIndex })
+                            }
+                          >
+                            {param.name || "Flame Intensity"}
                           </Text>
-                          <HStack spacing={2}>
-                            <Input size="sm" placeholder="Min Value" value={param.min} onChange={(e) => updateParameter(compIndex, paramIndex, "min", e.target.value)} sx={inputStyles} />
-                            <Text fontSize="xs">to</Text>
-                            <Input size="sm" placeholder="Max Value" value={param.max} onChange={(e) => updateParameter(compIndex, paramIndex, "max", e.target.value)} sx={inputStyles} />
-                          </HStack>
-                        </GridItem>
-
-                        {/* Unit */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Unit
-                          </Text>
-                          <Select size="sm" value={param.unit} onChange={(e) => updateParameter(compIndex, paramIndex, "unit", e.target.value)} sx={inputStyles}>
-                            <option value="">Select Unit</option>
-                            <option value="Celsius">Celsius</option>
-                            <option value="Lux">Lux</option>
-                            <option value="PPM">PPM</option>
-                          </Select>
-                        </GridItem>
-                      </Grid>
-                    </Box>
-                  )
-                )}
-              </Box>
-
-              {/* Constant Variables UI */}
-              <Box bg="gray.100" p={3} borderRadius="md">
-                <Text fontSize="xs" fontWeight="bold" width="100%" textAlign="center" mb={2} color="gray.600" textTransform="uppercase">
-                  Constant Variables UI
-                </Text>
-
-                {comp.parameters?.map((param, paramIndex) =>
-                  param.type !== "constant" ? null : (
-                    <Grid key={paramIndex} templateColumns="repeat(3, 1fr)" gap={4} mb={3} alignItems="end">
-                      {/* Component Name (User calls it this, but it's referencing the component itself usually or just a label) 
-                            User image shows: "Component Name", "Variables", "Constant Values" for the Constant Variables UI box.
-                        */}
-                      <GridItem>
-                        <Text fontSize="sm" mb={1} fontWeight="medium">Component Name</Text>
-                        <Select size="sm" value={comp.nameName || ""} isDisabled sx={inputStyles}>
-                          <option value={comp.nameName || ""}>{comp.nameName || "Selected Component"}</option>
-                        </Select>
+                        )}
                       </GridItem>
 
                       <GridItem>
-                        <Text fontSize="sm" mb={1} fontWeight="medium">Variables</Text>
-                        <Select size="sm" value="Constant" isDisabled sx={inputStyles}>
-                          <option value="Constant">Constant</option>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          Variables
+                        </Text>
+                        <IconButton
+                          size="xs"
+                          aria-label="Add variable"
+                          icon={<AddIcon />}
+                          variant="ghost"
+                          onClick={() => setIsVariableModalOpen(true)}
+                        />
+
+                        {/* <Select
+                          size="sm"
+                          // value={param.type}
+                          value={param.type || ""}
+                          // onChange={(e) =>
+                          //   handleVariableChange(activeComponentIndex, paramIndex, e.target.value)
+                          // }
+                          onChange={(e) => {
+                            console.log("Selected:", e.target.value);
+                            handleVariableChange(activeComponentIndex, paramIndex, e.target.value);
+                          }}
+                        >
+                          {param.type && !variableOptions.includes(param.type) && (
+                            <option value={param.type}>{param.type}</option>
+                          )}
+
+                          {variableOptions.map((opt, i) => (
+                            <option key={i} value={opt}>
+                              {opt}
+                            </option>
+
+
+                          ))}
+                        </Select> */}
+
+                        <Select
+                          size="sm"
+                          value={param.variable || ""}
+                          onChange={(e) =>
+                            handleVariableChange(
+                              activeComponentIndex,
+                              paramIndex,
+                              e.target.value
+                            )
+                          }
+                        >
+                          <option value="">Select Variable</option>
+
+                          {variableOptions.map((opt, i) => (
+                            <option key={i} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
                         </Select>
+
+
                       </GridItem>
 
                       <GridItem>
-                        <Text fontSize="sm" mb={1} fontWeight="medium">Constant Values</Text>
-                        <HStack>
-                          <Input size="sm" placeholder="Enter value" value={param.value} onChange={(e) => updateParameter(compIndex, paramIndex, "value", e.target.value)} sx={inputStyles} />
-
-                          <IconButton size="xs" aria-label="Delete parameter" icon={<DeleteIcon />} onClick={() => deleteParameter(compIndex, paramIndex)} variant="ghost" colorScheme="red" />
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          Range
+                        </Text>
+                        <HStack spacing={2}>
+                          <Input size="sm" placeholder="Min Value" value={param.min} onChange={(e) => updateParameter(activeComponentIndex, paramIndex, "min", e.target.value)} sx={inputStyles} />
+                          <Text fontSize="xs">to</Text>
+                          <Input size="sm" placeholder="Max Value" value={param.max} onChange={(e) => updateParameter(activeComponentIndex, paramIndex, "max", e.target.value)} sx={inputStyles} />
                         </HStack>
                       </GridItem>
+
+                      <GridItem>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          Unit
+                        </Text>
+                        <Select size="sm" value={param.unit} onChange={(e) => updateParameter(activeComponentIndex, paramIndex, "unit", e.target.value)} sx={inputStyles}>
+                          <option value="">Select Unit</option>
+                          <option value="Celsius">Celsius</option>
+                          <option value="Lux">Lux</option>
+                          <option value="PPM">PPM</option>
+                        </Select>
+                      </GridItem>
                     </Grid>
-                  )
-                )}
-                <Button size="xs" colorScheme="blue" variant="outline" leftIcon={<AddIcon />} onClick={() => addParameter(compIndex, "constant")}>
-                  Add Constant
-                </Button>
-              </Box>
-            </Box>
-          ))}
+                  </Box>
+                )
+            )}
+          </Box>
+
+          {/* Add Parameters Specification (Constant) */}
+          <Box>
+            <Text fontSize="md" fontWeight="bold" mb={1}>
+              Add Parameters Specification
+            </Text>
+            <Text fontSize="xs" mb={3} color="gray.600">
+              Constant parameters (common specification) for the selected component.
+            </Text>
+
+            {activeComponent?.parameters?.map(
+              (param, paramIndex) =>
+                param.type !== "constant" ? null : (
+                  <Grid key={paramIndex} templateColumns="repeat(3, 1fr)" gap={4} mb={3}>
+                    <GridItem>
+                      <Text fontSize="sm" mb={1} fontWeight="medium">
+                        Component Name
+                      </Text>
+                      <Select size="sm" value={activeComponent?.name || ""} sx={inputStyles}>
+                        <option value={activeComponent?.name || ""}>{activeComponent?.name || "Select Components"}</option>
+                      </Select>
+                    </GridItem>
+
+                    <GridItem>
+                      <Text fontSize="sm" mb={1} fontWeight="medium">
+                        Variables
+                      </Text>
+                      <Select size="sm" value="Constant" sx={inputStyles}>
+                        <option value="Constant">Constant</option>
+                        <option value="Inconstant">Inconstant</option>
+                      </Select>
+                    </GridItem>
+
+                    <GridItem>
+                      <Text fontSize="sm" mb={1} fontWeight="medium">
+                        Constant Values
+                      </Text>
+                      <Input size="sm" placeholder="Enter value" value={param.value?.toLowerCase()} onChange={(e) => updateParameter(activeComponentIndex, paramIndex, "value", e.target.value)} sx={inputStyles} />
+                    </GridItem>
+                  </Grid>
+                )
+            )}
+
+            <Button size="xs" colorScheme="blue" variant="outline" leftIcon={<AddIcon />} onClick={() => addParameter(activeComponentIndex, "constant")}>
+              Add Parameters
+            </Button>
+          </Box>
 
           {/* URL Link */}
           <Box>
