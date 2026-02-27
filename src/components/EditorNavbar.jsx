@@ -649,7 +649,7 @@ const EditorNavbar = ({
 
             <div className="editor-navbar__onboarding-body">
               {/* Media Section */}
-              <div className="editor-navbar__onboarding-media">
+              {/* <div className="editor-navbar__onboarding-media">
                 <div className="editor-navbar__video-placeholder">
                   {onboardingSteps[helpStep].videoUrl ? (
                     <video
@@ -671,7 +671,7 @@ const EditorNavbar = ({
                     </div>
                   )}
                 </div>
-              </div>
+              </div> */}
 
               {/* Content Section */}
               <div className="editor-navbar__onboarding-content">

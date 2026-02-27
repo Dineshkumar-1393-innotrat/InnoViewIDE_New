@@ -878,6 +878,10 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       >
         <Flex flex="1" gap={0} overflow="hidden" align="stretch">
           <Box
+            width="300px"
+            minW="300px"
+            maxW="300px"
+            flex="0 0 300px"
             bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
             px={3}
             py={4}

@@ -90,13 +90,13 @@
   height: fit-content;
   width: auto;
   position: fixed;
-  top: 70px;
-  right: 16px;
+  top: 75px;
+  right: 0px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
   padding: 5px;
-  gap: 10px;
+  /* gap: 10px; */
   z-index: 1100;
   pointer-events: none;
 }
@@ -294,7 +294,9 @@
   height: 100%;
   overflow-y: auto;
   box-sizing: border-box;
-  /* background-color: #f8f9fa;  */
+  padding: 0px !important;
+  width: 300px;
+  flex: 0 0 300px;
 }
 
 .symbol-grid {

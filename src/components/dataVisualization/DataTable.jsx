@@ -92,17 +92,23 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
   }, [selectedDevice, devicesData]);
 
   useEffect(() => {
-    if (!selectedProduct) return; // Ensure a product is selected
+    if (!selectedProduct || !selectedDevice) return; // Ensure both product and device are selected
 
     const interval = 5000;
     const intervalId = setInterval(async () => {
-      const payload = { productID: selectedProduct };
+      const payload = {
+        productID: selectedProduct,
+        deviceID: selectedDevice,
+      };
 
       try {
-        await axios.post(`${baseURL}/generate_data`, payload);
+        await axios.post(
+          `${baseURL}/generateNewProductData`,
+          payload
+        );
 
         const response = await axios.post(
-          `${baseURL}/get_data`,
+          `${baseURL}/data`,
           payload
         );
 
@@ -117,7 +123,7 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
     }, interval);
 
     return () => clearInterval(intervalId); // Clear interval on unmount
-  }, [selectedProduct]);
+  }, [selectedProduct, selectedDevice]);
 
   console.log("tableData", tableData);
 

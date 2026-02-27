@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { Box, Heading } from "@chakra-ui/react";
+import { Box, Heading, Menu, MenuButton, MenuList, MenuItem, Button as ChakraButton } from "@chakra-ui/react";
 import { Select, Center } from "@chakra-ui/react";
+import { ChevronDownIcon } from "@chakra-ui/icons";
 import DataTable from "./DataTable";
 import { baseURL } from "../../utilities";
 import { useProject } from "../../ProjectContext";
@@ -49,7 +50,54 @@ const SelectProduct = () => {
         );
 
         if (response.data?.data && Array.isArray(response.data.data)) {
-          setProducts(response.data.data);
+          const productsList = response.data.data;
+          setProducts(productsList);
+
+          // Fetch devices for each product immediately after getting products
+          const devicePromises = productsList.map((product) =>
+            axios
+              .post(`${baseURL}/devices/running`, {
+                productID: product.productId,
+              })
+              .then((res) => {
+                console.log(`API Response for ${product.productId}:`, res.data);
+
+                // Handle different response structures
+                let devices = [];
+                if (Array.isArray(res.data)) {
+                  devices = res.data;
+                } else if (res.data?.runningDevices && Array.isArray(res.data.runningDevices)) {
+                  // API returns { status, runningDevicesCount, runningDevices: [{deviceID, active}] }
+                  devices = res.data.runningDevices;
+                } else if (res.data?.devices && Array.isArray(res.data.devices)) {
+                  devices = res.data.devices;
+                } else if (res.data?.data && Array.isArray(res.data.data)) {
+                  devices = res.data.data;
+                }
+
+                return {
+                  productID: product.productId,
+                  runningDevices: devices.map((d) => (typeof d === 'string' ? d : d.deviceID)) || [],
+                };
+              })
+              .catch((error) => {
+                console.error(
+                  `Error fetching devices for ${product.productId}:`,
+                  error
+                );
+                return { productID: product.productId, runningDevices: [] };
+              })
+          );
+
+          const deviceResults = await Promise.allSettled(devicePromises);
+          const finalRunningDevices = deviceResults.map((r) =>
+            r.status === "fulfilled"
+              ? r.value
+              : { productID: "", runningDevices: [] }
+          );
+
+          console.log("Final Running Devices State:", finalRunningDevices);
+          setRunningDevices(finalRunningDevices);
         } else {
           setProducts([]); // Ensure it's never null
         }
@@ -62,46 +110,6 @@ const SelectProduct = () => {
 
     fetchData();
   }, []);
-
-  useEffect(() => {
-    if (!products || products.length === 0) return; // Ensure products exist
-
-    const getAllRunningDevices = async () => {
-      try {
-        const promises = products.map((product) =>
-          axios
-            .post(`${baseURL}/devices/running`, {
-              productID: product.productId,
-            })
-            .then((response) => ({
-              productID: product.productId,
-              runningDevices:
-                response.data?.runningDevices?.map((d) => d.deviceID) || [],
-            }))
-            .catch((error) => {
-              console.error(
-                `Error fetching devices for ${product.productId}:`,
-                error
-              );
-              return { productID: product.productId, runningDevices: [] };
-            })
-        );
-
-        const results = await Promise.allSettled(promises);
-        setRunningDevices(
-          results.map((r) =>
-            r.status === "fulfilled"
-              ? r.value
-              : { productID: "", runningDevices: [] }
-          )
-        );
-      } catch (error) {
-        console.error("Error fetching running devices:", error);
-      }
-    };
-
-    getAllRunningDevices();
-  }, [products]);
 
   // Auto-select product based on activeProductId
   useEffect(() => {
@@ -158,47 +166,77 @@ const SelectProduct = () => {
           </Center>
         </Box>
       )}
-      <Box width="100%" maxW="300px" style={{ display: "flex" }}>
-        {/* Product Dropdown */}
-        <Select
-          placeholder="Select Product"
-          value={selectedProduct}
-          onChange={handleProductChange}
-          width="100%"
-          size={"sm"}
-        >
-          {products.map((product) => (
-            <option key={product.productId} value={product.productId}>
-              {product.productName}
-            </option>
-          ))}
-        </Select>
+      <Box display="flex" flexWrap="wrap" alignItems="center" gap={2}>
+        {/* Product Dropdown - Menu-based to avoid viewport clipping */}
+        <Menu>
+          <MenuButton
+            as={ChakraButton}
+            rightIcon={<ChevronDownIcon />}
+            size="sm"
+            variant="outline"
+            minW="180px"
+            textAlign="left"
+            fontWeight="normal"
+            color={selectedProduct ? "inherit" : "gray.400"}
+          >
+            {selectedProduct
+              ? products.find((p) => p.productId === selectedProduct)?.productName || "Select Product"
+              : "Select Product"}
+          </MenuButton>
+          <MenuList maxH="250px" overflowY="auto" zIndex={9999}>
+            {products.map((product) => (
+              <MenuItem
+                key={product.productId}
+                value={product.productId}
+                onClick={() =>
+                  handleProductChange({ target: { value: product.productId } })
+                }
+                bg={selectedProduct === product.productId ? "blue.50" : undefined}
+                fontWeight={selectedProduct === product.productId ? "semibold" : "normal"}
+              >
+                {product.productName}
+              </MenuItem>
+            ))}
+          </MenuList>
+        </Menu>
 
         {/* Running Devices Dropdown - Only shows when a product is selected */}
         {selectedProduct && (
-          <Select
-            placeholder="Select Running Device"
-            onChange={handleDeviceChange}
-            width="100%"
-            size={"sm"}
-            ml="2"
-            position={"relative"}
-          >
+          <>
             {availableDevices.length > 0 ? (
-              availableDevices.map((deviceID) => (
-                <option key={deviceID} value={deviceID}>
-                  {deviceID}
-                </option>
-              ))
+              <Select
+                placeholder="Select Running Device"
+                onChange={handleDeviceChange}
+                minW="180px"
+                size={"sm"}
+              >
+                {availableDevices.map((deviceID) => (
+                  <option key={deviceID} value={deviceID}>
+                    {deviceID}
+                  </option>
+                ))}
+              </Select>
             ) : (
-              <option disabled>No Active Devices</option>
+              <Box
+                px={3}
+                py={1}
+                bg="orange.50"
+                border="1px solid"
+                borderColor="orange.300"
+                borderRadius="md"
+                fontSize="xs"
+                color="orange.700"
+                whiteSpace="nowrap"
+                display="flex"
+                alignItems="center"
+              >
+                ⚠ No devices registered for this product
+              </Box>
             )}
-          </Select>
+          </>
         )}
 
         <Button
-          ms={4}
-          p={4}
           size="sm"
           colorScheme="blue"
           disabled={!selectedProduct}

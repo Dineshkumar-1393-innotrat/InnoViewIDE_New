@@ -328,7 +328,6 @@ function TextNode({ id, data, selected }) {
             position: 'relative',
             zIndex: 5,
             background: '#fff',
-            color: '#000',
             pointerEvents: 'all',
             color: data?.text || '#000',
           }}

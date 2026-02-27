@@ -59,6 +59,20 @@ export function ProjectProvider({ children }) {
     }
   }, [activeProductName]);
 
+  // Load activeDeviceId from localStorage
+  const [activeDeviceId, setActiveDeviceId] = useState(() => {
+    return localStorage.getItem("activeDeviceId") || null;
+  });
+
+  // Update localStorage when activeDeviceId changes
+  useEffect(() => {
+    if (activeDeviceId) {
+      localStorage.setItem("activeDeviceId", activeDeviceId);
+    } else {
+      localStorage.removeItem("activeDeviceId");
+    }
+  }, [activeDeviceId]);
+
   useEffect(() => {
     console.log("Updated Project:", activeProjectId, activeProjectName);
   }, [activeProjectId, activeProjectName]);
@@ -76,6 +90,8 @@ export function ProjectProvider({ children }) {
         setActiveProductId,
         activeProductName,
         setActiveProductName,
+        activeDeviceId,
+        setActiveDeviceId,
       }}
     >
       {children}

@@ -971,7 +971,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   IconButton,
-  HStack,
+  Stack,
   useToast,
   Box,
   Button,
@@ -986,18 +986,22 @@ const DeviceControlButtons = () => {
   const toast = useToast();
 
   // Get activeProductId from the project context
-  const { activeProductId } = useProject();
+  const { activeProductId, activeDeviceId } = useProject();
 
   // Check for running devices when product ID changes
   useEffect(() => {
     if (activeProductId) {
+      if (activeDeviceId) {
+        setDeviceId(activeDeviceId);
+        // Optionally check if it's running, but for now we assume it's available
+      }
       checkForExistingDevices(activeProductId);
     } else {
       // Reset device state when no product is selected
       setDeviceId('');
       setIsRunning(false);
     }
-  }, [activeProductId]);
+  }, [activeProductId, activeDeviceId]);
 
   // Check if there are any existing devices for this product
   const checkForExistingDevices = async (productId) => {
@@ -1009,8 +1013,14 @@ const DeviceControlButtons = () => {
         setDeviceId(existingDeviceId);
         setIsRunning(isDeviceRunning);
       } else {
-        setDeviceId('');
-        setIsRunning(false);
+        // If no running device found, fall back to activeDeviceId from context if available
+        if (activeDeviceId) {
+          setDeviceId(activeDeviceId);
+          setIsRunning(false);
+        } else {
+          setDeviceId('');
+          setIsRunning(false);
+        }
       }
     } catch (error) {
       console.error('Error checking for existing devices:', error);
@@ -1053,12 +1063,8 @@ const DeviceControlButtons = () => {
           });
         } else {
           // Create new device only if one doesn't exist
-          deviceToUse = await createDevices(activeProductId);
-          if (deviceToUse) {
-            setDeviceId(deviceToUse);
-          } else {
-            throw new Error('Failed to create device');
-          }
+          // Device creation is disabled as API was removed
+          throw new Error('No available device found and creation is disabled');
         }
       }
 
@@ -1123,10 +1129,11 @@ const DeviceControlButtons = () => {
   const checkRunningDevices = async (productId) => {
     try {
       const response = await fetch(
-        `https://eureka.innotrat.in/devices/running?productId=${productId}`,
+        `https://eureka.innotrat.in/devices/running`,
         {
-          method: 'GET',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productID: productId })
         }
       );
 
@@ -1134,7 +1141,7 @@ const DeviceControlButtons = () => {
 
       if (!response.ok) {
         // If we get an error with specific message, we need to create a device
-        if (data.message === "please create device for this product") {
+        if (data.message === "please create device for this product" || data.message === "please created device for this product") {
           return { needToCreateDevice: true };
         }
         throw new Error(data.message || `Failed to check running devices`);
@@ -1149,25 +1156,8 @@ const DeviceControlButtons = () => {
         };
       }
 
-      // No running devices, but we need to check if there are any devices at all
-      const allDevicesResponse = await fetch(
-        `https://eureka.innotrat.in/product/${productId}/devices`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      // API check for stopped devices removed
 
-      if (allDevicesResponse.ok) {
-        const allDevicesData = await allDevicesResponse.json();
-        if (allDevicesData.devices && allDevicesData.devices.length > 0) {
-          return {
-            needToCreateDevice: false,
-            existingDeviceId: allDevicesData.devices[0].deviceID,
-            isDeviceRunning: false
-          };
-        }
-      }
 
       // No devices found, need to create one
       return { needToCreateDevice: true };
@@ -1178,39 +1168,7 @@ const DeviceControlButtons = () => {
     }
   };
 
-  const createDevices = async (productId) => {
-    try {
-      const response = await fetch(
-        `https://eureka.innotrat.in/product/${productId}/devices`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ deviceCount: 1 }),
-        }
-      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `Failed to create device: ${response.statusText}`);
-      }
-
-      const createdDeviceId = data.addedDevices[0];
-
-      toast({
-        title: 'Device Created Successfully',
-        description: `Device ID: ${createdDeviceId}`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      return createdDeviceId;
-    } catch (error) {
-      console.error('Error creating device:', error);
-      throw error;
-    }
-  };
 
   const controlDevices = async (action, productId, devId) => {
     try {
@@ -1248,7 +1206,7 @@ const DeviceControlButtons = () => {
 
   return (
     <Box>
-      <HStack spacing={3}>
+      <Stack direction={{ base: 'column', md: 'row' }} spacing={3} alignItems="center">
         <IconButton
           icon={<FaPlay />}
           bg="#2F855A"
@@ -1287,7 +1245,7 @@ const DeviceControlButtons = () => {
         >
           {isRunning ? 'Running' : 'Paused'}
         </Button>
-      </HStack>
+      </Stack>
     </Box>
   );
 };

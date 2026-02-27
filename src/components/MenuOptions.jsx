@@ -8,7 +8,8 @@ import {
   Button,
 } from "@chakra-ui/react";
 import { ChevronDownIcon } from "@chakra-ui/icons";
-import { FaFile, FaEdit, FaEye, FaTools, FaQuestionCircle } from "react-icons/fa";
+import { FaFile, FaEdit, FaEye, FaQuestionCircle } from "react-icons/fa";
+import { Cog, Hammer, BugPlay, Zap, Trash, Radio, Terminal, Library } from "lucide-react";
 
 const MenuOptions = ({ onOpen }) => {
   const { colorMode } = useColorMode();
@@ -81,14 +82,14 @@ const MenuOptions = ({ onOpen }) => {
           Tools
         </MenuButton>
         <MenuList>
-          <MenuItem icon={<FaTools />}>Options</MenuItem>
-          <MenuItem icon={<FaTools />}>Compile</MenuItem>
-          <MenuItem icon={<FaTools />}>Build</MenuItem>
-          <MenuItem icon={<FaTools />}>Debug</MenuItem>
-          <MenuItem icon={<FaTools />}>Flash</MenuItem>
-          <MenuItem icon={<FaTools />}>Erase</MenuItem>
-          <MenuItem icon={<FaTools />}>Serial Monitor</MenuItem>
-          <MenuItem icon={<FaTools />}>Terminal</MenuItem>
+          <MenuItem icon={<Cog size={14} />} onClick={() => window.dispatchEvent(new CustomEvent('innoide:compile-start'))}>Compile</MenuItem>
+          <MenuItem icon={<Hammer size={14} />} onClick={() => { window.dispatchEvent(new CustomEvent('innoide:build-start')); setTimeout(() => window.dispatchEvent(new CustomEvent('innoide:build-complete')), 800) }}>Build</MenuItem>
+          <MenuItem icon={<BugPlay size={14} />} onClick={() => window.dispatchEvent(new CustomEvent('innoide:debugger-start'))}>Debugger</MenuItem>
+          <MenuItem icon={<Zap size={14} />} onClick={() => { window.dispatchEvent(new CustomEvent('innoide:flash-start')); setTimeout(() => window.dispatchEvent(new CustomEvent('innoide:flash-complete')), 1000) }}>Flash</MenuItem>
+          <MenuItem icon={<Trash size={14} />} onClick={() => { window.dispatchEvent(new CustomEvent('innoide:erase-start')); setTimeout(() => window.dispatchEvent(new CustomEvent('innoide:erase-complete')), 600) }}>Erase Chip</MenuItem>
+          <MenuItem icon={<Radio size={14} />} onClick={() => window.dispatchEvent(new CustomEvent('innoide:serial-open'))}>Serial Monitor</MenuItem>
+          <MenuItem icon={<Terminal size={14} />} onClick={() => window.dispatchEvent(new CustomEvent('innoide:terminal-open'))}>Terminal</MenuItem>
+          <MenuItem icon={<Library size={14} />} onClick={() => window.dispatchEvent(new CustomEvent('innoide:libraries-open'))}>Library Manager</MenuItem>
         </MenuList>
       </Menu>
 

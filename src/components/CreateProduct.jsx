@@ -33,15 +33,26 @@ import {
 import axios from "axios";
 import { useProject } from "../ProjectContext";
 
+import { COMPONENT_DATA, COMPONENT_TYPES } from "./componentData.js";
+
 export default function ProductDefinition({ onSuccess }) {
   const toast = useToast();
 
   // Get setters from ProjectContext to update activeProductId
-  const { setActiveProductId, setActiveProductName } = useProject();
+  const { setActiveProductId, setActiveProductName, setActiveDeviceId } = useProject();
+
+  const SI_UNITS = [
+    "Volt (V)", "Ampere (A)", "Milliampere (mA)", "Ohm (Ω)", "Farad (F)", "Henry (H)",
+    "Watt (W)", "Hertz (Hz)", "Kilohertz (kHz)", "Coulomb (C)",
+    "Second (s)", "Millisecond (ms)", "Microsecond (µs)", "Nanosecond (ns)",
+    "Kelvin (K)", "Degree Celsius (°C)", "Pascal (Pa)", "m/s²", "Tesla (T)",
+    "Lux (lx)", "Decibel (dB)", "Kilometer (km)", "Kilogram (kg)", "Gram (g)",
+    "G-force (G)", "Bits per second (bps)", "PPM", "K/W"
+  ].sort();
+
 
   // Component Names list
   const [componentNames, setComponentNames] = useState([]);
-  console.log(componentNames, "componentNames---");
   // Component Names cache: { [typeId]: [{ _id, name }] }
   const [componentNamesMap, setComponentNamesMap] = useState({});
 
@@ -225,12 +236,22 @@ export default function ProductDefinition({ onSuccess }) {
         `https://eureka.innotrat.in/api/v2/componentParameters/${componentId}`
       );
 
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
       const result = await res.json();
-      console.log("Next API response:", result);
+      console.log("Fetch component parameters response:", result);
 
       setSpecificParams(result.data || []);
     } catch (error) {
       console.error("Fetch component parameters error:", error);
+      toast({
+        title: "Error fetching parameters",
+        description: error.message,
+        status: "error",
+        duration: 3000,
+      });
     }
   };
 
@@ -341,15 +362,33 @@ export default function ProductDefinition({ onSuccess }) {
       const res = await axios.get(
         `https://eureka.innotrat.in/api/v2/componentNames/${typeId}`
       );
+      console.log("Component Names GET response:", res.data);
+
+      const list = res.data?.data || [];
       setComponentNamesMap((prev) => ({
         ...prev,
-        [typeId]: res.data.data || []
+        [typeId]: list
       }));
 
       // auto select newly added name for that row
-      updateComponentRow(rowIndex, "name", name, res.data.data?.find(x => x.name === name)?._id);
+      // We search for the exact name case-insensitively just in case
+      const matched = list.find(x => x.name.trim().toLowerCase() === name.trim().toLowerCase());
+      updateComponentRow(rowIndex, "name", name, matched?._id || "");
+
+      toast({
+        title: "Success",
+        description: "Component name added and selected",
+        status: "success",
+        duration: 2000,
+      });
     } catch (err) {
       console.error("Component name create failed", err);
+      toast({
+        title: "Error",
+        description: "Failed to add component name",
+        status: "error",
+        duration: 3000,
+      });
     }
   };
 
@@ -495,58 +534,53 @@ export default function ProductDefinition({ onSuccess }) {
 
 
   const addParameter = (compIndex, type) => {
-    console.log("addParameter called with:", compIndex, type); // ← ADD THIS
+    console.log("addParameter called with:", compIndex, type);
 
     if (compIndex < 0 || compIndex >= formComponents.length) {
       console.log("Invalid index:", compIndex);
       return;
     }
 
-    console.log("Form components length:", formComponents.length);
-    console.log("Current component:", formComponents[compIndex]);
-
     setFormComponents((prev) => {
-      console.log("Previous state:", prev);
-
-      const updated = [...prev];
-
-      // Ensure the component exists
-      if (!updated[compIndex]) {
-        console.log("Component doesn't exist at index:", compIndex);
-        return prev;
-      }
-
-      // Ensure parameters array exists
-      if (!updated[compIndex].parameters) {
-        updated[compIndex].parameters = [];
-        console.log("Created empty parameters array");
-      }
-
       const newParam = {
         type: type === "constant" ? "constant" : "inconstant",
         variable: "",
-        name: "",
+        name: "", // Parameter Name
         min: "",
         max: "",
+        xMin: "", xMax: "", xUnit: "",
+        yMin: "", yMax: "", yUnit: "",
+        zMin: "", zMax: "", zUnit: "",
         unit: "",
         value: "",
+        state: "", // for Switch
+        color: "", // for LED
       };
 
       console.log("Adding new parameter:", newParam);
 
-      updated[compIndex].parameters.push(newParam);
-
-      return updated;
+      return prev.map((comp, i) =>
+        i === compIndex
+          ? { ...comp, parameters: [...(comp.parameters || []), newParam] }
+          : comp
+      );
     });
   };
 
   const updateParameter = (compIndex, paramIndex, field, value) => {
-    setFormComponents((prev) => {
-      const updated = [...prev];
-      if (!updated[compIndex] || !updated[compIndex].parameters[paramIndex]) return prev;
-      updated[compIndex].parameters[paramIndex][field] = value;
-      return updated;
-    });
+    console.log(`updateParameter: [${compIndex}][${paramIndex}] ${field} = ${value}`);
+    setFormComponents((prev) =>
+      prev.map((comp, cIdx) =>
+        cIdx === compIndex
+          ? {
+            ...comp,
+            parameters: comp.parameters.map((param, pIdx) =>
+              pIdx === paramIndex ? { ...param, [field]: value } : param
+            ),
+          }
+          : comp
+      )
+    );
   };
 
   // const handleVariableChange = (compIndex, paramIndex, newValue) => {
@@ -570,9 +604,7 @@ export default function ProductDefinition({ onSuccess }) {
                 ? {
                   ...param,
                   variable: newValue,     // ✅ store variable name
-                  type: newValue === "Constant"
-                    ? "constant"
-                    : "inconstant",
+                  type: newValue === "Constant" ? "constant" : "inconstant", // simplistic mapping, but we rely on 'variable' for UI
                 }
                 : param
             ),
@@ -824,67 +856,139 @@ export default function ProductDefinition({ onSuccess }) {
       return;
     }
 
-    // 1. Transform formComponents -> API payload format
-    /*
-      Expected structure:
-      {
-        "productID": "...",
-        "productName": "...",
-        "components": {
-           "DHT11" (componentName): {
-              "componentID": "...", 
-              "type": "sensors", 
-              "temperature": { min, max, unit },
-              ...
-           }
-        }
-      }
-    */
+    const extractUnit = (u) => {
+      if (!u) return "";
+      const match = u.match(/\((.*?)\)/);
+      return match ? match[1] : u;
+    };
+
+    // Helper to format component type (e.g. "Power Supply" -> "power_management")
+    const formatComponentType = (rawType) => {
+      if (!rawType) return "sensor";
+      const normalized = rawType.toLowerCase().trim();
+
+      const MAPPING = {
+        "sensor": "sensor",
+        "actuator": "actuator",
+        "switch": "switch",
+        "microcontroller": "microcontroller",
+        "power supply": "power_management",
+        "power_supply": "power_management",
+        "audio component": "audio_component",
+        "audio components": "audio_component",
+        "connectivity": "connectivity",
+        // Add more if needed
+      };
+
+      return MAPPING[normalized] || normalized.replace(/\s+/g, '_');
+    };
 
     const componentsPayload = {};
 
     formComponents.forEach((comp) => {
-      // safe keys
       const safeName = comp.name || "Unnamed";
+      const type = formatComponentType(comp.typeName || comp.type);
 
-      // prepare the component object
-      const compObj = {
-        componentID: "", // or if we have it from somewhere?
-        type: (comp.type || "sensors").toLowerCase() + "s", // "Sensor" -> "sensors" (plural, lowercase based on example)
-        note: note || "", // from state
-        urls: urlLink ? [urlLink] : []
-      };
+      const paramsObj = {};
 
-      // map parameters
       if (Array.isArray(comp.parameters)) {
         comp.parameters.forEach((param) => {
           if (!param.name) return;
 
-          if (param.type === "inconstant") {
-            // e.g. "temperature": { min: 20, max: 30, unit: "C" }
-            compObj[param.name] = {
-              min: param.min,
-              max: param.max,
-              unit: param.unit
+          let paramDef = {};
+
+          // 1. CONSTANT
+          if (param.variable === "Constant" || (!param.variable && param.type === "constant")) {
+            paramDef = {
+              parameterType: "constant",
+              value: param.value, // Keep as string or number? User example has number? "value": 10.
+              // Note: Inputs are usually strings. Backend might want numbers. 
+              // Attempt convert? User example value: 10. My code input is text.
+              // Let's try to parse if it looks like a number
+              unit: extractUnit(param.unit)
             };
-          } else {
-            // constant
-            // e.g. "someParam": "someValue"
-            compObj[param.name] = param.value;
+            // Try valid number conversion
+            const numVal = parseFloat(param.value);
+            if (!isNaN(numVal)) paramDef.value = numVal;
           }
+          // 2. COMPOSITE
+          else if (param.variable === "Inconstant Composite") {
+            paramDef = {
+              parameterType: "composite",
+              children: {
+                x: {
+                  min: parseFloat(param.xMin) || 0,
+                  max: parseFloat(param.xMax) || 0,
+                  unit: extractUnit(param.xUnit)
+                },
+                y: {
+                  min: parseFloat(param.yMin) || 0,
+                  max: parseFloat(param.yMax) || 0,
+                  unit: extractUnit(param.yUnit)
+                },
+                z: {
+                  min: parseFloat(param.zMin) || 0,
+                  max: parseFloat(param.zMax) || 0,
+                  unit: extractUnit(param.zUnit)
+                }
+              }
+            };
+          }
+          // 3. SWITCH (State)
+          else if (comp.typeName === "Switch" || comp.typeName === "switch") {
+            // For switch, strict "State" param?
+            // User example: "State": { parameterType: "state", states: ["ON", "OFF"] }
+            // Only if param name is "State" or we want to force it?
+            // Current UI allows arbitrary param names. Use param.name as key.
+
+            // If user entered "State", we map it to state type
+            if (param.name === "State") {
+              paramDef = {
+                parameterType: "state",
+                states: ["ON", "OFF"]
+              };
+            } else {
+              // Fallback if they added a random param to a switch? Treat as simple?
+              // Or if they used button to set On/Off state?
+              // Let's assume simple if not "State".
+              // But usually Switch only has State.
+              // Let's force "state" type if it looks like state.
+              paramDef = {
+                parameterType: "state",
+                states: ["ON", "OFF"]
+              };
+            }
+          }
+          // 4. SIMPLE (Default)
+          else {
+            paramDef = {
+              parameterType: "simple",
+              min: parseFloat(param.min) || 0,
+              max: parseFloat(param.max) || 0,
+              unit: extractUnit(param.unit)
+            };
+          }
+
+          paramsObj[param.name] = paramDef;
         });
       }
 
-      componentsPayload[safeName] = compObj;
+      componentsPayload[safeName] = {
+        componentID: "",
+        type: type,
+        parameters: paramsObj
+      };
     });
 
     const payload = {
       productID: productId,
       productName: productName,
+      note: note || "",
+      urls: urlLink ? [urlLink] : [],
       components: componentsPayload
     };
 
-    console.log("📤 Definition Payload:", payload);
+    console.log("📤 Definition Payload:", JSON.stringify(payload, null, 2));
 
     try {
       const url = `https://eureka.innotrat.in/product/${productId}/definitionNew`;
@@ -971,6 +1075,14 @@ export default function ProductDefinition({ onSuccess }) {
       const devResp = await axios.post(devUrl, devicePayload);
 
       console.log("📥 Devices Response:", devResp.data);
+
+      // Extract deviceID and save to context
+      const newDeviceIds = devResp.data.addedDevices || [];
+      if (newDeviceIds.length > 0) {
+        const firstDeviceId = newDeviceIds[0];
+        console.log("Saving new Device ID to context:", firstDeviceId);
+        setActiveDeviceId(firstDeviceId);
+      }
 
       // 2. Submit Definition (Chained)
       await submitProductDefinition();
@@ -1262,7 +1374,7 @@ export default function ProductDefinition({ onSuccess }) {
                   onChange={(e) => setNumComponents(parseInt(e.target.value, 10))}
                   sx={inputStyles}
                 >
-                  {[1, 2, 3, 4, 5].map((n) => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
                     <option key={n} value={n}>
                       {n}
                     </option>
@@ -1338,26 +1450,37 @@ export default function ProductDefinition({ onSuccess }) {
                     size="sm"
                     value={comp.nameId || ""}
                     onChange={(e) => {
-                      const selectedId = e.target.value;
-                      // find name in the cached list
+                      const selectedVal = e.target.value;
+                      // Check if it's an ID from API list or a Name from local list
                       const list = componentNamesMap[comp.typeId] || [];
-                      const nameObj = list.find(x => x._id === selectedId);
-                      updateComponentRow(index, "name", nameObj?.name || "", selectedId);
+                      const nameObj = list.find(x => x._id === selectedVal);
 
-                      // Also fetch params if needed? Logic for specific params currently relies on user adding them manually or fetching.
-                      // If we need to fetch params for this new component:
-                      // fetchComponentParameters(selectedId, index); // TODO implement if needed
-                      // For now, simple selection.
-                      if (selectedId) {
-                        // trigger param fetch if that logic exists? 
-                        // The original code had `fetchComponentParameters(selectedComponentId)`.
-                        // We should probably allow fetching standard params.
-                      }
+                      // If nameObj found, use its name and ID. If not, assume selectedVal is the name (from COMPONENT_TYPES)
+                      const newName = nameObj ? nameObj.name : selectedVal;
+                      const newId = nameObj ? nameObj._id : selectedVal;
+
+                      setFormComponents((prev) => {
+                        const copy = [...prev];
+                        if (!copy[index]) return prev;
+                        const row = { ...copy[index] };
+
+                        row.nameName = newName;
+                        row.name = newName;
+                        row.nameId = newId;
+                        row.parameters = []; // Clear params
+
+                        copy[index] = row;
+                        return copy;
+                      });
                     }}
                     sx={inputStyles}
                     placeholder="Select Name"
-                    isDisabled={!comp.typeId}
+                    isDisabled={!comp.typeId && !comp.typeName}
                   >
+                    {/* Render both hardcoded and dynamic options */}
+                    {COMPONENT_TYPES[comp.typeName] && COMPONENT_TYPES[comp.typeName].map((name) => (
+                      <option key={`hardcoded-${name}`} value={name}>{name}</option>
+                    ))}
                     {(componentNamesMap[comp.typeId] || []).map((c) => (
                       <option key={c._id} value={c._id}>
                         {c.name}
@@ -1369,7 +1492,6 @@ export default function ProductDefinition({ onSuccess }) {
                     color="blue.500"
                     cursor="pointer"
                     textAlign="right"
-                    mt={1}
                     onClick={() => handleAddComponentName(comp.typeId, index)}
                   >
                     +Add
@@ -1398,194 +1520,418 @@ export default function ProductDefinition({ onSuccess }) {
                 </Button>
               </HStack>
 
-              {/* Inconstant Parameters List */}
+              {/* Parameters List */}
               <Box bg="gray.50" p={2} borderRadius="md" mb={4}>
                 {comp.parameters && comp.parameters.length === 0 && (
                   <Text fontSize="sm" color="gray.500" fontStyle="italic">No parameters added yet.</Text>
                 )}
 
-                {comp.parameters?.map((param, paramIndex) =>
-                  param.type !== "inconstant" ? null : (
-                    <Box key={paramIndex} bg="white" p={3} borderRadius="md" borderWidth="1px" position="relative" mb={3}>
-                      <HStack position="absolute" top="8px" right="8px" spacing={1}>
+                {comp.parameters?.map((param, paramIndex) => (
+                  <Box key={paramIndex} bg="white" p={3} borderRadius="md" borderWidth="1px" position="relative" mb={3}>
+                    <HStack position="absolute" top="8px" right="8px" spacing={1}>
+                      <IconButton
+                        size="xs"
+                        aria-label="Edit parameter"
+                        icon={<EditIcon />}
+                        onClick={() => setEditingParam({ compIndex, paramIndex })}
+                        variant="ghost"
+                      />
+                      <IconButton size="xs" aria-label="Delete parameter" icon={<DeleteIcon />} onClick={() => deleteParameter(compIndex, paramIndex)} variant="ghost" />
+                    </HStack>
+
+                    <Grid templateColumns="repeat(4, 1fr)" gap={4}>
+                      {/* Specific Parameter Name */}
+                      <GridItem>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          Specific Parameter
+                        </Text>
+                        {/* Add New Param Option Button */}
                         <IconButton
                           size="xs"
-                          aria-label="Edit parameter"
-                          icon={<EditIcon />}
-                          onClick={() => setEditingParam({ compIndex, paramIndex })}
+                          aria-label="Add parameter option"
+                          icon={<AddIcon />}
                           variant="ghost"
+                          onClick={() => {
+                            setSelectedComponentId(comp.nameId); // Set context for modal if needed
+                            setIsParamModalOpen(true);
+                          }}
+                          mb={1}
                         />
-                        <IconButton size="xs" aria-label="Delete parameter" icon={<DeleteIcon />} onClick={() => deleteParameter(compIndex, paramIndex)} variant="ghost" />
-                      </HStack>
 
-                      <Grid templateColumns="repeat(4, 1fr)" gap={4}>
-                        {/* Specific Parameter Name */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Specific Parameter
-                          </Text>
-                          {/* Add New Param Option Button */}
-                          <IconButton
-                            size="xs"
-                            aria-label="Add parameter option"
-                            icon={<AddIcon />}
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedComponentId(comp.nameId); // Set context for modal if needed
-                              setIsParamModalOpen(true);
+                        {editingParam && editingParam.compIndex === compIndex && editingParam.paramIndex === paramIndex ? (
+                          <Select
+                            size="sm"
+                            value={param.name}
+                            sx={inputStyles}
+                            onChange={(e) => {
+                              updateParameter(
+                                compIndex,
+                                paramIndex,
+                                "name",
+                                e.target.value
+                              );
+                              setEditingParam(null);
                             }}
-                            mb={1}
-                          />
-
-                          {editingParam && editingParam.compIndex === compIndex && editingParam.paramIndex === paramIndex ? (
-                            <Select
-                              size="sm"
-                              value={param.name}
-                              sx={inputStyles}
-                              onChange={(e) => {
-                                updateParameter(
-                                  compIndex,
-                                  paramIndex,
-                                  "name",
-                                  e.target.value
-                                );
-                                setEditingParam(null);
-                              }}
-                              onBlur={() => setEditingParam(null)}
-                              placeholder="Select Parameter"
-                            >
-                              {/* We should ideally show params relevant to *this* component. 
+                            onBlur={() => setEditingParam(null)}
+                            placeholder="Select Parameter"
+                          >
+                            {/* We should ideally show params relevant to *this* component. 
                                   For now using global parameterOptions or specificParams if fetched.
                                   TODO: Make parameterOptions specific to the component type/id. 
                               */}
-                              {parameterOptions.map((name, idx) => (
-                                <option key={idx} value={name}>
-                                  {name}
-                                </option>
-                              ))}
-                            </Select>
-                          ) : (
-                            <Text
-                              fontSize="sm"
-                              cursor="pointer"
-                              fontWeight="bold"
-                              onClick={() =>
-                                setEditingParam({ compIndex, paramIndex })
-                              }
-                            >
-                              {param.name || "Select Parameter"}
-                            </Text>
-                          )}
-                        </GridItem>
-
-                        {/* Variables */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Variables
-                          </Text>
-                          <IconButton
-                            size="xs"
-                            aria-label="Add variable"
-                            icon={<AddIcon />}
-                            variant="ghost"
-                            onClick={() => setIsVariableModalOpen(true)}
-                            mb={1}
-                          />
-
-                          <Select
-                            size="sm"
-                            value={param.variable || ""}
-                            onChange={(e) =>
-                              handleVariableChange(
-                                compIndex,
-                                paramIndex,
-                                e.target.value
-                              )
+                            {((comp.nameName && COMPONENT_DATA[comp.nameName]) || parameterOptions).map((name, idx) => (
+                              <option key={idx} value={name}>
+                                {name}
+                              </option>
+                            ))}
+                          </Select>
+                        ) : (
+                          <Text
+                            fontSize="sm"
+                            cursor="pointer"
+                            fontWeight="bold"
+                            onClick={() =>
+                              setEditingParam({ compIndex, paramIndex })
                             }
-                            sx={inputStyles}
                           >
-                            <option value="">Select Variable</option>
-                            <option value="Constant">Constant</option>
-                            <option value="Inconstant">Inconstant</option>
+                            {param.name || "Select Parameter"}
+                          </Text>
+                        )}
+                      </GridItem>
+
+                      {/* Variables */}
+                      <GridItem>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          Variables
+                        </Text>
+                        <IconButton
+                          size="xs"
+                          aria-label="Add variable"
+                          icon={<AddIcon />}
+                          variant="ghost"
+                          onClick={() => setIsVariableModalOpen(true)}
+                          mb={1}
+                        />
+
+                        <Select
+                          size="sm"
+                          value={param.variable || ""}
+                          onChange={(e) =>
+                            handleVariableChange(
+                              compIndex,
+                              paramIndex,
+                              e.target.value
+                            )
+                          }
+                          sx={inputStyles}
+                        >
+                          <option value="">Select Variable</option>
+                          <option value="Constant">Constant</option>
+                          <option value="Inconstant Simple">Inconstant Simple</option>
+                          <option value="Inconstant Composite">Inconstant Composite</option>
+                          {/* 
                             {variableOptions.map((opt, i) => (
                               <option key={i} value={opt}>
                                 {opt}
                               </option>
-                            ))}
-                          </Select>
-                        </GridItem>
-
-                        {/* Range */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Range
-                          </Text>
-                          <HStack spacing={2}>
-                            <Input size="sm" placeholder="Min Value" value={param.min} onChange={(e) => updateParameter(compIndex, paramIndex, "min", e.target.value)} sx={inputStyles} />
-                            <Text fontSize="xs">to</Text>
-                            <Input size="sm" placeholder="Max Value" value={param.max} onChange={(e) => updateParameter(compIndex, paramIndex, "max", e.target.value)} sx={inputStyles} />
-                          </HStack>
-                        </GridItem>
-
-                        {/* Unit */}
-                        <GridItem>
-                          <Text fontSize="sm" mb={1} fontWeight="medium">
-                            Unit
-                          </Text>
-                          <Select size="sm" value={param.unit} onChange={(e) => updateParameter(compIndex, paramIndex, "unit", e.target.value)} sx={inputStyles}>
-                            <option value="">Select Unit</option>
-                            <option value="Celsius">Celsius</option>
-                            <option value="Lux">Lux</option>
-                            <option value="PPM">PPM</option>
-                          </Select>
-                        </GridItem>
-                      </Grid>
-                    </Box>
-                  )
-                )}
-              </Box>
-
-              {/* Constant Variables UI */}
-              <Box bg="gray.100" p={3} borderRadius="md">
-                <Text fontSize="xs" fontWeight="bold" width="100%" textAlign="center" mb={2} color="gray.600" textTransform="uppercase">
-                  Constant Variables UI
-                </Text>
-
-                {comp.parameters?.map((param, paramIndex) =>
-                  param.type !== "constant" ? null : (
-                    <Grid key={paramIndex} templateColumns="repeat(3, 1fr)" gap={4} mb={3} alignItems="end">
-                      {/* Component Name (User calls it this, but it's referencing the component itself usually or just a label) 
-                            User image shows: "Component Name", "Variables", "Constant Values" for the Constant Variables UI box.
-                        */}
-                      <GridItem>
-                        <Text fontSize="sm" mb={1} fontWeight="medium">Component Name</Text>
-                        <Select size="sm" value={comp.nameName || ""} isDisabled sx={inputStyles}>
-                          <option value={comp.nameName || ""}>{comp.nameName || "Selected Component"}</option>
+                            ))} 
+                            */}
                         </Select>
                       </GridItem>
 
-                      <GridItem>
-                        <Text fontSize="sm" mb={1} fontWeight="medium">Variables</Text>
-                        <Select size="sm" value="Constant" isDisabled sx={inputStyles}>
-                          <option value="Constant">Constant</option>
-                        </Select>
-                      </GridItem>
+                      <GridItem colSpan={param.variable === "Inconstant Composite" ? 4 : 2}>
+                        {/* 1. CONSTANT SELECTED */}
+                        {param.variable === "Constant" && (
+                          <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                            <GridItem>
+                              <Text fontSize="sm" mb={1} fontWeight="medium">Constant Value</Text>
+                              <Input size="sm" placeholder="Enter value" value={param.value || ""} onChange={(e) => updateParameter(compIndex, paramIndex, "value", e.target.value)} sx={inputStyles} />
+                            </GridItem>
+                            <GridItem>
+                              <Text fontSize="sm" mb={1} fontWeight="medium">Unit</Text>
+                              <HStack>
+                                <Select size="sm" value={param.unit || ""} onChange={(e) => updateParameter(compIndex, paramIndex, "unit", e.target.value)} sx={inputStyles}>
+                                  <option value="">Select Unit</option>
+                                  {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                </Select>
+                                <IconButton
+                                  size="xs"
+                                  aria-label="Delete parameter"
+                                  icon={<DeleteIcon />}
+                                  colorScheme="red"
+                                  variant="ghost"
+                                  onClick={() => deleteParameter(compIndex, paramIndex)}
+                                />
+                              </HStack>
+                            </GridItem>
+                          </Grid>
+                        )}
 
-                      <GridItem>
-                        <Text fontSize="sm" mb={1} fontWeight="medium">Constant Values</Text>
-                        <HStack>
-                          <Input size="sm" placeholder="Enter value" value={param.value} onChange={(e) => updateParameter(compIndex, paramIndex, "value", e.target.value)} sx={inputStyles} />
+                        {/* 2. INCONSTANT SIMPLE SELECTED */}
+                        {param.variable === "Inconstant Simple" && (
+                          <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                            <GridItem>
+                              <Text fontSize="sm" mb={1} fontWeight="medium">Range</Text>
+                              <HStack spacing={2}>
+                                <Input size="sm" placeholder="Min" value={param.min} onChange={(e) => updateParameter(compIndex, paramIndex, "min", e.target.value)} sx={inputStyles} />
+                                <Text fontSize="xs">to</Text>
+                                <Input size="sm" placeholder="Max" value={param.max} onChange={(e) => updateParameter(compIndex, paramIndex, "max", e.target.value)} sx={inputStyles} />
+                              </HStack>
+                            </GridItem>
+                            <GridItem>
+                              <Text fontSize="sm" mb={1} fontWeight="medium">Unit</Text>
+                              <Select size="sm" value={param.unit} onChange={(e) => updateParameter(compIndex, paramIndex, "unit", e.target.value)} sx={inputStyles}>
+                                <option value="">Select Unit</option>
+                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                              </Select>
+                            </GridItem>
+                          </Grid>
+                        )}
 
-                          <IconButton size="xs" aria-label="Delete parameter" icon={<DeleteIcon />} onClick={() => deleteParameter(compIndex, paramIndex)} variant="ghost" colorScheme="red" />
-                        </HStack>
+                        {/* 3. INCONSTANT COMPOSITE SELECTED */}
+                        {param.variable === "Inconstant Composite" && (
+                          <VStack align="stretch" spacing={2}>
+                            <Text fontSize="sm" fontWeight="medium">Range (Composite)</Text>
+                            {/* X Range */}
+                            <HStack spacing={2}>
+                              <Text fontSize="xs" w="20px">X:</Text>
+                              <input
+                                type="text"
+                                placeholder="X Min"
+                                value={param.xMin || ""}
+                                onChange={(e) => updateParameter(compIndex, paramIndex, "xMin", e.target.value)}
+                                style={{
+                                  width: "80px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 8px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  position: "relative",
+                                  zIndex: 10,
+                                  cursor: "text"
+                                }}
+                              />
+                              <Text fontSize="xs">to</Text>
+                              <input
+                                type="text"
+                                placeholder="X Max"
+                                value={param.xMax || ""}
+                                onChange={(e) => updateParameter(compIndex, paramIndex, "xMax", e.target.value)}
+                                style={{
+                                  width: "100px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 12px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  position: "relative",
+                                  zIndex: 10,
+                                  cursor: "text"
+                                }}
+                              />
+                              <select
+                                value={param.xUnit || ""}
+                                onChange={(e) => {
+                                  console.log("X Unit changed:", e.target.value);
+                                  updateParameter(compIndex, paramIndex, "xUnit", e.target.value);
+                                }}
+                                style={{
+                                  width: "140px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 8px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                <option value="">Unit</option>
+                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                              </select>
+                            </HStack>
+                            {/* Y Range */}
+                            <HStack spacing={2}>
+                              <Text fontSize="xs" w="20px">Y:</Text>
+                              <input
+                                type="text"
+                                placeholder="Y Min"
+                                value={param.yMin || ""}
+                                onChange={(e) => updateParameter(compIndex, paramIndex, "yMin", e.target.value)}
+                                style={{
+                                  width: "100px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 12px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  position: "relative",
+                                  zIndex: 10,
+                                  cursor: "text"
+                                }}
+                              />
+                              <Text fontSize="xs">to</Text>
+                              <input
+                                type="text"
+                                placeholder="Y Max"
+                                value={param.yMax || ""}
+                                onChange={(e) => updateParameter(compIndex, paramIndex, "yMax", e.target.value)}
+                                style={{
+                                  width: "100px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 12px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  position: "relative",
+                                  zIndex: 10,
+                                  cursor: "text"
+                                }}
+                              />
+                              <select
+                                value={param.yUnit || ""}
+                                onChange={(e) => {
+                                  console.log("Y Unit changed:", e.target.value);
+                                  updateParameter(compIndex, paramIndex, "yUnit", e.target.value);
+                                }}
+                                style={{
+                                  width: "140px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 8px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                <option value="">Unit</option>
+                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                              </select>
+                            </HStack>
+                            {/* Z Range */}
+                            <HStack spacing={2}>
+                              <Text fontSize="xs" w="20px">Z:</Text>
+                              <input
+                                type="text"
+                                placeholder="Z Min"
+                                value={param.zMin || ""}
+                                onChange={(e) => updateParameter(compIndex, paramIndex, "zMin", e.target.value)}
+                                style={{
+                                  width: "100px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 12px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  position: "relative",
+                                  zIndex: 10,
+                                  cursor: "text"
+                                }}
+                              />
+                              <Text fontSize="xs">to</Text>
+                              <input
+                                type="text"
+                                placeholder="Z Max"
+                                value={param.zMax || ""}
+                                onChange={(e) => updateParameter(compIndex, paramIndex, "zMax", e.target.value)}
+                                style={{
+                                  width: "100px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 12px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  position: "relative",
+                                  zIndex: 10,
+                                  cursor: "text"
+                                }}
+                              />
+                              <select
+                                value={param.zUnit || ""}
+                                onChange={(e) => {
+                                  console.log("Z Unit changed:", e.target.value);
+                                  updateParameter(compIndex, paramIndex, "zUnit", e.target.value);
+                                }}
+                                style={{
+                                  width: "140px",
+                                  height: "32px",
+                                  fontSize: "14px",
+                                  padding: "0 8px",
+                                  borderRadius: "4px",
+                                  border: "1px solid #E2E8F0",
+                                  backgroundColor: "white",
+                                  color: "black",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                <option value="">Unit</option>
+                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                              </select>
+                            </HStack>
+                          </VStack>
+                        )}
+
+                        {/* 4. SWITCH COMPONENT TYPE Logic */}
+                        {(comp.typeName === "Switch" || comp.typeName === "switch") && (
+                          <Box mt={2}>
+                            <Text fontSize="sm" mb={1} fontWeight="medium">State (On/Off)</Text>
+                            <HStack spacing={4}>
+                              <Button
+                                size="xs"
+                                colorScheme={param.state === "On" ? "green" : "gray"}
+                                variant={param.state === "On" ? "solid" : "outline"}
+                                onClick={() => updateParameter(compIndex, paramIndex, "state", "On")}
+                              >
+                                On
+                              </Button>
+                              <Button
+                                size="xs"
+                                colorScheme={param.state === "Off" ? "red" : "gray"}
+                                variant={param.state === "Off" ? "solid" : "outline"}
+                                onClick={() => updateParameter(compIndex, paramIndex, "state", "Off")}
+                              >
+                                Off
+                              </Button>
+                            </HStack>
+                          </Box>
+                        )}
+
+                        {/* 5. LED COMPONENT TYPE Logic */}
+                        {(comp.typeName === "LED" || comp.typeName === "Led" || comp.typeName === "led") && (
+                          <Box mt={2}>
+                            <Text fontSize="sm" mb={1} fontWeight="medium">Color</Text>
+                            <Select size="sm" value={param.color} onChange={(e) => updateParameter(compIndex, paramIndex, "color", e.target.value)} sx={inputStyles}>
+                              <option value="">Select Color</option>
+                              <option value="Red">Red</option>
+                              <option value="Green">Green</option>
+                              <option value="Blue">Blue</option>
+                            </Select>
+                          </Box>
+                        )}
+
                       </GridItem>
                     </Grid>
-                  )
+                  </Box>
+                )
                 )}
-                <Button size="xs" colorScheme="blue" variant="outline" leftIcon={<AddIcon />} onClick={() => addParameter(compIndex, "constant")}>
-                  Add Constant
-                </Button>
               </Box>
+
             </Box>
           ))}
 

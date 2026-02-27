@@ -1132,7 +1132,7 @@
 // export default Output;
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import {
   Box,
   Text,
@@ -1161,7 +1161,7 @@ import OutputStatus from "./OutputStatus";
 
 import axios from "axios";
 
-const Output = ({ editorRef, language }) => {
+const Output = forwardRef(({ editorRef, language }, ref) => {
   const toast = useToast();
   const { colorMode } = useColorMode();
   const [output, setOutput] = useState([]);
@@ -1710,6 +1710,6 @@ const Output = ({ editorRef, language }) => {
       {/* </Modal> */}
     </Box>
   );
-};
+});
 
 export default Output;

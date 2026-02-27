@@ -240,7 +240,7 @@ const Home = () => {
                 />
 
                 {/* Onboarding Trigger on Image Side */}
-                <Box position="absolute" inset="0" display="flex" alignItems="center" justifyContent="center">
+                {/* <Box position="absolute" inset="0" display="flex" alignItems="center" justifyContent="center">
                   <Button
                     leftIcon={<FaPlayCircle />}
                     colorScheme="whiteAlpha"
@@ -252,7 +252,7 @@ const Home = () => {
                   >
                     Watch Intro Tour
                   </Button>
-                </Box>
+                </Box> */}
               </Box>
 
               <VStack
@@ -277,14 +277,14 @@ const Home = () => {
                       Welcome Back
                     </Heading>
                     {/* Mobile Trigger */}
-                    <IconButton
+                    {/* <IconButton
                       display={{ base: "flex", md: "none" }}
                       icon={<FaPlayCircle />}
                       aria-label="Watch Intro"
                       onClick={handleOpenOnboarding}
                       variant="ghost"
                       colorScheme="purple"
-                    />
+                    /> */}
                   </Flex>
                   <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={4}>
                     Sign in to Innotrat Labs IDE
