@@ -416,7 +416,7 @@ const Home = () => {
                     Create an account
                   </ChakraLink>
                 </Flex>
-                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_Rev1.0_06-02-2026 (C) Innotrat Labs</Text>
+                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_V1Rev1.1_27-02-2026 (C) Innotrat Labs</Text>
 
                 <Box width="full" mt={4} display="flex" justifyContent="center">
                   <GoogleLogin
