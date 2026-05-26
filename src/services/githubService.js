@@ -1,11 +1,11 @@
 import { baseURL, getUserInfo } from "../utilities";
 
-const API_BASE_URL = 'http://192.168.0.26:5004/api/v1/github';
+const API_BASE_URL = 'eur/api/v1/github';
 
 // Fallback values for testing if user is not logged in or doesn't have github setup
 const DEFAULT_USER_ID = "6926c69500610847a79be7eb";
-const DEFAULT_TOKEN = "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";
-const DEFAULT_OWNER = "srilakshmi415";
+const DEFAULT_TOKEN = "";
+const DEFAULT_OWNER = "";
 
 /**
  * Extracts dynamic credentials from the active user's session data.

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogTitle, 
-  DialogContent, 
-  IconButton, 
-  Box, 
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
+  Box,
   Typography,
   Alert,
   Divider,
@@ -19,10 +19,10 @@ import ShareSettingsScreen from './ShareSettingsScreen';
 import GithubTab from './GithubTab';
 import CopyLinkTab from './CopyLinkTab';
 import { SuccessScreen, FailureScreen } from './FeedbackScreens';
-import { 
-  getGithubRepos, 
-  createGithubRepo, 
-  pushToGithub 
+import {
+  getGithubRepos,
+  createGithubRepo,
+  pushToGithub
 } from '../../services/githubService';
 import { inviteUsers } from '../../services/shareService';
 
@@ -50,7 +50,7 @@ const ShareModal = ({ open, onClose }) => {
   const [people, setPeople] = useState([
     { id: '1', name: 'You', email: 'test888@gmail.com', role: 'Owner', avatar: 'Y', color: '#64748b' }
   ]);
-  
+
   // GitHub state
   const [isFirstTime, setIsFirstTime] = useState(true);
   const [repoId, setRepoId] = useState('');
@@ -120,13 +120,13 @@ const ShareModal = ({ open, onClose }) => {
 
   const handleInvite = async () => {
     if (emails.length === 0) return;
-    
+
     setLoading(true);
     setError('');
-    
+
     try {
       await inviteUsers(emails, link);
-      
+
       const colors = ['#ef4444', '#22c55e', '#f59e0b', '#3b82f6', '#8b5cf6'];
       const newPeople = emails.map((email, index) => ({
         id: Date.now() + index,
@@ -173,7 +173,7 @@ const ShareModal = ({ open, onClose }) => {
     setLoading(true);
     setError('');
     setSuccess(false);
-    
+
     try {
       const files = [
         {
@@ -194,8 +194,8 @@ const ShareModal = ({ open, onClose }) => {
 
   return (
     <ThemeProvider theme={theme}>
-      <Dialog 
-        open={open} 
+      <Dialog
+        open={open}
         onClose={onClose}
         maxWidth="sm"
         fullWidth
@@ -204,17 +204,17 @@ const ShareModal = ({ open, onClose }) => {
         }}
       >
         {success && activeTab === 'github' ? (
-          <SuccessScreen 
-            onClose={() => { setSuccess(false); setView('main'); setActiveTab('link'); }} 
+          <SuccessScreen
+            onClose={() => { setSuccess(false); setView('main'); setActiveTab('link'); }}
           />
         ) : error && activeTab === 'github' ? (
-          <FailureScreen 
-            onClose={() => setError('')} 
+          <FailureScreen
+            onClose={() => setError('')}
             message={error}
           />
         ) : view === 'settings' ? (
           <DialogContent sx={{ p: 3 }}>
-            <ShareSettingsScreen 
+            <ShareSettingsScreen
               onBack={() => setView('main')}
               onClose={onClose}
               access={access}
@@ -225,15 +225,15 @@ const ShareModal = ({ open, onClose }) => {
               password={password}
               onPasswordChange={setPassword}
             />
-            <Button 
-              fullWidth 
-              variant="contained" 
+            <Button
+              fullWidth
+              variant="contained"
               onClick={() => setView('main')}
-              sx={{ 
-                mt: 3, 
-                borderRadius: '8px', 
-                backgroundColor: '#1e3a8a', 
-                textTransform: 'none', 
+              sx={{
+                mt: 3,
+                borderRadius: '8px',
+                backgroundColor: '#1e3a8a',
+                textTransform: 'none',
                 fontWeight: 600,
                 boxShadow: 'none',
                 h: 44
@@ -250,14 +250,14 @@ const ShareModal = ({ open, onClose }) => {
                 <X size={20} />
               </IconButton>
             </DialogTitle>
-            
+
             <DialogContent sx={{ p: 2, '&::-webkit-scrollbar': { width: '8px' } }}>
               <ShareTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
               {view === 'main' ? (
                 <Box>
                   <Box sx={{ mt: 2 }}>
-                    <InviteSection 
+                    <InviteSection
                       emails={emails}
                       onAddEmail={handleAddEmail}
                       onRemoveEmail={handleRemoveEmail}
@@ -265,24 +265,24 @@ const ShareModal = ({ open, onClose }) => {
                     />
                   </Box>
                   <CopyLinkTab link={link} onCopy={handleCopy} />
-                  <AccessControl 
-                    access={access} 
+                  <AccessControl
+                    access={access}
                     permission={permission}
                     people={people}
                     onNavigateToSettings={() => setView('settings')}
                   />
                   {error && activeTab === 'link' && <Alert severity="error" sx={{ mt: 2, borderRadius: '8px' }}>{error}</Alert>}
                   {success && activeTab === 'link' && <Alert severity="success" sx={{ mt: 2, borderRadius: '8px' }}>Link copied to clipboard!</Alert>}
-                  
+
                   <Box sx={{ mt: 3 }}>
-                    <Button 
-                      fullWidth 
-                      variant="contained" 
+                    <Button
+                      fullWidth
+                      variant="contained"
                       onClick={onClose}
-                      sx={{ 
-                        borderRadius: '8px', 
-                        backgroundColor: '#1e3a8a', 
-                        textTransform: 'none', 
+                      sx={{
+                        borderRadius: '8px',
+                        backgroundColor: '#1e3a8a',
+                        textTransform: 'none',
                         fontWeight: 600,
                         boxShadow: 'none',
                         h: 44
@@ -293,7 +293,7 @@ const ShareModal = ({ open, onClose }) => {
                   </Box>
                 </Box>
               ) : (
-                <GithubTab 
+                <GithubTab
                   isFirstTime={isFirstTime}
                   repoId={repoId}
                   onRepoIdChange={setRepoId}
