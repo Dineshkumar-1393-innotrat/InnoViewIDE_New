@@ -202,7 +202,7 @@ const Home = () => {
       <Box position="relative" width="100vw" height="100vh" overflow="hidden">
         {/* Full-Screen Background Image */}
         <Image src={loginImage} alt="Background" objectFit="cover" position="absolute" top={0} left={0} w="100%" h="100%" zIndex={0} />
-        
+
         {/* Dark Gradient Overlay */}
         <Box position="absolute" top={0} left={0} w="100%" h="100%" bgGradient="linear(to-br, rgba(17, 24, 39, 0.7), rgba(17, 24, 39, 0.9))" zIndex={1} />
 
@@ -351,7 +351,7 @@ const Home = () => {
                   />
                 </Box>
                 <Text textAlign="center" fontSize="xs" color="whiteAlpha.500" mt={4}>
-                  InnoIDE_V1Rev1.1_27-02-2026 (C) Innotrat Labs
+                  InnoIDE_V1Rev1.2_26-05-2026 (C) Innotrat Labs
                 </Text>
               </VStack>
             </Box>
@@ -359,91 +359,91 @@ const Home = () => {
         </Flex>
       </Box>
 
-        {/* Onboarding Modal */}
-        <Modal isOpen={isOpen} onClose={onClose} size={{ base: "full", md: "xl" }} isCentered>
-          <ModalOverlay backdropFilter="blur(8px)" />
-          <ModalContent borderRadius="2xl" overflow="hidden">
-            <ModalHeader borderBottom="1px solid" borderColor="gray.100" py={4}>
-              <Flex align="center" gap={2}>
-                <Heading size="md">InnoIDE Walkthrough</Heading>
-              </Flex>
-            </ModalHeader>
-            <ModalCloseButton />
-            <ModalBody p={0} bg="gray.50">
-              {/* Video Section */}
-              <Box bg="black" width="100%" position="relative" paddingBottom="56.25%">
-                <Box position="absolute" top="0" left="0" right="0" bottom="0">
-                  {onboardingSteps[onboardingStep].videoUrl ? (
-                    <video
-                      key={onboardingStep}
-                      src={onboardingSteps[onboardingStep].videoUrl}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      controls
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <Flex height="100%" align="center" justify="center" bg="gray.900" color="white">
-                      <VStack>
-                        <FaPlayCircle size={48} opacity={0.5} />
-                        <Text>Preview: {onboardingSteps[onboardingStep].title}</Text>
-                      </VStack>
-                    </Flex>
-                  )}
-                </Box>
+      {/* Onboarding Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} size={{ base: "full", md: "xl" }} isCentered>
+        <ModalOverlay backdropFilter="blur(8px)" />
+        <ModalContent borderRadius="2xl" overflow="hidden">
+          <ModalHeader borderBottom="1px solid" borderColor="gray.100" py={4}>
+            <Flex align="center" gap={2}>
+              <Heading size="md">InnoIDE Walkthrough</Heading>
+            </Flex>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody p={0} bg="gray.50">
+            {/* Video Section */}
+            <Box bg="black" width="100%" position="relative" paddingBottom="56.25%">
+              <Box position="absolute" top="0" left="0" right="0" bottom="0">
+                {onboardingSteps[onboardingStep].videoUrl ? (
+                  <video
+                    key={onboardingStep}
+                    src={onboardingSteps[onboardingStep].videoUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    controls
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <Flex height="100%" align="center" justify="center" bg="gray.900" color="white">
+                    <VStack>
+                      <FaPlayCircle size={48} opacity={0.5} />
+                      <Text>Preview: {onboardingSteps[onboardingStep].title}</Text>
+                    </VStack>
+                  </Flex>
+                )}
               </Box>
+            </Box>
 
-              {/* Content Section */}
-              <VStack p={6} spacing={3} textAlign="center" bg="white">
-                <Text fontSize="xs" fontWeight="bold" color="blue.500" textTransform="uppercase" letterSpacing="wide">
-                  Step {onboardingStep + 1} of {onboardingSteps.length}
-                </Text>
-                <Heading size="lg" color="gray.800">
-                  {onboardingSteps[onboardingStep].title}
-                </Heading>
-                <Text color="gray.600" fontSize="md" maxW="lg">
-                  {onboardingSteps[onboardingStep].description}
-                </Text>
-              </VStack>
-            </ModalBody>
-            <ModalFooter bg="white" borderTop="1px solid" borderColor="gray.100" p={6}>
-              <Flex justify="space-between" width="100%" align="center">
-                <Button
-                  variant="ghost"
-                  onClick={handlePrevStep}
-                  isDisabled={onboardingStep === 0}
-                  color="gray.500"
-                >
-                  Previous
-                </Button>
+            {/* Content Section */}
+            <VStack p={6} spacing={3} textAlign="center" bg="white">
+              <Text fontSize="xs" fontWeight="bold" color="blue.500" textTransform="uppercase" letterSpacing="wide">
+                Step {onboardingStep + 1} of {onboardingSteps.length}
+              </Text>
+              <Heading size="lg" color="gray.800">
+                {onboardingSteps[onboardingStep].title}
+              </Heading>
+              <Text color="gray.600" fontSize="md" maxW="lg">
+                {onboardingSteps[onboardingStep].description}
+              </Text>
+            </VStack>
+          </ModalBody>
+          <ModalFooter bg="white" borderTop="1px solid" borderColor="gray.100" p={6}>
+            <Flex justify="space-between" width="100%" align="center">
+              <Button
+                variant="ghost"
+                onClick={handlePrevStep}
+                isDisabled={onboardingStep === 0}
+                color="gray.500"
+              >
+                Previous
+              </Button>
 
-                <HStack spacing={2}>
-                  {onboardingSteps.map((_, idx) => (
-                    <Box
-                      key={idx}
-                      h="2"
-                      w={idx === onboardingStep ? "6" : "2"}
-                      bg={idx === onboardingStep ? "blue.500" : "gray.200"}
-                      borderRadius="full"
-                      transition="all 0.3s"
-                    />
-                  ))}
-                </HStack>
+              <HStack spacing={2}>
+                {onboardingSteps.map((_, idx) => (
+                  <Box
+                    key={idx}
+                    h="2"
+                    w={idx === onboardingStep ? "6" : "2"}
+                    bg={idx === onboardingStep ? "blue.500" : "gray.200"}
+                    borderRadius="full"
+                    transition="all 0.3s"
+                  />
+                ))}
+              </HStack>
 
-                <Button
-                  colorScheme="blue"
-                  bgGradient="linear(to-r, #667eea, #764ba2)"
-                  _hover={{ bgGradient: "linear(to-r, #764ba2, #667eea)" }}
-                  onClick={handleNextStep}
-                >
-                  {onboardingStep === onboardingSteps.length - 1 ? 'Finish' : 'Next'}
-                </Button>
-              </Flex>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+              <Button
+                colorScheme="blue"
+                bgGradient="linear(to-r, #667eea, #764ba2)"
+                _hover={{ bgGradient: "linear(to-r, #764ba2, #667eea)" }}
+                onClick={handleNextStep}
+              >
+                {onboardingStep === onboardingSteps.length - 1 ? 'Finish' : 'Next'}
+              </Button>
+            </Flex>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
     </>
   );
