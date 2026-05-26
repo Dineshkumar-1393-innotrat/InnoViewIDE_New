@@ -6,7 +6,7 @@ import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Box, Center, Heading, Text, Button } from "@chakra-ui/react";
 import { CheckCircleIcon } from "@chakra-ui/icons";
-import { baseURL } from "../../../utilities";
+import { baseURL, productAPIBase } from "../../../utilities";
 
 const ViewProductDefinition = ({ productID, productName }) => {
   const location = useLocation();
@@ -79,13 +79,24 @@ const ViewProductDefinition = ({ productID, productName }) => {
   //   fetches and updates the form
 
   const fetchProductDefinition = async (productID) => {
-    console.log("productID", productID);
+    console.log("[ViewProductDefinition] Fetching definition for ID:", productID);
 
     try {
-      const response = await axios.get(
-        `${baseURL}/product/${productID}/definitionNew`
-      );
+      let response;
+      const localUrl = `${productAPIBase}/product/${productID}/definitionNew`;
+      
+      try {
+        console.log(`[ViewProductDefinition] Attempting local fetch: ${localUrl}`);
+        response = await axios.get(localUrl, { timeout: 4000 });
+      } catch (localError) {
+        console.warn("[ViewProductDefinition] Local fetch failed/timed out, trying Eureka fallback...");
+        // Use definitionNew for fallback as requested
+        const fallbackUrl = `${baseURL}/product/${productID}/definitionNew`;
+        console.log(`[ViewProductDefinition] Attempting fallback fetch: ${fallbackUrl}`);
+        response = await axios.get(fallbackUrl);
+      }
 
+      console.log("[ViewProductDefinition] Received Data:", response.data);
       const convertedComponents = convertDataFromApi(response.data);
 
       setInitialValues((prevValues) => ({
@@ -93,49 +104,85 @@ const ViewProductDefinition = ({ productID, productName }) => {
         components: convertedComponents,
       }));
     } catch (error) {
-      console.log("Error fetching product definition:", error);
+      console.error("[ViewProductDefinition] Error fetching product definition (All servers failed):", error);
     }
   };
 
-  const convertDataFromApi = (apiData) => {
+  const convertDataFromApi = (apiDataRaw) => {
+    // Support both { ... } and { data: { ... } } structures
+    const apiData = apiDataRaw?.data || apiDataRaw;
     if (!apiData || !apiData.components) return [];
 
     return Object.keys(apiData.components).map((componentName) => {
       const component = apiData.components[componentName];
 
-      // Try to find a match in electronicComponents for type normalization
+      // 1. Determine Component Type
       let componentType = component.type || "";
       const match = electronicComponents.find(
         (c) => c.type.toLowerCase() === componentType.toLowerCase().trim()
       );
       if (match) {
         componentType = match.type;
-      } else {
-        // Fallback for custom types: avoid aggressive plural/singular logic if no match found
-        if (componentType) {
-          componentType = componentType.charAt(0).toUpperCase() + componentType.slice(1);
-        }
+      } else if (componentType) {
+        componentType = componentType.charAt(0).toUpperCase() + componentType.slice(1);
+      }
+
+      // 2. Initialize formatted component
+      // Note/URLs may live inside the component OR at the top-level product (fallback)
+      // Check both lowercase and capitalized variants, and common alternatives
+      let componentNote = component.note || component.Note || component.notes || component.Notes || apiData.note || apiData.Note || "";
+      
+      let componentUrls = [];
+      if (Array.isArray(component.urls) && component.urls.length > 0) {
+        componentUrls = component.urls;
+      } else if (Array.isArray(component.Urls) && component.Urls.length > 0) {
+        componentUrls = component.Urls;
+      } else if (component.urls && typeof component.urls === "string") {
+        componentUrls = [component.urls];
+      } else if (component.url && typeof component.url === "string") {
+        componentUrls = [component.url];
+      } else if (Array.isArray(apiData.urls) && apiData.urls.length > 0) {
+        componentUrls = apiData.urls;
+      } else if (Array.isArray(apiData.Urls) && apiData.Urls.length > 0) {
+        componentUrls = apiData.Urls;
       }
 
       let formattedComponent = {
-        componentID: component.componentID || "",
+        componentID: component.componentID || component.id || "",
         componentType,
         componentName,
-        note: component.note || "",
-        urls: Array.isArray(component.urls) ? component.urls : (component.urls ? [component.urls] : []),
+        note: componentNote,
+        urls: componentUrls,
       };
 
-      // Ensure 'unit' is always an array if present
-      if (component.unit) {
-        formattedComponent.unit = Array.isArray(component.unit)
-          ? component.unit
-          : [component.unit];
+      // 3. Extract parameters (min, max, unit)
+      // They might be at the root, or inside 'parameters', or inside a named object (like 'distance')
+      let params = component.parameters || {};
+      
+      // If no 'parameters' key, check other keys that are objects (like the 'distance' object in user's example)
+      if (Object.keys(params).length === 0) {
+        Object.keys(component).forEach(key => {
+          if (typeof component[key] === 'object' && component[key] !== null && !Array.isArray(component[key])) {
+            // Found an object key (e.g., 'distance'), merge its contents if it has min/max/unit
+            if (component[key].min !== undefined || component[key].max !== undefined || component[key].unit !== undefined) {
+              params = { ...params, ...component[key] };
+            }
+          }
+        });
       }
 
-      // Only add min/max if they exist
-      if (component.min !== undefined && component.max !== undefined) {
-        formattedComponent.min = component.min;
-        formattedComponent.max = component.max;
+      // Fallback: Check component root for min/max/unit (standard structure)
+      const unitValue = params.unit || component.unit;
+      if (unitValue) {
+        formattedComponent.unit = Array.isArray(unitValue) ? unitValue : [unitValue];
+      }
+
+      const minVal = params.min !== undefined ? params.min : component.min;
+      const maxVal = params.max !== undefined ? params.max : component.max;
+
+      if (minVal !== undefined && maxVal !== undefined) {
+        formattedComponent.min = minVal;
+        formattedComponent.max = maxVal;
       }
 
       return formattedComponent;
@@ -157,7 +204,7 @@ const ViewProductDefinition = ({ productID, productName }) => {
       productName: productName,
       components: [],
     });
-  }, [location.state]);
+  }, [productID, productName]);
 
   useEffect(() => {
     return () => {

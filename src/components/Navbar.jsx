@@ -21,6 +21,9 @@ import {
   Radio,
   Checkbox,
   VStack,
+  HStack,
+  IconButton,
+  Collapse,
   useDisclosure,
   Menu,           
   MenuButton,
@@ -52,6 +55,7 @@ const Navbar = () => {
     writeCode: false,
     flowChart: false
   });
+  const { isOpen: isMobileOpen, onOpen: onMobileOpen, onClose: onMobileClose } = useDisclosure();
 
   const handleCreate = () => {
     console.log({
@@ -74,128 +78,99 @@ const Navbar = () => {
 
   return (
     <Box>
-      {/* First Navbar */}
+      {/* Responsive Navbar */}
       <Box
         position="fixed"
         top={0}
         left={0}
         width="100%"
-        height="35px"
+        height={{ base: "60px", md: "70px" }}
         bg={bgColor}
         color={textColor}
-        borderBottom="1px solid gray"
+        borderBottom="1px solid"
+        borderColor={colorMode === "dark" ? "whiteAlpha.200" : "gray.300"}
         display="flex"
         alignItems="center"
-        padding="0 20px"
-        zIndex={1000}
+        px={{ base: 4, md: 8 }}
+        zIndex={1100}
+        backdropFilter="blur(10px)"
       >
-        <Text fontWeight="bold" fontSize="lg">
-          {/* INNOIDE */}
-          <img src={ Ellipse521} alt="Innoide" style={{ maxWidth: '20%', height: 'auto'}} />
-        </Text>
-      </Box>
+        <HStack w="100%" justify="space-between">
+          <HStack spacing={4}>
+            <Box onClick={() => navigate("/")} cursor="pointer">
+              <img src={Ellipse521} alt="Innoide" style={{ height: "30px", width: "auto" }} />
+            </Box>
+            <Box display={{ base: "none", md: "block" }}>
+              <BackToHome />
+            </Box>
+          </HStack>
 
-      {/* Second Navbar */}
-      <Box
-  position="fixed"
-  top="35px"
-  left={0}
-  width="100%"
-  height="35px"
-  bg={bgColor}
-  color={textColor}
-  display="flex"
-  alignItems="center"
-  justifyContent="space-between"
-  padding="0 10px"
-  borderBottom="1px solid gray"
-  zIndex={999}
->
-  {/* Back to Home and Menu Options */}
-  <Box display="flex" alignItems="center" gap="20px">
-    <BackToHome />
-    <MenuOptions onOpen={onOpen} />
-  </Box>
+          <HStack spacing={6} display={{ base: "none", lg: "flex" }}>
+            <MenuOptions onOpen={onOpen} />
+            <Button variant="ghost" size="sm" onClick={handleEmbeddedClick}>Embedded</Button>
+            <Button variant="ghost" size="sm" onClick={handleSimulationClick}>▶ Simulation</Button>
+            <DefineProductOne />
+          </HStack>
 
-
-
-
-        {/* Right Side: Settings, Dark Mode Toggle, Profile, and Log In/Out */}
-        <Box display="flex" alignItems="center" gap={4}>
-          {/* <Box display="flex" alignItems="center">
-            <Text mr={2}>Theme</Text>
-            <Switch
-              isChecked={colorMode === "dark"}
-              onChange={toggleColorMode}
-              colorScheme="purple"
-            />
-          </Box> */}
-
-          {isAuthenticated ? (
-            <Menu>
-              <MenuButton as={Box} display="flex" alignItems="center">
-                <Avatar
-                  name={user.name}
-                  src={user.picture}
-                  boxSize="24px"
-                  mr={2}
-                />
-              </MenuButton>
-              <MenuList>
-                <MenuItem>My Profile</MenuItem>
-                <MenuItem onClick={() => logout({ returnTo: window.location.origin })}>Log Out</MenuItem>
-              </MenuList>
-            </Menu>
-          ) : (
-            <>
-              {/* <Button
-                onClick={() => loginWithRedirect()}
-                size="sm"
-                bg={bgColor}
-                color={textColor}
-                _hover={{
-                  bg: "gray.300",
-                  color: "gray.900",
-                }}
-              >
+          <HStack spacing={4}>
+            {isAuthenticated ? (
+              <Menu>
+                <MenuButton as={Box} cursor="pointer">
+                  <Avatar name={user.name} src={user.picture} size="sm" />
+                </MenuButton>
+                <MenuList zIndex={1200}>
+                  <MenuItem>My Profile</MenuItem>
+                  <MenuItem onClick={() => logout({ returnTo: window.location.origin })}>Log Out</MenuItem>
+                </MenuList>
+              </Menu>
+            ) : (
+              <Button display={{ base: "none", md: "inline-flex" }} onClick={() => loginWithRedirect()} size="sm" colorScheme="blue">
                 Log In
-              </Button> */}
-              {/* <NavbarProductId/> */}
-
-              {/* Embedded Button: This will redirect to /embedded */}
-              <Button
-                onClick={handleEmbeddedClick}  // Attach the redirect handler
-                size="sm"
-                bg={bgColor}
-                color={textColor}
-                _hover={{
-                  bg: "gray.300",
-                  color: "gray.900",
-                }}
-              >
-                Embedded 
               </Button>
-
-              {/* for simulation  */}
-
-                {/* Embedded Button: This will redirect to /embedded */}
-                <Button
-                onClick={handleSimulationClick}  // Attach the redirect handler
-                size="sm"
-                bg={bgColor}
-                color={textColor}
-                _hover={{
-                  bg: "gray.300",
-                  color: "gray.900",
-                }}
-              >
-               ▶ Simulation
-              </Button>
-              <DefineProductOne/>
-            </>
-          )}
-        </Box>
+            )}
+            <IconButton
+              display={{ base: "flex", lg: "none" }}
+              icon={<span>☰</span>}
+              variant="ghost"
+              onClick={onMobileOpen}
+              aria-label="Open Menu"
+            />
+          </HStack>
+        </HStack>
       </Box>
+
+      {/* Spacer to push content below fixed navbar */}
+      <Box height={{ base: "60px", md: "70px" }} />
+
+      {/* Mobile Menu Drawer */}
+      <Modal isOpen={isMobileOpen} onClose={onMobileClose} size="full">
+        <ModalOverlay />
+        <ModalContent bg={bgColor} color={textColor}>
+          <ModalHeader borderBottomWidth="1px">Menu</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody p={6}>
+            <VStack spacing={6} align="stretch">
+              <BackToHome />
+              <Box borderBottomWidth="1px" pb={4}>
+                <Text fontWeight="bold" mb={2}>Projects</Text>
+                <MenuOptions onOpen={onOpen} />
+              </Box>
+              <VStack align="stretch" spacing={4}>
+                <Button w="full" justifyContent="flex-start" variant="ghost" onClick={() => { handleEmbeddedClick(); onMobileClose(); }}>Embedded</Button>
+                <Button w="full" justifyContent="flex-start" variant="ghost" onClick={() => { handleSimulationClick(); onMobileClose(); }}>▶ Simulation</Button>
+                <DefineProductOne />
+              </VStack>
+              {!isAuthenticated && (
+                <Button colorScheme="blue" onClick={() => loginWithRedirect()}>Log In</Button>
+              )}
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+
+
+
+
 
       {/* Modal for creating a new project */}
       <Modal isOpen={isOpen} onClose={onClose}>

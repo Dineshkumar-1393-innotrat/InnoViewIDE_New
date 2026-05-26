@@ -9,7 +9,10 @@ import React, {
 import { useProject } from "../ProjectContext";
 import { autoSaveManager } from "../utils/autoSaveManager";
 
-const WorkspaceStateContext = createContext(null);
+const WorkspaceStateContext = globalThis.__WorkspaceStateContext || createContext(null);
+if (import.meta.env?.DEV) {
+  globalThis.__WorkspaceStateContext = WorkspaceStateContext;
+}
 
 // Storage key constants
 const STORAGE_KEY_PREFIX = "innoide:workspace:";
@@ -91,13 +94,7 @@ const DEFAULT_SCREEN_STATES = {
     lastModified: null,
   },
   "/mathcodeeditor": { equations: [], calculatorState: {}, lastModified: null },
-  "/rule-engine": {
-    rules: [],
-    driverProfiles: [],
-    activeProfile: null,
-    events: [],
-    lastModified: null,
-  },
+
 };
 
 // Screen keys for auto-save manager registration

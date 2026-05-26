@@ -1164,7 +1164,7 @@ const DefineProduct = () => {
                 <ModalHeader>Choose Your Product Requirements</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody>
-                  <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                  <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={4}>
                     {requirements.map((requirement, index) => (
                       <Checkbox
                         key={index}

@@ -36,10 +36,27 @@ const flowchartSlice = createSlice({
         updateTabState: (state, action) => {
             const { tabId, nodes, edges, viewport } = action.payload;
             const tab = state.tabs.find((t) => t.id === tabId);
+            if (tab && tab.state) {
+                if (nodes !== undefined) {
+                    tab.state.nodes = nodes;
+                    tab.dirty = true;
+                }
+                if (edges !== undefined) {
+                    tab.state.edges = edges;
+                    tab.dirty = true;
+                }
+                if (viewport !== undefined) {
+                    tab.state.viewport = viewport;
+                    tab.dirty = true;
+                }
+                console.log(`[flowchartSlice] Updated tab ${tabId}. Nodes: ${tab.state.nodes?.length}`);
+            }
+        },
+        markTabClean: (state, action) => {
+            const tabId = action.payload;
+            const tab = state.tabs.find((t) => t.id === tabId);
             if (tab) {
-                if (nodes !== undefined) tab.state.nodes = nodes;
-                if (edges !== undefined) tab.state.edges = edges;
-                if (viewport !== undefined) tab.state.viewport = viewport;
+                tab.dirty = false;
             }
         },
         setTabNodesAndEdges: (state, action) => {
@@ -61,6 +78,7 @@ export const {
     renameTab,
     updateTabState,
     setTabNodesAndEdges,
+    markTabClean,
 } = flowchartSlice.actions;
 
 export default flowchartSlice.reducer;

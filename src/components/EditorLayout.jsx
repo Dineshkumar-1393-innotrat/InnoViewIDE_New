@@ -136,11 +136,11 @@ const CodeEditor = () => {
       <Flex flex="1" overflow="hidden" minH="0">
         {/* Sidebar */}
         <Box
-          w="260px"
+          w={{ base: "100%", md: "260px" }}
           bg={colorMode === "dark" ? "gray.950" : "#0b1220"}
           color="#e2e8f0"
           borderRight="1px solid rgba(148, 163, 184, 0.2)"
-          display="flex"
+          display={{ base: "none", md: "flex" }}
           flexDirection="column"
         >
           <Box px={4} py={4} borderBottom="1px solid rgba(148, 163, 184, 0.15)">

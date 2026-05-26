@@ -28,8 +28,11 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
+  InputLeftElement,
+  FormErrorMessage,
 } from "@chakra-ui/react";
-import { FaEye, FaEyeSlash, FaClock, FaCalendar, FaPlayCircle, FaLock } from "react-icons/fa";
+import { FaClock, FaCalendar, FaPlayCircle, FaLock } from "react-icons/fa";
+import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
 import loginImage from "../images/image.jpg";
 import Ellipse521 from "../images/Ellipse 521.svg";
 import { Link as ChakraLink } from "@chakra-ui/react";
@@ -45,6 +48,29 @@ const Home = () => {
     password: "",
     countryCode: "+91",
   });
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    let newErrors = {};
+    let isValid = true;
+
+    const mobileRegex = /^[0-9]{10}$/;
+    if (!formData.mobileNumber) {
+      newErrors.mobileNumber = "Mobile Number is required";
+      isValid = false;
+    } else if (!mobileRegex.test(formData.mobileNumber)) {
+      newErrors.mobileNumber = "Valid 10-digit Mobile Number is required";
+      isValid = false;
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const navigate = useNavigate();
   const toast = useToast();
@@ -81,11 +107,13 @@ const Home = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     setIsLoading(true);
 
     try {
       const response = await fetch(
-        "https://eureka.innotrat.in/api/v1/auth/signin",
+        "/api/v1/auth/signin",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -93,7 +121,22 @@ const Home = () => {
         }
       );
 
-      const data = await response.json();
+      // Safely parse: the server may return an HTML error page on 5xx
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(
+          response.ok
+            ? "Invalid response from server"
+            : `Server error ${response.status}: ${response.statusText}`
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.message || `Request failed with status ${response.status}`);
+      }
 
       if (data.status === "success") {
         sessionStorage.setItem("token", data.token);
@@ -156,274 +199,99 @@ const Home = () => {
 
   return (
     <>
-      <Box
-        position="relative"
-        width="100%"
-        height="70px"
-        borderBottom="2px solid"
-        borderColor={useColorModeValue("gray.200", "gray.700")}
-        display="flex"
-        alignItems="center"
-        justifyContent="space-between"
-        padding="0 40px"
-        zIndex={1000}
-        bg={useColorModeValue("white", "gray.900")}
-        boxShadow="sm"
-      >
-        <img
-          src={Ellipse521}
-          alt="Innoide"
-          style={{ height: "50px", width: "auto" }}
-        />
-        <HStack spacing={6} color={useColorModeValue("gray.600", "gray.300")} fontSize="sm">
-          <HStack spacing={2}>
-            <FaCalendar />
-            <Text fontWeight="medium">{formatDate(currentDateTime)}</Text>
+      <Box position="relative" width="100vw" height="100vh" overflow="hidden">
+        {/* Full-Screen Background Image */}
+        <Image src={loginImage} alt="Background" objectFit="cover" position="absolute" top={0} left={0} w="100%" h="100%" zIndex={0} />
+        
+        {/* Dark Gradient Overlay */}
+        <Box position="absolute" top={0} left={0} w="100%" h="100%" bgGradient="linear(to-br, rgba(17, 24, 39, 0.7), rgba(17, 24, 39, 0.9))" zIndex={1} />
+
+        {/* Floating Glass Header */}
+        <Flex position="absolute" top={0} left={0} right={0} height={{ base: "70px", md: "80px" }} alignItems="center" justifyContent="space-between" padding={{ base: "0 20px", md: "0 40px" }} zIndex={10} bg="rgba(255, 255, 255, 0.03)" backdropFilter="blur(10px)" borderBottom="1px solid rgba(255, 255, 255, 0.05)">
+          <img src={Ellipse521} alt="Innoide" style={{ height: "40px", width: "auto", filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.5))" }} />
+          <HStack spacing={6} color="whiteAlpha.900" fontSize={{ base: "xs", md: "sm" }}>
+            <HStack spacing={2}>
+              <FaCalendar opacity={0.8} />
+              <Text fontWeight="medium" letterSpacing="wide" whiteSpace="nowrap">{formatDate(currentDateTime)}</Text>
+            </HStack>
+            <Divider orientation="vertical" height="20px" borderColor="whiteAlpha.300" display={{ base: "none", md: "block" }} />
+            <HStack spacing={2}>
+              <FaClock opacity={0.8} />
+              <Text fontWeight="semibold" letterSpacing="wide" fontSize={{ base: "sm", md: "md" }} whiteSpace="nowrap">{formatTime(currentDateTime)}</Text>
+            </HStack>
           </HStack>
-          <Divider orientation="vertical" height="20px" />
-          <HStack spacing={2}>
-            <FaClock />
-            <Text fontWeight="semibold" fontSize="md">{formatTime(currentDateTime)}</Text>
-          </HStack>
-        </HStack>
-      </Box>
+        </Flex>
 
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Flex
-          height="calc(100vh - 70px)"
-          width="full"
-          align="center"
-          justifyContent="center"
-          bg={useColorModeValue("linear-gradient(135deg, #667eea 0%, #764ba2 100%)", "gray.900")}
-          position="relative"
-          overflow="hidden"
-          _before={{
-            content: '""',
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bg: useColorModeValue("rgba(255,255,255,0.1)", "rgba(0,0,0,0.3)"),
-            backdropFilter: "blur(10px)",
-          }}
-        >
-          <Box
-            borderWidth={0}
-            px={0}
-            width="full"
-            maxWidth="1100px"
-            borderRadius="2xl"
-            boxShadow="2xl"
-            overflow="hidden"
-            bg={useColorModeValue("white", "gray.800")}
-            position="relative"
-            zIndex={1}
-          >
-            <Flex direction={{ base: "column", md: "row" }} height="full">
-              <Box
-                flex={1}
-                display={{ base: "none", md: "block" }}
-                position="relative"
-              >
-                <Image
-                  src={loginImage}
-                  alt="Login"
-                  objectFit="cover"
-                  height="100%"
-                  width="100%"
-                />
-
-                {/* Onboarding Trigger on Image Side */}
-                {/* <Box position="absolute" inset="0" display="flex" alignItems="center" justifyContent="center">
-                  <Button
-                    leftIcon={<FaPlayCircle />}
-                    colorScheme="whiteAlpha"
-                    onClick={handleOpenOnboarding}
-                    size="lg"
-                    backdropFilter="blur(8px)"
-                    bg="rgba(0,0,0,0.4)"
-                    _hover={{ bg: "rgba(0,0,0,0.6)" }}
-                  >
-                    Watch Intro Tour
-                  </Button>
-                </Box> */}
-              </Box>
-
-              <VStack
-                as="form"
-                onSubmit={handleLogin}
-                spacing={5}
-                p={8}
-                flex={1}
-                bg={useColorModeValue("white", "gray.800")}
-                alignItems="stretch"
-                justify="center"
-              >
-                <Box width="full" textAlign="left">
-                  <Flex justify="space-between" align="center" mb={2}>
-                    <Heading
-                      as="h1"
-                      size="xl"
-                      bgGradient="linear(to-r, #667eea, #764ba2)"
-                      bgClip="text"
-                      fontWeight="extrabold"
-                    >
-                      Welcome Back
-                    </Heading>
-                    {/* Mobile Trigger */}
-                    {/* <IconButton
-                      display={{ base: "flex", md: "none" }}
-                      icon={<FaPlayCircle />}
-                      aria-label="Watch Intro"
-                      onClick={handleOpenOnboarding}
-                      variant="ghost"
-                      colorScheme="purple"
-                    /> */}
-                  </Flex>
-                  <Text fontSize="sm" color={useColorModeValue("gray.600", "gray.400")} mb={4}>
+        {/* Centered Glass Login Card */}
+        <Flex position="relative" zIndex={10} width="100%" height="100%" align="center" justify="center" pt={{ base: "70px", md: "80px" }}>
+          <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
+            <Box width={{ base: "90vw", sm: "350px", md: "380px" }} p={{ base: 6, md: 7 }} borderRadius="2xl" bg="rgba(255, 255, 255, 0.05)" backdropFilter="blur(20px)" border="1px solid rgba(255, 255, 255, 0.1)" boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.5)">
+              <VStack as="form" onSubmit={handleLogin} spacing={4} width="full" alignItems="stretch">
+                <Box width="full" mb={2} textAlign="center">
+                  <Heading as="h1" size="xl" color="white" fontWeight="extrabold" mb={2} letterSpacing="tight" textShadow="0 2px 10px rgba(0,0,0,0.3)">
+                    Welcome Back
+                  </Heading>
+                  <Text fontSize="sm" color="whiteAlpha.700" fontWeight="medium">
                     Sign in to Innotrat Labs IDE
                   </Text>
                 </Box>
 
-                <FormControl id="mobileNumber" isRequired width="full">
-                  <FormLabel fontWeight="bold" mb={3}>Mobile Number</FormLabel>
-                  <HStack spacing={2} alignItems="stretch">
-                    <Select
-                      id="countryCode"
-                      value={formData.countryCode}
-                      onChange={handleInputChange}
-                      width="90px"
-                      height="45px"
-                      borderRadius="lg"
-                      color="black"
-                      bg="gray.50"
-                      border="1px solid"
-                      borderColor="gray.200"
-                      _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
-                      fontSize="md"
-                    >
+                <FormControl id="mobileNumber" isRequired isInvalid={!!errors.mobileNumber}>
+                  <FormLabel fontSize="sm" fontWeight="semibold" color="whiteAlpha.900" mb={1}>
+                    Mobile Number
+                  </FormLabel>
+                  <Flex align="stretch">
+                    <Select id="countryCode" value={formData.countryCode} onChange={handleInputChange} width="100px" height="42px" fontSize="md" borderRightRadius="0" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA", zIndex: 1 }} sx={{ '> option': { background: '#1F2937', color: 'white' } }}>
                       <option value="+91">+91</option>
                     </Select>
-                    <Input
-                      id="mobileNumber"
-                      type="tel"
-                      placeholder="Mobile Number"
-                      height="45px"
-                      borderRadius="lg"
-                      pattern="[0-9]{10}"
-                      maxLength="10"
-                      focusBorderColor="blue.500"
-                      value={formData.mobileNumber}
-                      onChange={handleInputChange}
-                      color="black"
-                      bg="gray.50"
-                      border="1px solid"
-                      borderColor="gray.200"
-                      _placeholder={{ color: "gray.400" }}
-                      fontSize="md"
-                      flex={1}
-                      _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
-                    />
-                  </HStack>
+                    <Input id="mobileNumber" type="tel" placeholder="Enter mobile number" height="42px" fontSize="md" flex={1} w="full" borderLeftRadius="0" borderLeft="none" pattern="[0-9]{10}" maxLength="10" value={formData.mobileNumber} onChange={handleInputChange} bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: "whiteAlpha.400" }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA", zIndex: 1 }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                  </Flex>
+                  {errors.mobileNumber && <FormErrorMessage>{errors.mobileNumber}</FormErrorMessage>}
                 </FormControl>
 
-                <FormControl id="password" isRequired width="full">
-                  <FormLabel fontWeight="bold" mb={3}>Password</FormLabel>
-                  <HStack spacing={2} alignItems="stretch">
-                    <Flex
-                      width="90px"
-                      height="45px"
-                      borderRadius="lg"
-                      bg="gray.50"
-                      border="1px solid"
-                      borderColor="gray.200"
-                      alignItems="center"
-                      justifyContent="center"
-                      color="gray.400"
-                    >
-                      <FaLock />
-                    </Flex>
-                    <InputGroup flex={1}>
-                      <Input
-                        pr="3.5rem"
-                        type={show ? "text" : "password"}
-                        placeholder="Password"
-                        height="45px"
-                        borderRadius="lg"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        color="black"
-                        bg="gray.50"
-                        border="1px solid"
-                        borderColor="gray.200"
-                        _placeholder={{ color: "gray.400" }}
-                        fontSize="md"
-                        fontWeight="medium"
-                        _focus={{ borderColor: "purple.500", boxShadow: "0 0 0 1px #805ad5" }}
-                      />
-                      <InputRightElement height="45px" width="3.5rem">
-                        <IconButton
-                          h="1.75rem"
-                          size="sm"
-                          onClick={() => setShow(!show)}
-                          aria-label={show ? "Hide password" : "Show password"}
-                          icon={show ? <FaEyeSlash /> : <FaEye />}
-                          variant="ghost"
-                          color="gray.500"
-                          _hover={{ bg: "gray.100" }}
-                        />
-                      </InputRightElement>
-                    </InputGroup>
-                  </HStack>
+                <FormControl id="password" isRequired isInvalid={!!errors.password}>
+                  <FormLabel fontSize="sm" fontWeight="semibold" color="whiteAlpha.900" mb={1}>
+                    Password
+                  </FormLabel>
+                  <InputGroup size="lg" width="100%">
+                    <InputLeftElement pointerEvents="none" height="42px">
+                      <FaLock color="rgba(255,255,255,0.4)" />
+                    </InputLeftElement>
+                    <Input id="password" type={show ? "text" : "password"} placeholder="Enter your password" height="42px" fontSize="md" w="100%" borderRadius="lg" value={formData.password} onChange={handleInputChange} pl="10" pr="3rem" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: "whiteAlpha.400" }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <InputRightElement height="42px" width="3rem" right="0">
+                      <IconButton size="sm" onClick={() => setShow(!show)} icon={show ? <ViewOffIcon /> : <ViewIcon />} variant="ghost" color="whiteAlpha.600" _hover={{ color: "white", bg: "whiteAlpha.200" }} aria-label={show ? "Hide password" : "Show password"} />
+                    </InputRightElement>
+                  </InputGroup>
+                  {errors.password && <FormErrorMessage>{errors.password}</FormErrorMessage>}
                 </FormControl>
 
-                <Button
-                  type="submit"
-                  width="full"
-                  height="45px"
-                  fontSize="lg"
-                  borderRadius="lg"
-                  isLoading={isLoading}
-                  loadingText="Signing in..."
-                  bgGradient="linear(to-r, #667eea, #764ba2)"
-                  color="white"
-                  _hover={{
-                    bgGradient: "linear(to-r, #764ba2, #667eea)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "xl",
-                  }}
-                  _active={{
-                    transform: "translateY(0)",
-                  }}
-                  transition="all 0.2s"
-                  fontWeight="bold"
-                  mt={2}
-                >
+                <Button type="submit" width="full" height="42px" borderRadius="lg" isLoading={isLoading} loadingText="Signing in..." bgGradient="linear(to-r, purple.500, blue.500)" color="white" fontSize="md" fontWeight="bold" _hover={{ bgGradient: "linear(to-r, purple.400, blue.400)", transform: "translateY(-1px)", boxShadow: "0 10px 20px -10px rgba(102, 126, 234, 0.6)" }} _active={{ transform: "translateY(0)" }} transition="all 0.2s" mt={2}>
                   Sign in
                 </Button>
 
-                <Flex justify="space-between" width="full" pt={4}>
-                  <ChakraLink color="blue.500" onClick={handleForgotPassword}>
-                    Forgot password?
+                <VStack spacing={2} width="full" mt={2}>
+                  <Flex justify="center" align="center">
+                    <Text fontSize="sm" color="whiteAlpha.700">Don't have an account?</Text>
+                    <ChakraLink color="purple.300" ml={2} fontSize="sm" fontWeight="bold" onClick={createAccount}>
+                      Create an account
+                    </ChakraLink>
+                  </Flex>
+                  <ChakraLink color="whiteAlpha.600" fontSize="xs" fontWeight="semibold" onClick={handleForgotPassword} _hover={{ color: "white", textDecoration: "underline" }}>
+                    Forgot your password?
                   </ChakraLink>
-                  <ChakraLink color="blue.500" onClick={createAccount}>
-                    Create an account
-                  </ChakraLink>
-                </Flex>
-                <Text textAlign="center" fontSize="xs" color="green.500">InnoIDE_V1Rev1.1_27-02-2026 (C) Innotrat Labs</Text>
+                </VStack>
 
-                <Box width="full" mt={4} display="flex" justifyContent="center">
+                <HStack width="full" my={2}>
+                  <Divider borderColor="whiteAlpha.200" />
+                  <Text px={3} fontSize="xs" fontWeight="bold" color="whiteAlpha.500" whiteSpace="nowrap">OR</Text>
+                  <Divider borderColor="whiteAlpha.200" />
+                </HStack>
+
+                <Box width="full" display="flex" justifyContent="center" sx={{ '.nsm7Bb-HzV7m-LgbsSe': { backgroundColor: 'rgba(255,255,255,0.05) !important', color: 'white !important', border: '1px solid rgba(255,255,255,0.2) !important', borderRadius: '8px !important' }, '.nsm7Bb-HzV7m-LgbsSe:hover': { backgroundColor: 'rgba(255,255,255,0.1) !important' } }}>
                   <GoogleLogin
                     onSuccess={async (credentialResponse) => {
                       try {
-                        //http://192.168.0.16:5004/auth/google//
-                        const response = await fetch("https://eureka.innotrat.in/auth/google", {
+                        const response = await fetch("/auth/google", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
@@ -431,7 +299,20 @@ const Home = () => {
                           }),
                         });
 
-                        const data = await response.json();
+                        // Safely parse response body
+                        const text = await response.text();
+                        let data;
+                        try {
+                          data = JSON.parse(text);
+                        } catch {
+                          throw new Error(
+                            `Server error ${response.status}: ${response.statusText}`
+                          );
+                        }
+
+                        if (!response.ok) {
+                          throw new Error(data?.message || `Request failed with status ${response.status}`);
+                        }
 
                         if (data.status === "success") {
                           sessionStorage.setItem("token", data.token);
@@ -444,7 +325,6 @@ const Home = () => {
                             description: "Google Signin successful",
                             status: "success",
                             duration: 3000,
-                            isClosable: true,
                           });
 
                           navigate("/editor", { state: { userId: data.userData.userId } });
@@ -457,7 +337,6 @@ const Home = () => {
                           description: error.message || "Google Sign in failed",
                           status: "error",
                           duration: 3000,
-                          isClosable: true,
                         });
                       }
                     }}
@@ -467,18 +346,21 @@ const Home = () => {
                         description: "Google Login Failed",
                         status: "error",
                         duration: 3000,
-                        isClosable: true,
                       });
                     }}
                   />
                 </Box>
+                <Text textAlign="center" fontSize="xs" color="whiteAlpha.500" mt={4}>
+                  InnoIDE_V1Rev1.1_27-02-2026 (C) Innotrat Labs
+                </Text>
               </VStack>
-            </Flex>
-          </Box>
+            </Box>
+          </motion.div>
         </Flex>
+      </Box>
 
         {/* Onboarding Modal */}
-        <Modal isOpen={isOpen} onClose={onClose} size="xl" isCentered>
+        <Modal isOpen={isOpen} onClose={onClose} size={{ base: "full", md: "xl" }} isCentered>
           <ModalOverlay backdropFilter="blur(8px)" />
           <ModalContent borderRadius="2xl" overflow="hidden">
             <ModalHeader borderBottom="1px solid" borderColor="gray.100" py={4}>
@@ -563,7 +445,6 @@ const Home = () => {
           </ModalContent>
         </Modal>
 
-      </motion.div>
     </>
   );
 };

@@ -256,112 +256,238 @@ const DyteMeetingApp = ({ onClose, onMinimize, autoJoinMeetingId = null, autoCre
         }
     };
 
+    const cardStyle = {
+        background: 'linear-gradient(135deg, #0f1117 0%, #1a1d2e 100%)',
+        borderRadius: '14px',
+        border: '1px solid rgba(99,102,241,0.25)',
+        boxShadow: '0 6px 24px rgba(0,0,0,0.5)',
+        overflow: 'hidden',
+        width: '100%',
+        maxWidth: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: "'Inter', 'Segoe UI', sans-serif",
+    };
+
+    const headerStyle = {
+        background: 'linear-gradient(90deg, #6366f1 0%, #4f46e5 100%)',
+        padding: '12px 18px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+    };
+
+    const labelStyle = {
+        display: 'block',
+        fontSize: '10px',
+        fontWeight: '600',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        color: '#a5b4fc',
+        marginBottom: '4px',
+    };
+
+    const inputStyle = {
+        width: '100%',
+        padding: '8px 12px',
+        background: 'rgba(255,255,255,0.06)',
+        border: '1px solid rgba(99,102,241,0.3)',
+        borderRadius: '7px',
+        color: '#e2e8f0',
+        fontSize: '13px',
+        outline: 'none',
+        transition: 'border-color 0.2s',
+        boxSizing: 'border-box',
+    };
+
+    const selectStyle = {
+        ...inputStyle,
+        cursor: 'pointer',
+        appearance: 'none',
+        WebkitAppearance: 'none',
+    };
+
+    const createBtnStyle = {
+        width: '100%',
+        padding: '9px',
+        background: 'linear-gradient(90deg, #14b8a6 0%, #0ea5e9 100%)',
+        border: 'none',
+        borderRadius: '7px',
+        color: 'white',
+        fontWeight: '700',
+        fontSize: '13px',
+        cursor: 'pointer',
+        letterSpacing: '0.04em',
+        transition: 'opacity 0.2s',
+    };
+
+    const joinBtnStyle = {
+        flex: 1,
+        padding: '9px',
+        background: (!meetingId || !userName) ? 'rgba(99,102,241,0.3)' : 'linear-gradient(90deg, #6366f1 0%, #818cf8 100%)',
+        border: 'none',
+        borderRadius: '7px',
+        color: (!meetingId || !userName) ? 'rgba(255,255,255,0.4)' : 'white',
+        fontWeight: '700',
+        fontSize: '13px',
+        cursor: (!meetingId || !userName) ? 'not-allowed' : 'pointer',
+        letterSpacing: '0.04em',
+        transition: 'opacity 0.2s',
+    };
+
+    const closeBtnStyle = {
+        padding: '9px 16px',
+        background: 'transparent',
+        border: '1px solid rgba(148,163,184,0.35)',
+        borderRadius: '7px',
+        color: '#94a3b8',
+        fontWeight: '600',
+        fontSize: '13px',
+        cursor: 'pointer',
+        transition: 'border-color 0.2s, color 0.2s',
+    };
+
     return (
-        <Box p={0} bg="white" borderRadius="md" minH="500px" h="100%" display="flex" flexDirection="column">
+        <Box p={0} bg="transparent" borderRadius="md" h="100%" display="flex" flexDirection="column" alignItems="center" justifyContent="center">
             {!meeting ? (
-                <Box p={5}>
-                    <Heading size="md" mb={4}>Dyte Video Call</Heading>
-                    <VStack spacing={4} align="stretch">
+                <div style={cardStyle}>
+                    {/* Header */}
+                    <div style={headerStyle}>
+                        <span style={{ fontSize: '20px' }}>📹</span>
+                        <span style={{ color: 'white', fontWeight: '700', fontSize: '16px', letterSpacing: '0.02em' }}>
+                            IDE Video Call
+                        </span>
+                    </div>
+
+                    {/* Body */}
+                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {isCreating ? (
-                            <Center p={10}>
-                                <VStack>
-                                    <Spinner size="xl" color="blue.500" />
-                                    <Text>Creating meeting...</Text>
-                                </VStack>
-                            </Center>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '14px', color: '#a5b4fc' }}>
+                                <div style={{
+                                    width: '44px', height: '44px', border: '4px solid rgba(99,102,241,0.3)',
+                                    borderTopColor: '#818cf8', borderRadius: '50%',
+                                    animation: 'spin 0.8s linear infinite'
+                                }} />
+                                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                                <span style={{ fontSize: '14px', fontWeight: '500' }}>Creating meeting…</span>
+                            </div>
                         ) : (
                             <>
+                                {/* Create Meeting Button */}
                                 {!meetingId && !autoJoinMeetingId && (
-                                    <HStack>
-                                        <Button colorScheme="teal" onClick={createMeeting} w="full">
-                                            Create New Meeting
-                                        </Button>
-                                    </HStack>
+                                    <button style={createBtnStyle} onClick={createMeeting}>
+                                        ＋ &nbsp;Create New Meeting
+                                    </button>
                                 )}
 
+                                {/* Invite Link */}
                                 {inviteLink && (
-                                    <VStack spacing={2} align="stretch" mt={2} p={3} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="blue.100">
-                                        <Text fontWeight="semibold" fontSize="sm" color="gray.700">Meeting Invite Link:</Text>
-                                        <HStack>
-                                            <Input
-                                                value={inviteLink}
-                                                isReadOnly
-                                                size="sm"
-                                                bg="white"
-                                                color="black"
-                                                fontSize="sm"
-                                            />
-                                            <Button
+                                    <div style={{
+                                        background: 'rgba(99,102,241,0.1)',
+                                        border: '1px solid rgba(99,102,241,0.25)',
+                                        borderRadius: '10px',
+                                        padding: '12px 14px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '8px',
+                                    }}>
+                                        <span style={{ fontSize: '11px', fontWeight: '600', color: '#a5b4fc', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                                            Invite Link
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input value={inviteLink} readOnly style={{ ...inputStyle, fontSize: '12px', flex: 1 }} />
+                                            <button
                                                 onClick={copyInviteLink}
-                                                size="sm"
-                                                colorScheme={linkCopied ? "green" : "blue"}
-                                                minW="90px"
+                                                style={{
+                                                    padding: '8px 14px',
+                                                    background: linkCopied ? 'rgba(16,185,129,0.2)' : 'rgba(99,102,241,0.25)',
+                                                    border: `1px solid ${linkCopied ? 'rgba(16,185,129,0.5)' : 'rgba(99,102,241,0.4)'}`,
+                                                    borderRadius: '7px',
+                                                    color: linkCopied ? '#6ee7b7' : '#a5b4fc',
+                                                    fontSize: '12px',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    whiteSpace: 'nowrap',
+                                                }}
                                             >
-                                                {linkCopied ? "✓ Copied!" : "Copy Link"}
-                                            </Button>
-                                        </HStack>
-                                        <Text fontSize="xs" color="gray.600">
-                                            Share this link with others to invite them to the meeting
-                                        </Text>
-                                    </VStack>
+                                                {linkCopied ? '✓ Copied' : 'Copy'}
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
 
-                                <Box>
-                                    <Text mb={1} fontSize="sm" fontWeight="medium">Meeting ID</Text>
-                                    <Input
+                                {/* Meeting ID */}
+                                <div>
+                                    <label style={labelStyle}>Meeting ID</label>
+                                    <input
+                                        style={inputStyle}
                                         placeholder="Enter Meeting ID"
                                         value={meetingId}
                                         onChange={(e) => setMeetingId(e.target.value)}
-                                        color="black"
-                                        bg="white"
-                                        isReadOnly={!!autoJoinMeetingId}
+                                        readOnly={!!autoJoinMeetingId}
+                                        onFocus={e => e.target.style.borderColor = '#818cf8'}
+                                        onBlur={e => e.target.style.borderColor = 'rgba(99,102,241,0.3)'}
                                     />
-                                </Box>
+                                </div>
 
-                                <Box>
-                                    <Text mb={1} fontSize="sm" fontWeight="medium">Your Name</Text>
-                                    <Input
+                                {/* Your Name */}
+                                <div>
+                                    <label style={labelStyle}>Your Name</label>
+                                    <input
+                                        style={inputStyle}
                                         placeholder="Enter Your Name"
                                         value={userName}
                                         onChange={(e) => setUserName(e.target.value)}
-                                        color="black"
-                                        bg="white"
+                                        onFocus={e => e.target.style.borderColor = '#818cf8'}
+                                        onBlur={e => e.target.style.borderColor = 'rgba(99,102,241,0.3)'}
                                     />
-                                </Box>
+                                </div>
 
-                                <Box>
-                                    <Text mb={1} fontSize="sm" fontWeight="medium">Role</Text>
-                                    <Select
+                                {/* Role */}
+                                <div>
+                                    <label style={labelStyle}>Role</label>
+                                    <select
+                                        style={selectStyle}
                                         value={userRole}
                                         onChange={(e) => setUserRole(e.target.value)}
-                                        color="black"
-                                        bg="white"
+                                        onFocus={e => e.target.style.borderColor = '#818cf8'}
+                                        onBlur={e => e.target.style.borderColor = 'rgba(99,102,241,0.3)'}
                                     >
-                                        <option value="host">Host</option>
-                                        <option value="participant">Participant</option>
-                                    </Select>
-                                </Box>
+                                        <option value="host" style={{ background: '#1a1d2e' }}>Host</option>
+                                        <option value="participant" style={{ background: '#1a1d2e' }}>Participant</option>
+                                    </select>
+                                </div>
 
-                                <HStack pt={2}>
-                                    <Button colorScheme="blue" onClick={joinMeeting} flex={1} isDisabled={!meetingId || !userName}>
-                                        Join Meeting
-                                    </Button>
+                                {/* Action Buttons */}
+                                <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
+                                    <button
+                                        style={joinBtnStyle}
+                                        onClick={joinMeeting}
+                                        disabled={!meetingId || !userName}
+                                    >
+                                        🎬 &nbsp;Join Meeting
+                                    </button>
                                     {onClose && (
-                                        <Button variant="outline" onClick={onClose}>
+                                        <button
+                                            style={closeBtnStyle}
+                                            onClick={onClose}
+                                            onMouseEnter={e => { e.target.style.borderColor = '#94a3b8'; e.target.style.color = '#e2e8f0'; }}
+                                            onMouseLeave={e => { e.target.style.borderColor = 'rgba(148,163,184,0.35)'; e.target.style.color = '#94a3b8'; }}
+                                        >
                                             Close
-                                        </Button>
+                                        </button>
                                     )}
-                                </HStack>
+                                </div>
                             </>
                         )}
-                    </VStack>
-                </Box>
+                    </div>
+                </div>
             ) : (
                 <Box position="relative" w="100%" h="100%" display="flex" flexDirection="column">
                     <Box p={2} bg="gray.50" borderBottomWidth="1px" display="flex" justifyContent="space-between" alignItems="center" flexShrink={0}>
                         <HStack>
                             <Text fontWeight="bold" fontSize="sm">Meeting ID: {meetingId}</Text>
-                        </HStack >
+                        </HStack>
                         <HStack>
                             <Button size="xs" onClick={copyInviteLink} colorScheme={linkCopied ? "green" : "gray"}>
                                 {linkCopied ? "Copied!" : "Copy Invite Link"}
@@ -369,15 +495,15 @@ const DyteMeetingApp = ({ onClose, onMinimize, autoJoinMeetingId = null, autoCre
                             {onMinimize && <Button size="xs" colorScheme="orange" variant="ghost" onClick={onMinimize}>Minimize</Button>}
                             {onClose && !onMinimize && <Button size="xs" colorScheme="red" variant="ghost" onClick={onClose}>Close</Button>}
                         </HStack>
-                    </Box >
+                    </Box>
                     <Box flex={1} position="relative" overflow="hidden">
                         <DyteProvider value={dyteMeeting}>
                             <DyteMeeting meeting={dyteMeeting} mode="fill" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }} />
                         </DyteProvider>
                     </Box>
-                </Box >
+                </Box>
             )}
-        </Box >
+        </Box>
     );
 };
 

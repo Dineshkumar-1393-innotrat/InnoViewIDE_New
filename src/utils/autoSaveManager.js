@@ -185,6 +185,17 @@ class AutoSaveManager {
   }
 
   /**
+   * Clear all pending auto-save timers
+   */
+  clearAll() {
+    for (const timer of this.autoSaveTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.autoSaveTimers.clear();
+    this.log('All pending auto-saves cleared');
+  }
+
+  /**
    * Schedule a debounced save for a specific screen
    * @param {string} screenKey - Screen to save
    * @param {number} delay - Debounce delay in milliseconds
@@ -263,6 +274,13 @@ class AutoSaveManager {
       // Fallback to sessionStorage
       if (!stored) {
         stored = sessionStorage.getItem(storageKey);
+      }
+      
+      // Fallback to old "default" project ID key to recover yesterday's work
+      if (!stored) {
+        const userId = this.getCurrentUserId();
+        const oldStorageKey = `innoide:autosave:${userId}:default:${screenKey}`;
+        stored = localStorage.getItem(oldStorageKey) || sessionStorage.getItem(oldStorageKey);
       }
 
       if (!stored) {
@@ -438,10 +456,9 @@ class AutoSaveManager {
    */
   getCurrentProjectId() {
     try {
-      const stored = window.localStorage.getItem('currentProject');
-      if (stored) {
-        const project = JSON.parse(stored);
-        return project.id || 'default';
+      const activeProjectId = window.localStorage.getItem('activeProjectId');
+      if (activeProjectId) {
+        return activeProjectId;
       }
     } catch (e) {
       // Ignore

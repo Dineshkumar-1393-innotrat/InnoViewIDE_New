@@ -1132,7 +1132,7 @@
 // export default Output;
 
 
-import { useState, useEffect, forwardRef } from "react";
+import { useState, useEffect, forwardRef, useRef } from "react";
 import {
   Box,
   Text,
@@ -1161,7 +1161,8 @@ import OutputStatus from "./OutputStatus";
 
 import axios from "axios";
 
-const Output = forwardRef(({ editorRef, language }, ref) => {
+const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest }, ref) => {
+  const panelRef = useRef(null);
   const toast = useToast();
   const { colorMode } = useColorMode();
   const [output, setOutput] = useState([]);
@@ -1198,6 +1199,15 @@ const Output = forwardRef(({ editorRef, language }, ref) => {
   });
   const [postmanResponse, setPostmanResponse] = useState(null);
   const [postmanLoading, setPostmanLoading] = useState(false);
+
+  // Helper function to scroll specifically to the Output panel
+  const scrollToPanel = () => {
+    if (panelRef.current) {
+      // Use scrollIntoView with block: "start"
+      // scrollMarginTop on the element will handle the offset for the sticky navbar
+      panelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   // Serial Monitor Logic (Web Serial API)
   useEffect(() => {
@@ -1260,27 +1270,76 @@ const Output = forwardRef(({ editorRef, language }, ref) => {
   };
 
   const simulateCommandOutput = (command) => {
-    const args = command.split(' ');
+    const args = command.trim().split(/\s+/);
     const cmd = args[0].toLowerCase();
 
-    if (cmd === 'help') return ['Available commands: help, ls, pwd, cd, date, clear, echo, whoami'];
-    if (cmd === 'ls') return ['main.c', 'src/', 'include/', 'Makefile', 'README.md'];
-    if (cmd === 'pwd') return [cwd];
-    if (cmd === 'cd') {
-      if (args[1]) {
-        if (args[1] === '..') setCwd(cwd.split('/').slice(0, -1).join('/') || '/');
-        else setCwd(`${cwd === '/' ? '' : cwd}/${args[1]}`);
-      } else {
-        setCwd('/home/user');
-      }
-      return [];
+    switch (cmd) {
+      case 'help':
+        return [
+          'InnoIDE Mock Terminal v1.0.0',
+          'Available commands:',
+          '  help     - Show this menu',
+          '  ls       - List files in current directory',
+          '  pwd      - Print working directory',
+          '  cd <dir> - Change directory',
+          '  clear    - Clear the terminal screen',
+          '  echo     - Print text to terminal',
+          '  date     - Show current system date/time',
+          '  whoami   - Show current user',
+          '  uname    - Show system information',
+          '  cat      - Read file content (mock)',
+          '  mkdir    - Create directory (mock)',
+          '  touch    - Create file (mock)'
+        ];
+      case 'ls':
+        if (cwd === '/home/user') return ['main.c  src/  include/  Makefile  README.md  build/'];
+        if (cwd.includes('src')) return ['main.c  utils.c  handlers.h'];
+        return ['total 0'];
+      case 'pwd':
+        return [cwd];
+      case 'cd':
+        const target = args[1];
+        if (!target || target === '~') {
+          setCwd('/home/user');
+        } else if (target === '..') {
+          const parts = cwd.split('/').filter(Boolean);
+          if (parts.length > 0) {
+            setCwd('/' + parts.slice(0, -1).join('/'));
+          } else {
+            setCwd('/');
+          }
+        } else {
+          const newPath = `${cwd === '/' ? '' : cwd}/${target}`;
+          if (['/home/user/src', '/home/user/include', '/home/user/build', '/home/user'].includes(newPath)) {
+            setCwd(newPath);
+          } else {
+            return [`bash: cd: ${target}: No such file or directory`];
+          }
+        }
+        return [];
+      case 'date':
+        return [new Date().toString()];
+      case 'whoami':
+        return ['user'];
+      case 'uname':
+        return ['InnoIDE-WebOS 5.15.0-x86_64-GNU/Linux'];
+      case 'clear':
+        setTerminalOutput([]);
+        return [];
+      case 'echo':
+        return [args.slice(1).join(' ')];
+      case 'cat':
+        if (!args[1]) return ['usage: cat <filename>'];
+        if (args[1] === 'README.md') return ['# InnoIDE Project', 'This is a sample project for firmware development.', 'Use the Tools menu to build and flash.'];
+        if (args[1] === 'main.c') return ['#include <stdio.h>', '', 'int main() {', '    printf("Hello InnoIDE!\\n");', '    return 0;', '}'];
+        return [`cat: ${args[1]}: No such file or directory`];
+      case 'mkdir':
+      case 'touch':
+        if (!args[1]) return [`usage: ${cmd} <name>`];
+        return [`${cmd}: created ${args[1]} (simulated)`];
+      default:
+        return [`bash: ${cmd}: command not found`];
     }
-    if (cmd === 'date') return [new Date().toString()];
-    if (cmd === 'whoami') return ['user'];
-    if (cmd === 'clear') { setTerminalOutput([]); return []; }
-    if (cmd === 'echo') return [args.slice(1).join(' ')];
-
-    return [`bash: ${cmd}: command not found`];
   };
 
   const handleKeyDown = (e) => {
@@ -1307,6 +1366,44 @@ const Output = forwardRef(({ editorRef, language }, ref) => {
       }
     }
   };
+
+  // Add listeners for navbar tool events
+  useEffect(() => {
+    const handleViewOutput = () => {
+      setActivePanel("problem");
+      setTimeout(scrollToPanel, 100);
+    };
+    const handleProblem = () => {
+      setActivePanel("problem");
+      setTimeout(scrollToPanel, 100);
+    };
+    const handleDebugConsole = () => {
+      setActivePanel("debug");
+      setTimeout(scrollToPanel, 100);
+    };
+    const handleTerminalOpen = () => {
+      setActivePanel("terminal");
+      setTimeout(scrollToPanel, 100);
+    };
+    const handlePostman = () => {
+      setActivePanel("postman");
+      setTimeout(scrollToPanel, 100);
+    };
+
+    window.addEventListener('innoide:view-output', handleViewOutput);
+    window.addEventListener('innoide:problem', handleProblem);
+    window.addEventListener('innoide:debug-console', handleDebugConsole);
+    window.addEventListener('innoide:terminal-open', handleTerminalOpen);
+    window.addEventListener('innoide:postman', handlePostman);
+
+    return () => {
+      window.removeEventListener('innoide:view-output', handleViewOutput);
+      window.removeEventListener('innoide:problem', handleProblem);
+      window.removeEventListener('innoide:debug-console', handleDebugConsole);
+      window.removeEventListener('innoide:terminal-open', handleTerminalOpen);
+      window.removeEventListener('innoide:postman', handlePostman);
+    };
+  }, []);
 
   const handlePostmanSend = async () => {
     setPostmanLoading(true);
@@ -1422,6 +1519,7 @@ const Output = forwardRef(({ editorRef, language }, ref) => {
 
   const handleRunClick = () => {
     setIsRunClicked(true);
+    scrollToPanel();
     runCode();
   };
 
@@ -1434,109 +1532,117 @@ const Output = forwardRef(({ editorRef, language }, ref) => {
   };
 
   return (
-    <Box w="100%" p={4} borderRadius="md">
-      <Box display="flex" alignItems="center" mb={4} gap={4}>
-        {/* Add Hamburger Icon Button for Alignment by me  */}
-        <Button
-          display="none" // Hidden as per user request
-          size="sm"
-          colorScheme="blue"
-          variant="outline"
-          onClick={openModal}
-        // mr={4}
-        >
-          &#9776;
-        </Button>
+    <Box
+      ref={panelRef}
+      w="100%"
+      p={4}
+      bg={colorMode === "dark" ? "gray.800" : "white"}
+      borderRadius="lg"
+      scrollMarginTop="80px"
+      h="100%"
+      display="flex"
+      flexDirection="column"
+      {...rest}
+    >
 
-        <Button
-          loadingText="Flashing"
-          spinnerPlacement="start"
-          isLoading={isLoading}
-          size={"sm"}
-          colorScheme="blue"
-          variant={isLoading ? "solid" : "outline"}
-          cursor="pointer"
-          onClick={handleCodeFlash}
-        >
-          Flash
-        </Button>
+      {/* Tool Selection Buttons */}
+      <HStack spacing={4} mb={6} flexWrap="wrap">
+        {[
+          { id: "flash", label: "Flash", action: handleCodeFlash },
+          { id: "viewOutput", label: "View Output", action: runCode },
+          { id: "problem", label: "Problem" },
+          { id: "debug", label: "Debug Console" },
+          { id: "terminal", label: "Terminal" },
+          { id: "postman", label: "Postman" },
+        ].map((item) => (
+          <Button
+            key={item.id}
+            size="sm"
+            variant={activePanel === item.id ? "solid" : "outline"}
+            colorScheme="blue"
+            onClick={() => {
+              if (activePanel === item.id && !item.action) {
+                setActivePanel(null);
+                if (onCollapse) onCollapse();
+              } else {
+                if (onExpand) onExpand();
+                scrollToPanel();
+                if (item.action) {
+                  item.action();
+                } else {
+                  setActivePanel(item.id);
+                }
+              }
+            }}
+            borderRadius="md"
+            px={6}
+            h="36px"
+            fontWeight="500"
+            _hover={activePanel !== item.id ? { bg: "blue.50", borderColor: "blue.400" } : {}}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </HStack>
 
+      {/* Main Content Container (Bordered Box) */}
+      <Box
+        border="1px solid"
+        borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+        borderRadius="lg"
+        p={6}
+        boxShadow="sm"
+        flex="1"
+        overflowY="auto"
+        minH="0"
+        bg={colorMode === "dark" ? "gray.900" : "white"}
+      >
 
-        <Button
-          loadingText="Viewing Data"
-          spinnerPlacement="start"
-          isLoading={isLoading}
-          size={"sm"}
-          colorScheme="blue"
-          variant={isLoading ? "solid" : "outline"}
-          cursor="pointer"
-          _hover={{ bg: "blue.500", color: "white" }}
-          onClick={runCode}
-        >
-          View Output
-        </Button>
-
-        <Button
-          size="sm"
-          colorScheme="blue"
-          variant={activePanel === "problem" ? "solid" : "outline"}
-          onClick={() => setActivePanel("problem")}
-          _hover={{ bg: "blue.500", color: "white" }}
-        >
-          Problem
-        </Button>
-        <Button
-          size="sm"
-          colorScheme="blue"
-          variant={activePanel === "debug" ? "solid" : "outline"}
-          onClick={() => setActivePanel("debug")}
-          _hover={{ bg: "blue.500", color: "white" }}
-        >
-          Debug Console
-        </Button>
-        <Button
-          size="sm"
-          colorScheme="blue"
-          variant={activePanel === "terminal" ? "solid" : "outline"}
-          onClick={() => setActivePanel("terminal")}
-          _hover={{ bg: "blue.500", color: "white" }}
-        >
-          Terminal
-        </Button>
-        <Button
-          size="sm"
-          colorScheme="blue"
-          variant={activePanel === "postman" ? "solid" : "outline"}
-          onClick={() => setActivePanel("postman")}
-          _hover={{ bg: "blue.500", color: "white" }}
-        >
-          Postman
-        </Button>
-      </Box>
-
-      {/* Postman Panel UI - Rendered independently if toggled */}
-      {activePanel === "postman" && (
-        <Box p={4} border="1px solid" borderColor={colorMode === "dark" ? "gray.600" : "gray.300"} borderRadius="md" mb={4}>
-          <Box display="flex" flexDirection="column" gap={4}>
-            <Box display="flex" gap={2}>
-              <Select width="100px" size="sm" value={postmanMethod} onChange={(e) => setPostmanMethod(e.target.value)}>
+        {/* Postman Panel UI - Rendered independently if toggled */}
+        {activePanel === "postman" && (
+          <Box display="flex" flexDirection="column" gap={6}>
+            <HStack spacing={4} alignItems="center" h="56px" mb={4}>
+              <Select
+                w="120px"
+                size="lg"
+                h="48px"
+                value={postmanMethod}
+                onChange={(e) => setPostmanMethod(e.target.value)}
+                borderRadius="md"
+                bg={colorMode === "dark" ? "gray.800" : "white"}
+                borderColor="gray.200"
+              >
                 <option value="GET">GET</option>
                 <option value="POST">POST</option>
                 <option value="PUT">PUT</option>
                 <option value="DELETE">DELETE</option>
               </Select>
               <Input
-                size="sm"
-                placeholder="Enter request URL"
+                h="48px"
+                width="85%"
+                size="lg"
+                flex={1}
+                placeholder="https://jsonplaceholder.typicode.com/todos/1"
+                textColor={colorMode === "dark" ? "white" : "black"}
                 value={postmanUrl}
                 onChange={(e) => setPostmanUrl(e.target.value)}
-                color={colorMode === "dark" ? "white" : "black"}
-                _placeholder={{ color: "gray.500" }}
+                bg={colorMode === "dark" ? "gray.800" : "white"}
+                borderColor="gray.200"
+                borderRadius="md"
+                sx={{ margin: "0px !important" }}
               />
-              <Button size="sm" colorScheme="blue" onClick={handlePostmanSend} isLoading={postmanLoading}>
+              <Button
+                colorScheme="blue"
+                size="lg"
+                h="48px"
+                onClick={handlePostmanSend}
+                isLoading={postmanLoading}
+                px={10}
+                borderRadius="md"
+              >
                 Send
               </Button>
-            </Box>
+            </HStack>
 
             {['POST', 'PUT', 'PATCH'].includes(postmanMethod) && (
               <Box>
@@ -1554,160 +1660,121 @@ const Output = forwardRef(({ editorRef, language }, ref) => {
               </Box>
             )}
 
-            <Box borderTop="1px solid" borderColor={colorMode === "dark" ? "gray.700" : "gray.200"} pt={2} display="flex" flexDirection="column" gap={2}>
-              <Text fontSize="xs" fontWeight="bold">Response</Text>
+            <Box borderTop="1px solid" borderColor={colorMode === "dark" ? "gray.700" : "gray.100"} pt={4}>
+              <Text fontSize="sm" fontWeight="bold" mb={2} color={colorMode === "dark" ? "gray.400" : "gray.700"}>
+                Response
+              </Text>
               {postmanResponse ? (
                 <Box
                   bg={colorMode === "dark" ? "gray.800" : "gray.50"}
-                  p={2}
+                  p={4}
                   borderRadius="md"
                   overflowY="auto"
-                  maxH="300px"
+                  maxH="400px"
                   border="1px solid"
                   borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
                 >
-                  <Box mb={2} display="flex" gap={4} position="sticky" top="0" bg="inherit" zIndex="1" alignItems="center">
-                    <Badge colorScheme={postmanResponse.error ? "red" : "green"}>
-                      {postmanResponse.status || "Error"} {postmanResponse.statusText}
-                    </Badge>
-                    <Text fontSize="xs" color="gray.500">
-                      Time: {new Date().toLocaleTimeString()}
-                    </Text>
-                  </Box>
-                  <pre style={{ fontSize: '11px', color: colorMode === "dark" ? '#e2e8f0' : '#1a202c' }}>
+                  <pre style={{ fontSize: '13px', color: colorMode === "dark" ? '#e2e8f0' : '#1a202c' }}>
                     {JSON.stringify(postmanResponse.data, null, 2)}
                   </pre>
                 </Box>
               ) : (
-                <Text fontSize="xs" color="gray.500">No response yet.</Text>
+                <Text fontSize="sm" color="gray.400">
+                  No response yet.
+                </Text>
               )}
             </Box>
           </Box>
-        </Box>
-      )}
+        )}
 
-      {/* Main Panels */}
-      <Box
-        height="30vh"
-        overflowY="auto"
-        borderTop="1px solid"
-        borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
-        pt={2}
-      >
-        {/* Problem Panel (Code Output) */}
-        <Box display={activePanel === "problem" ? "block" : "none"}>
-          <Text fontSize="sm" fontWeight="bold" mb={2} color="gray.500">Output</Text>
-          <pre style={{ ...responseStyle, margin: 0, minHeight: "100%" }}>
-            {output.length > 0
-              ? output.map((line, i) => <Text key={i}>{line}</Text>)
-              : (response || "Run or flash to see output.")}
-          </pre>
-        </Box>
+        {activePanel === "problem" && (
+          <Box>
+            <Text fontSize="sm" fontWeight="bold" mb={3} color={colorMode === "dark" ? "gray.500" : "black"}>Output</Text>
+            <pre style={{ ...responseStyle, margin: 0, minHeight: "200px", fontSize: "13px" }}>
+              {output.length > 0
+                ? output.map((line, i) => <Text key={i}>{line}</Text>)
+                : (response || "Run or flash to see output.")}
+            </pre>
+          </Box>
+        )}
 
-        {/* Debug Console (Serial) */}
-        <Box display={activePanel === "debug" ? "block" : "none"}>
-          <Box display="flex" justifyContent="space-between" mb={2}>
-            <Text fontSize="sm" fontWeight="bold" color="gray.500">Debug Console</Text>
-            <Box display="flex" gap={2}>
-              <Button size="xs" onClick={() => setIsConnectedToDevice(!isConnectedToDevice)} colorScheme={isConnectedToDevice ? "red" : "green"}>
-                {isConnectedToDevice ? "Disconnect" : "Connect Serial"}
-              </Button>
-              <Button size="xs" onClick={() => setSerialOutput([])}>Clear</Button>
+        {activePanel === "debug" && (
+          <Box display="flex" flexDirection="column" gap={4}>
+            <Box display="flex" justifyContent="space-between" mb={2}>
+              <Text fontSize="sm" fontWeight="bold" color={colorMode === "dark" ? "gray.500" : "black"}>Debug Console</Text>
+              <HStack spacing={2}>
+                <Button size="xs" onClick={() => setIsConnectedToDevice(!isConnectedToDevice)} colorScheme={isConnectedToDevice ? "red" : "green"}>
+                  {isConnectedToDevice ? "Disconnect" : "Connect Serial"}
+                </Button>
+                <Button size="xs" onClick={() => setSerialOutput([])}>Clear</Button>
+              </HStack>
+            </Box>
+            <Box
+              fontFamily="monospace"
+              fontSize="13px"
+              bg={colorMode === "dark" ? "black" : "gray.50"}
+              p={4}
+              borderRadius="md"
+              maxH="400px"
+              overflowY="auto"
+            >
+              {serialOutput.length === 0 ? (
+                <Text color="gray.400">No debug output. Connect to a device.</Text>
+              ) : (
+                serialOutput.map((line, i) => <Text key={i}>{line}</Text>)
+              )}
             </Box>
           </Box>
-          <Box fontFamily="monospace" fontSize="sm">
-            {serialOutput.length === 0 ? (
-              <Text color="gray.500">No debug output. Connect to a device.</Text>
-            ) : (
-              serialOutput.map((line, i) => <Text key={i}>{line}</Text>)
-            )}
-          </Box>
-        </Box>
+        )}
 
-        {/* Terminal */}
-        <Box display={activePanel === "terminal" ? "block" : "none"}>
-          <Box fontFamily="monospace" fontSize="sm" mb={2}>
-            {terminalOutput.map((line, i) => <Text key={i}>{line}</Text>)}
+        {activePanel === "terminal" && (
+          <Box display="flex" flexDirection="column" gap={0} bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6} minH="300px">
+            <Box
+              fontFamily="monospace"
+              fontSize="16px"
+              mb={4}
+              color="black"
+              maxH="400px"
+              overflowY="auto"
+              sx={{
+                '&::-webkit-scrollbar': { width: '8px' },
+                '&::-webkit-scrollbar-thumb': { bg: 'gray.200', borderRadius: '4px' },
+              }}
+            >
+              {terminalOutput.map((line, i) => (
+                <Text key={i} mb={1} whiteSpace="pre-wrap">
+                  {line}
+                </Text>
+              ))}
+            </Box>
+            <HStack spacing={3} alignItems="center" h="40px" mt={2} mb={0}>
+              <Text color="green.600" fontWeight="bold" fontSize="16px" whiteSpace="nowrap" lineHeight="1">
+                {`user@innoide:${cwd}$`}
+              </Text>
+              <Input
+                variant="outline"
+                size="md"
+                fontSize="16px"
+                sx={{ margin: "0px !important", color: "black", _placeholder: { color: "gray.500" } }}
+                placeholder="Enter your input"
+                value={terminalInput}
+                onChange={(e) => setTerminalInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                autoFocus
+                borderColor="blue.500"
+                _hover={{ borderColor: "blue.400" }}
+                _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
+                color="black"
+                bg="transparent"
+                borderRadius="md"
+                maxW="400px"
+                h="36px"
+
+              />
+            </HStack>
           </Box>
-          <HStack>
-            <Text color="green.400">{`user@innoide:${cwd}$`}</Text>
-            <Input
-              variant="unstyled"
-              placeholder=""
-              value={terminalInput}
-              onChange={(e) => setTerminalInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              autoFocus
-            />
-          </HStack>
-        </Box>
+        )}
       </Box>
-
-      {/* Input box for stdin is this section i have added here */}
-      {/* <Box mb={4}>
-        <Text fontSize="sm" mb={4}>
-          Provide Input for Your Code:
-        </Text>
-        <Input
-          placeholder="Type input here"
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-        />
-      </Box> */}
-
-      {/* <Box
-        as="hr"
-        borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
-        mb={4}
-      /> */}
-
-      {/* <Box
-        width="100%"
-        height="18vh"
-        p={3}
-        color={
-          isError ? "red.400" : colorMode === "dark" ? "gray.300" : "gray.800"
-        }
-        bg={colorMode === "dark" ? "gray.900" : "#ffffff"}
-        border="1px solid"
-        borderColor={
-          isError ? "red.500" : colorMode === "dark" ? "gray.700" : "gray.300"
-        }
-        borderRadius="md"
-        overflowY="auto"
-      >
-        {output.length > 0
-          ? output.map((line, i) => <Text key={i}>{line}</Text>)
-          : 'Click "Run Code" to see the output here'}
-      </Box> */}
-
-      {/* <OutputStatus errorLine={{ line: 11, row: 2 }} /> */}
-
-      {/* <Modal isOpen={isModalOpen} onClose={closeModal}> */}
-      {/* <ModalOverlay /> */}
-      {/* <ModalContent> */}
-      {/* <ModalHeader>Choose Panel Alignment</ModalHeader> */}
-      {/* <ModalCloseButton /> */}
-      {/* <ModalBody> */}
-      {/* <RadioGroup onChange={setAlignment} value={alignment}> */}
-      {/* <Stack direction="column"> */}
-      {/* <Radio value="left">Left</Radio> */}
-      {/* <Radio value="right">Right</Radio> */}
-      {/* <Radio value="top">Top</Radio> */}
-      {/* <Radio value="bottom">Bottom</Radio> */}
-      {/* </Stack> */}
-      {/* </RadioGroup> */}
-      {/* </ModalBody> */}
-      {/* <ModalFooter> */}
-      {/* <Button colorScheme="blue" mr={3} onClick={closeModal}> */}
-      {/* Apply */}
-      {/* </Button> */}
-      {/* <Button variant="ghost" onClick={closeModal}> */}
-      {/* Cancel */}
-      {/* </Button> */}
-      {/* </ModalFooter> */}
-      {/* </ModalContent> */}
-      {/* </Modal> */}
     </Box>
   );
 });

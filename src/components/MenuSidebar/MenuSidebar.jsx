@@ -18,7 +18,8 @@ import { CloseIcon } from "@chakra-ui/icons";
 import Navbartwo from "../Navbartwo";
 import CodeEditor from "../CodeEditor/CodeEditor"; // Use VS Code-style editor
 import Footer from "../Footer";
-import { getUserInfo } from "../../utilities";
+import { getUserInfo, productAPIBase } from "../../utilities";
+import { useProject } from "../../ProjectContext";
 import axios from "axios";
 import { FaFolderPlus } from "react-icons/fa6";
 import { AiFillFileAdd } from "react-icons/ai";
@@ -65,9 +66,14 @@ const MenuSidebar = () => {
   const [activeTab, setActiveTab] = useState(null); // Active file tab
   const [user, setUser] = useState({});
   const [projectName, setProjectName] = useState("");
-  const [activeProjectId, setActiveProjectId] = useState(null);
+  const {
+    activeProjectId,
+    activeProjectName,
+    activeProductId,
+    switchProject
+  } = useProject();
+
   const [isProductDefined, setIsProductDefined] = useState(null);
-  const [activeProjectName, setActiveProjectName] = useState(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // fetch user information local storage
@@ -77,21 +83,29 @@ const MenuSidebar = () => {
       setUser(userInfo);
       fetchFileSystem(userInfo?.userId);
     }
+    const handleRefresh = () => {
+      if (user?.userId) {
+        console.log("[MenuSidebar] Refreshing file system via global event...");
+        fetchFileSystem(user.userId);
+      }
+    };
+    window.addEventListener("innoide:refresh-filesystem", handleRefresh);
 
-    console.log(console.log("Open files", openFiles));
-    console.log("file system", fileSystem);
-  }, []);
+    return () => {
+      window.removeEventListener("innoide:refresh-filesystem", handleRefresh);
+    };
+  }, [user]);
 
   useEffect(() => {
     const checkProductDefinition = async () => {
-      if (!activeProjectId) {
+      if (!activeProductId) {
         setIsProductDefined(null); // Reset if no active project
         return;
       }
 
       try {
         const response = await axios.get(
-          `https://eureka.innotrat.in/product/${activeProjectId}/definition`
+          `${productAPIBase}/product/${activeProductId}/definitionNew`
         );
 
         // Check if components exist in the response
@@ -105,12 +119,12 @@ const MenuSidebar = () => {
     };
 
     checkProductDefinition();
-  }, [activeProjectId]);
+  }, [activeProductId]);
 
-  // Function to build a tree structure from the flat array
   const buildTree = (flatArray) => {
     const idMap = {};
     let root = null;
+    const orphans = [];
 
     // First pass: create a map of all nodes
     flatArray.forEach((item) => {
@@ -126,14 +140,33 @@ const MenuSidebar = () => {
 
     // Second pass: Assign children to their parents
     flatArray.forEach((item) => {
-      if (item.parentId) {
-        idMap[item.parentId]?.children.push(idMap[item._id]);
+      if (item.parentId && idMap[item.parentId]) {
+        idMap[item.parentId].children.push(idMap[item._id]);
       } else {
-        root = idMap[item._id]; // The root node (no parentId)
+        if (item.name === "root") {
+          root = idMap[item._id]; // The explicit root node
+        } else {
+          orphans.push(idMap[item._id]); // Items without parentId that are not "root"
+        }
       }
     });
 
-    return root;
+    // Attach orphaned items to root if possible
+    if (root) {
+      orphans.forEach((orphan) => {
+        root.children.push(orphan);
+      });
+    } else if (orphans.length > 0) {
+      // Fallback: create a virtual root if "root" wasn't found
+      root = {
+        _id: "virtual_root",
+        name: "root",
+        type: "folder",
+        children: orphans,
+      };
+    }
+
+    return root || { _id: "empty", name: "root", type: "folder", children: [] };
   };
 
   // Fetch file system and ensure root folder exists
@@ -295,8 +328,16 @@ const MenuSidebar = () => {
       setFileSystem({ ...fileSystem, children: updatedChildren });
 
       // Set active project when opening a top-level folder
-      setActiveProjectId(folder.isOpen ? null : folder.productId);
-      setActiveProjectName(folder.isOpen ? null : folder.name);
+      if (!folder.isOpen) {
+        switchProject({
+          projectId: folder._id,
+          projectName: folder.name,
+          productId: folder.productId,
+          productName: folder.name
+        });
+      } else {
+        // Optionally clear or keep. Usually we keep the active project even if folder is closed in sidebar.
+      }
     } else {
       // Recursive function to update nested folders
       const updateFolderState = (node) => {
@@ -520,9 +561,10 @@ const MenuSidebar = () => {
     <Box display="flex" flexDirection="column" minHeight="100vh">
       <Navbartwo />
 
-      <Box display="flex" flex="1" minHeight="100vh" overflow="hidden">
+      <Box display="flex" flex="1" minHeight="100vh" overflow="hidden" flexDirection={{ base: "column", md: "row" }}>
         <Box
-          width="300px"
+          width={{ base: "100%", md: "240px" }}
+          flexShrink={0}
           bg="gray.800"
           mt={16}
           p={4}
@@ -531,39 +573,33 @@ const MenuSidebar = () => {
         >
           <Tooltip label="Create New Project" hasArrow>
             <Button
-              leftIcon={<FaPlus />} // Add icon to the left
+              leftIcon={<FaPlus />}
               size="sm"
               colorScheme="blue"
-              width="100%" // Make it full width
+              width="100%"
               mb={4}
-              // onClick={() => {
-              //   handleCreateProject(fileSystem, "folder", user?.userId);
-              // }}
               onClick={onOpen}
             >
               Create New Project
             </Button>
           </Tooltip>
 
-          {/* {renderFileSystem(fileSystem)} */}
-
-          {/* Render only root's children */}
           {fileSystem.children &&
             fileSystem.children.map((child) => renderFileSystem(child))}
         </Box>
 
-        <Box flex="1" mt={16} p={4} bg="gray.900" minHeight="100vh">
-          {activeProjectId && isProductDefined !== null && (
+        <Box flex="1" mt={{ base: 0, md: 16 }} p={4} bg="gray.900" minHeight="100vh" overflowX="auto">
+          {activeProductId && isProductDefined !== null && (
             <Box>
               {isProductDefined ? (
                 <ProductEditModal
-                  productID={activeProjectId}
+                  productID={activeProductId}
                   productName={activeProjectName}
                   fetchFileSystem={fetchFileSystem}
                 />
               ) : (
                 <CreateProductDefintionModal
-                  activeProjectId={activeProjectId}
+                  activeProjectId={activeProductId}
                   activeProjectName={activeProjectName}
                   fetchFileSystem={fetchFileSystem}
                 />

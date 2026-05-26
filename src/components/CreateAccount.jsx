@@ -17,12 +17,14 @@ import {
   IconButton,
   Text,
   Flex,
+  Image,
   Link as ChakraLink
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
 import { signup } from '../services/authService';
 import { motion } from 'framer-motion';
+import loginImage from '../images/image.jpg';
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
@@ -116,222 +118,98 @@ const CreateAccount = () => {
   };
 
   return (
-    <Flex
-      minHeight="100vh"
-      width="full"
-      align="center"
-      justifyContent="center"
-      bg={useColorModeValue("linear-gradient(135deg, #667eea 0%, #764ba2 100%)", "gray.900")}
-      position="relative"
-      _before={{
-        content: '""',
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        bg: useColorModeValue("rgba(255,255,255,0.1)", "rgba(0,0,0,0.3)"),
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        style={{ width: '100%', maxWidth: '500px', zIndex: 1 }}
-      >
-        <Box
-          bg={useColorModeValue('white', 'gray.800')}
-          p={8}
-          borderRadius="2xl"
-          boxShadow="2xl"
-          mx={4}
-        >
-          <VStack spacing={2} mb={8}>
-            <Heading
-              as="h2"
-              size="xl"
-              textAlign="center"
-              bgGradient="linear(to-r, #667eea, #764ba2)"
-              bgClip="text"
-              fontWeight="extrabold"
-            >
-              Create Account
-            </Heading>
-            <Text color="gray.500" fontSize="md">
-              Join Innotrat Labs IDE today
-            </Text>
-          </VStack>
+    <Box position="relative" width="100vw" height="100vh" overflow="hidden">
+      {/* Full-Screen Background Image */}
+      <Image src={loginImage} alt="Background" objectFit="cover" position="absolute" top={0} left={0} w="100%" h="100%" zIndex={0} />
+      
+      {/* Dark Gradient Overlay */}
+      <Box position="absolute" top={0} left={0} w="100%" h="100%" bgGradient="linear(to-br, rgba(17, 24, 39, 0.7), rgba(17, 24, 39, 0.9))" zIndex={1} />
 
-          <form onSubmit={handleSubmit}>
-            <VStack spacing={5}>
-              <FormControl isInvalid={!!errors.name} isRequired>
-                <FormLabel fontWeight="medium">Full Name</FormLabel>
-                <Input
-                  type="text"
-                  name="name"
-                  placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  autoComplete="name"
-                  size="lg"
-                  borderRadius="lg"
-                  color="black"
-                  _placeholder={{ color: 'gray.400' }}
-                  focusBorderColor="purple.500"
-                />
-                <FormErrorMessage>{errors.name}</FormErrorMessage>
-              </FormControl>
-
-              <HStack spacing={4} width="full">
-                <FormControl isRequired width="30%">
-                  <FormLabel fontWeight="medium">Code</FormLabel>
-                  <Input
-                    type="text"
-                    name="countryCode"
-                    value={formData.countryCode}
-                    isReadOnly
-                    size="lg"
-                    borderRadius="lg"
-                    color="black"
-                    bg="gray.50"
-                  />
-                </FormControl>
-
-                <FormControl isInvalid={!!errors.mobileNumber} isRequired width="70%">
-                  <FormLabel fontWeight="medium">Mobile Number</FormLabel>
-                  <Input
-                    type="tel"
-                    name="mobileNumber"
-                    placeholder="10-digit number"
-                    value={formData.mobileNumber}
-                    onChange={handleChange}
-                    autoComplete="tel"
-                    size="lg"
-                    borderRadius="lg"
-                    color="black"
-                    _placeholder={{ color: 'gray.400' }}
-                    focusBorderColor="purple.500"
-                  />
-                  <FormErrorMessage>{errors.mobileNumber}</FormErrorMessage>
-                </FormControl>
-              </HStack>
-
-              <FormControl isInvalid={!!errors.password} isRequired>
-                <FormLabel fontWeight="medium">Password</FormLabel>
-                <InputGroup>
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    placeholder="Create a strong password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    autoComplete="new-password"
-                    size="lg"
-                    borderRadius="lg"
-                    color="black"
-                    _placeholder={{ color: 'gray.400' }}
-                    focusBorderColor="purple.500"
-                  />
-                  <InputRightElement h="full">
-                    <IconButton
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
-                      onClick={() => setShowPassword(!showPassword)}
-                      variant="ghost"
-                      color="gray.500"
-                      _hover={{ bg: 'transparent', color: 'purple.500' }}
-                    />
-                  </InputRightElement>
-                </InputGroup>
-                <FormErrorMessage>{errors.password}</FormErrorMessage>
-              </FormControl>
-
-              <FormControl isInvalid={!!errors.confirmPassword} isRequired>
-                <FormLabel fontWeight="medium">Confirm Password</FormLabel>
-                <InputGroup>
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    name="confirmPassword"
-                    placeholder="Re-enter your password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    autoComplete="new-password"
-                    size="lg"
-                    borderRadius="lg"
-                    color="black"
-                    _placeholder={{ color: 'gray.400' }}
-                    focusBorderColor="purple.500"
-                  />
-                  <InputRightElement h="full">
-                    <IconButton
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
-                      onClick={() => setShowPassword(!showPassword)}
-                      variant="ghost"
-                      color="gray.500"
-                      _hover={{ bg: 'transparent', color: 'purple.500' }}
-                    />
-                  </InputRightElement>
-                </InputGroup>
-                <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
-              </FormControl>
-
-              <VStack spacing={4} w="100%" pt={4}>
-                <Button
-                  type="submit"
-                  width="full"
-                  size="lg"
-                  fontSize="md"
-                  isLoading={loading}
-                  loadingText="Creating Account..."
-                  bgGradient="linear(to-r, #667eea, #764ba2)"
-                  color="white"
-                  _hover={{
-                    bgGradient: "linear(to-r, #764ba2, #667eea)",
-                    transform: "translateY(-2px)",
-                    boxShadow: "xl",
-                  }}
-                  _active={{
-                    transform: "translateY(0)",
-                  }}
-                  transition="all 0.2s"
-                  borderRadius="lg"
-                  fontWeight="bold"
-                >
-                  Create Account
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="md"
-                  onClick={resetForm}
-                  width="full"
-                  color="gray.500"
-                  fontWeight="medium"
-                  _hover={{ color: "gray.700", bg: "gray.100" }}
-                >
-                  Reset Form
-                </Button>
-
-                <HStack pt={2}>
-                  <Text fontSize="sm" color="gray.500">Already have an account?</Text>
-                  <ChakraLink
-                    color="purple.600"
-                    fontWeight="semibold"
-                    onClick={() => navigate('/')}
-                    _hover={{ textDecoration: 'none', color: 'purple.700' }}
-                  >
-                    Sign In
-                  </ChakraLink>
-                </HStack>
-              </VStack>
+      <Flex position="relative" zIndex={10} width="100%" height="100%" align="center" justify="center" pt={{ base: "20px", md: "0" }}>
+        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }} style={{ width: '100%', maxWidth: '400px' }}>
+          <Box
+            p={{ base: 5, md: 6 }}
+            borderRadius="2xl"
+            bg="rgba(255, 255, 255, 0.05)"
+            backdropFilter="blur(20px)"
+            border="1px solid rgba(255, 255, 255, 0.1)"
+            boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.5)"
+            mx={{ base: 2, md: 4 }}
+          >
+            <VStack spacing={1} mb={4} textAlign="center">
+              <Heading as="h2" size="lg" color="white" fontWeight="extrabold" textShadow="0 2px 10px rgba(0,0,0,0.3)">
+                Create Account
+              </Heading>
+              <Text color="whiteAlpha.700" fontSize="sm" fontWeight="medium">
+                Join Innotrat Labs IDE today
+              </Text>
             </VStack>
-          </form>
-        </Box>
-      </motion.div>
-    </Flex>
+
+            <form onSubmit={handleSubmit}>
+              <VStack spacing={4}>
+                <FormControl isInvalid={!!errors.name} isRequired>
+                  <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>Full Name</FormLabel>
+                  <Input type="text" name="name" placeholder="Enter your full name" value={formData.name} onChange={handleChange} autoComplete="name" size="md" height="42px" borderRadius="lg" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                  <FormErrorMessage>{errors.name}</FormErrorMessage>
+                </FormControl>
+
+                <HStack spacing={4} width="full">
+                  <FormControl isRequired width="30%">
+                    <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>Code</FormLabel>
+                    <Input type="text" name="countryCode" value={formData.countryCode} isReadOnly size="md" height="42px" borderRadius="lg" bg="rgba(0, 0, 0, 0.4)" color="whiteAlpha.700" border="1px solid rgba(255, 255, 255, 0.1)" _hover={{ borderColor: "rgba(255, 255, 255, 0.1)" }} />
+                  </FormControl>
+
+                  <FormControl isInvalid={!!errors.mobileNumber} isRequired width="70%">
+                    <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>Mobile Number</FormLabel>
+                    <Input type="tel" name="mobileNumber" placeholder="10-digit number" value={formData.mobileNumber} onChange={handleChange} autoComplete="tel" size="md" height="42px" borderRadius="lg" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <FormErrorMessage>{errors.mobileNumber}</FormErrorMessage>
+                  </FormControl>
+                </HStack>
+
+                <FormControl isInvalid={!!errors.password} isRequired>
+                  <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>Password</FormLabel>
+                  <InputGroup size="md" width="100%">
+                    <Input type={showPassword ? 'text' : 'password'} name="password" placeholder="Create a strong password" value={formData.password} onChange={handleChange} autoComplete="new-password" size="md" height="42px" borderRadius="lg" w="100%" pr="3rem" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <InputRightElement h="42px" width="3rem" right="0">
+                      <IconButton aria-label={showPassword ? 'Hide password' : 'Show password'} icon={showPassword ? <ViewOffIcon /> : <ViewIcon />} onClick={() => setShowPassword(!showPassword)} variant="ghost" color="whiteAlpha.600" _hover={{ bg: 'whiteAlpha.200', color: 'white' }} size="sm" />
+                    </InputRightElement>
+                  </InputGroup>
+                  <FormErrorMessage>{errors.password}</FormErrorMessage>
+                </FormControl>
+
+                <FormControl isInvalid={!!errors.confirmPassword} isRequired>
+                  <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>Confirm Password</FormLabel>
+                  <InputGroup size="md" width="100%">
+                    <Input type={showPassword ? 'text' : 'password'} name="confirmPassword" placeholder="Re-enter your password" value={formData.confirmPassword} onChange={handleChange} autoComplete="new-password" size="md" height="42px" borderRadius="lg" w="100%" pr="3rem" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <InputRightElement h="42px" width="3rem" right="0">
+                      <IconButton aria-label={showPassword ? 'Hide password' : 'Show password'} icon={showPassword ? <ViewOffIcon /> : <ViewIcon />} onClick={() => setShowPassword(!showPassword)} variant="ghost" color="whiteAlpha.600" _hover={{ bg: 'whiteAlpha.200', color: 'white' }} size="sm" />
+                    </InputRightElement>
+                  </InputGroup>
+                  <FormErrorMessage>{errors.confirmPassword}</FormErrorMessage>
+                </FormControl>
+
+                <VStack spacing={3} w="100%" pt={4}>
+                  <Button type="submit" width="full" height="42px" isLoading={loading} loadingText="Creating Account..." bgGradient="linear(to-r, purple.500, blue.500)" color="white" fontSize="md" fontWeight="bold" _hover={{ bgGradient: "linear(to-r, purple.400, blue.400)", transform: "translateY(-1px)", boxShadow: "0 10px 20px -10px rgba(102, 126, 234, 0.6)" }} _active={{ transform: "translateY(0)" }} transition="all 0.2s" borderRadius="lg">
+                    Create Account
+                  </Button>
+
+                  <Button type="button" variant="ghost" size="md" onClick={resetForm} width="full" color="whiteAlpha.600" fontWeight="medium" _hover={{ color: "white", bg: "whiteAlpha.200" }}>
+                    Reset Form
+                  </Button>
+
+                  <HStack pt={2}>
+                    <Text fontSize="sm" color="whiteAlpha.700">Already have an account?</Text>
+                    <ChakraLink color="purple.300" fontWeight="bold" fontSize="sm" onClick={() => navigate('/')} _hover={{ textDecoration: 'none', color: 'purple.200' }}>
+                      Sign In
+                    </ChakraLink>
+                  </HStack>
+                </VStack>
+              </VStack>
+            </form>
+          </Box>
+        </motion.div>
+      </Flex>
+    </Box>
   );
 };
 

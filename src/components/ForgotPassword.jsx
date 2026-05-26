@@ -109,9 +109,11 @@ import {
   InputRightElement,
   IconButton,
   HStack,
+  Image,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import loginImage from '../images/image.jpg';
 
 const ForgotPassword = () => {
   const [step, setStep] = useState(1); // 1: Forgot Password, 2: Reset Password
@@ -230,213 +232,116 @@ const ForgotPassword = () => {
   };
 
   return (
-    <Box
-      minHeight="100vh"
-      width="full"
-      align="center"
-      justifyContent="center"
-      display="flex"
-      bg={useColorModeValue("linear-gradient(135deg, #667eea 0%, #764ba2 100%)", "gray.900")}
-      position="relative"
-      _before={{
-        content: '""',
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        bg: useColorModeValue("rgba(255,255,255,0.1)", "rgba(0,0,0,0.3)"),
-        backdropFilter: "blur(10px)",
-      }}
-    >
+    <Box position="relative" width="100vw" height="100vh" overflow="hidden">
+      {/* Full-Screen Background Image */}
+      <Image src={loginImage} alt="Background" objectFit="cover" position="absolute" top={0} left={0} w="100%" h="100%" zIndex={0} />
+      
+      {/* Dark Gradient Overlay */}
+      <Box position="absolute" top={0} left={0} w="100%" h="100%" bgGradient="linear(to-br, rgba(17, 24, 39, 0.7), rgba(17, 24, 39, 0.9))" zIndex={1} />
+
       <Box
-        bg={useColorModeValue("white", "gray.800")}
-        p={8}
-        maxW="450px"
-        width="full"
-        borderRadius="2xl"
-        shadow="2xl"
-        mx={4}
         position="relative"
-        zIndex={1}
+        zIndex={10}
+        minHeight="100vh"
+        width="full"
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+        pt={{ base: "20px", md: "0" }}
       >
-        <VStack spacing={2} mb={8}>
-          <Heading
-            as="h2"
-            size="xl"
-            bgGradient="linear(to-r, #667eea, #764ba2)"
-            bgClip="text"
-            fontWeight="extrabold"
-            textAlign="center"
-          >
-            {step === 1 ? "Forgot Password" : "Reset Password"}
-          </Heading>
-          <Text color="gray.500" fontSize="md">
-            {step === 1
-              ? "Enter your mobile number to receive an OTP"
-              : "Enter the OTP sent to your phone and choose a new password"}
-          </Text>
-        </VStack>
+        <Box
+          p={{ base: 6, md: 8 }}
+          maxW="450px"
+          width="full"
+          borderRadius="2xl"
+          bg="rgba(255, 255, 255, 0.05)"
+          backdropFilter="blur(20px)"
+          border="1px solid rgba(255, 255, 255, 0.1)"
+          boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.5)"
+          mx={{ base: 2, md: 4 }}
+        >
+          <VStack spacing={2} mb={8}>
+            <Heading as="h2" size={{ base: "lg", md: "xl" }} color="white" fontWeight="extrabold" textAlign="center" textShadow="0 2px 10px rgba(0,0,0,0.3)">
+              {step === 1 ? "Forgot Password" : "Reset Password"}
+            </Heading>
+            <Text color="whiteAlpha.700" fontSize={{ base: "sm", md: "md" }} textAlign="center" fontWeight="medium">
+              {step === 1
+                ? "Enter your mobile number to receive an OTP"
+                : "Enter the OTP sent to your phone and choose a new password"}
+            </Text>
+          </VStack>
 
-        {alert.message && (
-          <Alert status={alert.type} mb={6} borderRadius="lg">
-            <AlertIcon />
-            {alert.message}
-          </Alert>
-        )}
+          {alert.message && (
+            <Alert status={alert.type} mb={6} borderRadius="lg" bg={alert.type === 'error' ? 'rgba(229, 62, 62, 0.2)' : 'rgba(56, 161, 105, 0.2)'} color="white" border={`1px solid ${alert.type === 'error' ? 'rgba(229, 62, 62, 0.5)' : 'rgba(56, 161, 105, 0.5)'}`}>
+              <AlertIcon color={alert.type === 'error' ? 'red.300' : 'green.300'} />
+              {alert.message}
+            </Alert>
+          )}
 
-        {step === 1 ? (
-          <form onSubmit={handleForgotSubmit} style={{ width: '100%' }}>
-            <VStack spacing={5}>
-              <FormControl id="mobileNumber" isRequired>
-                <FormLabel fontWeight="medium">Mobile Number</FormLabel>
-                <InputGroup size="lg">
-                  <InputLeftAddon children="+91" borderRadius="lg" bg="gray.50" />
-                  <Input
-                    type="tel"
-                    placeholder="10-digit number"
-                    value={mobileNumber}
-                    onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ''))}
-                    maxLength={10}
-                    borderRadius="lg"
-                    color="black"
-                    bg="gray.50"
-                    _placeholder={{ color: 'gray.400' }}
-                    focusBorderColor="purple.500"
-                  />
-                </InputGroup>
-              </FormControl>
+          {step === 1 ? (
+            <form onSubmit={handleForgotSubmit} style={{ width: '100%' }}>
+              <VStack spacing={5}>
+                <FormControl id="mobileNumber" isRequired>
+                  <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>Mobile Number</FormLabel>
+                  <InputGroup size="lg">
+                    <InputLeftAddon children="+91" borderRadius="lg" bg="rgba(0,0,0,0.4)" color="whiteAlpha.700" border="1px solid rgba(255,255,255,0.1)" borderRight="none" />
+                    <Input type="tel" placeholder="10-digit number" value={mobileNumber} onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ''))} maxLength={10} borderRadius="lg" borderLeftRadius="0" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                  </InputGroup>
+                </FormControl>
 
-              <Button
-                type="submit"
-                width="full"
-                size="lg"
-                isLoading={isLoading}
-                loadingText="Sending OTP..."
-                bgGradient="linear(to-r, #667eea, #764ba2)"
-                color="white"
-                _hover={{
-                  bgGradient: "linear(to-r, #764ba2, #667eea)",
-                  transform: "translateY(-2px)",
-                  boxShadow: "xl",
-                }}
-                _active={{ transform: "translateY(0)" }}
-                transition="all 0.2s"
-                fontWeight="bold"
-                borderRadius="lg"
-              >
-                Send OTP
-              </Button>
-            </VStack>
-          </form>
-        ) : (
-          <form onSubmit={handleResetSubmit} style={{ width: '100%' }}>
-            <VStack spacing={5}>
-              <FormControl id="otp" isRequired>
-                <FormLabel fontWeight="medium">OTP</FormLabel>
-                <Input
-                  type="text"
-                  placeholder="Enter 6-digit OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  size="lg"
-                  borderRadius="lg"
-                  color="black"
-                  bg="gray.50"
-                  _placeholder={{ color: 'gray.400' }}
-                  focusBorderColor="purple.500"
-                />
-              </FormControl>
+                <Button type="submit" width="full" height="50px" isLoading={isLoading} loadingText="Sending OTP..." bgGradient="linear(to-r, purple.500, blue.500)" color="white" fontSize="md" fontWeight="bold" _hover={{ bgGradient: "linear(to-r, purple.400, blue.400)", transform: "translateY(-1px)", boxShadow: "0 10px 20px -10px rgba(102, 126, 234, 0.6)" }} _active={{ transform: "translateY(0)" }} transition="all 0.2s" borderRadius="lg" mt={2}>
+                  Send OTP
+                </Button>
+              </VStack>
+            </form>
+          ) : (
+            <form onSubmit={handleResetSubmit} style={{ width: '100%' }}>
+              <VStack spacing={4}>
+                <FormControl id="otp" isRequired>
+                  <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>OTP</FormLabel>
+                  <Input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={(e) => setOtp(e.target.value)} size="lg" borderRadius="lg" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                </FormControl>
 
-              <FormControl id="newPassword" isRequired>
-                <FormLabel fontWeight="medium">New Password</FormLabel>
-                <InputGroup size="lg">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="New Password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    borderRadius="lg"
-                    color="black"
-                    bg="gray.50"
-                    _placeholder={{ color: 'gray.400' }}
-                    focusBorderColor="purple.500"
-                  />
-                  <InputRightElement h="full">
-                    <IconButton
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                      icon={showPassword ? <FaEyeSlash /> : <FaEye />}
-                      onClick={() => setShowPassword(!showPassword)}
-                      variant="ghost"
-                      color="gray.500"
-                      _hover={{ bg: 'transparent', color: 'purple.500' }}
-                    />
-                  </InputRightElement>
-                </InputGroup>
-              </FormControl>
+                <FormControl id="newPassword" isRequired>
+                  <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>New Password</FormLabel>
+                  <InputGroup size="lg" width="100%">
+                    <Input type={showPassword ? "text" : "password"} placeholder="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} borderRadius="lg" w="100%" pr="3rem" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <InputRightElement h="full" width="3rem" right="0">
+                      <IconButton aria-label={showPassword ? "Hide password" : "Show password"} icon={showPassword ? <FaEyeSlash /> : <FaEye />} onClick={() => setShowPassword(!showPassword)} variant="ghost" color="whiteAlpha.600" _hover={{ bg: 'whiteAlpha.200', color: 'white' }} size="sm" />
+                    </InputRightElement>
+                  </InputGroup>
+                </FormControl>
 
-              <FormControl id="confirmPassword" isRequired>
-                <FormLabel fontWeight="medium">Confirm Password</FormLabel>
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  size="lg"
-                  borderRadius="lg"
-                  color="black"
-                  bg="gray.50"
-                  _placeholder={{ color: 'gray.400' }}
-                  focusBorderColor="purple.500"
-                />
-              </FormControl>
+                <FormControl id="confirmPassword" isRequired>
+                  <FormLabel fontWeight="semibold" color="whiteAlpha.900" mb={1}>Confirm Password</FormLabel>
+                  <InputGroup size="lg" width="100%">
+                    <Input type={showPassword ? "text" : "password"} placeholder="Confirm Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} size="lg" borderRadius="lg" w="100%" pr="3rem" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: 'whiteAlpha.400' }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <InputRightElement h="full" width="3rem" right="0">
+                      <IconButton aria-label={showPassword ? "Hide password" : "Show password"} icon={showPassword ? <FaEyeSlash /> : <FaEye />} onClick={() => setShowPassword(!showPassword)} variant="ghost" color="whiteAlpha.600" _hover={{ bg: 'whiteAlpha.200', color: 'white' }} size="sm" />
+                    </InputRightElement>
+                  </InputGroup>
+                </FormControl>
 
-              <Button
-                type="submit"
-                width="full"
-                size="lg"
-                isLoading={isLoading}
-                loadingText="Resetting..."
-                bgGradient="linear(to-r, #667eea, #764ba2)"
-                color="white"
-                _hover={{
-                  bgGradient: "linear(to-r, #764ba2, #667eea)",
-                  transform: "translateY(-2px)",
-                  boxShadow: "xl",
-                }}
-                _active={{ transform: "translateY(0)" }}
-                transition="all 0.2s"
-                fontWeight="bold"
-                borderRadius="lg"
-              >
-                Reset Password
-              </Button>
+                <VStack spacing={3} w="100%" pt={4}>
+                  <Button type="submit" width="full" height="50px" isLoading={isLoading} loadingText="Resetting..." bgGradient="linear(to-r, purple.500, blue.500)" color="white" fontSize="md" fontWeight="bold" _hover={{ bgGradient: "linear(to-r, purple.400, blue.400)", transform: "translateY(-1px)", boxShadow: "0 10px 20px -10px rgba(102, 126, 234, 0.6)" }} _active={{ transform: "translateY(0)" }} transition="all 0.2s" borderRadius="lg">
+                    Reset Password
+                  </Button>
 
-              <Button
-                variant="ghost"
-                onClick={() => setStep(1)}
-                color="gray.500"
-                size="sm"
-              >
-                Back to Mobile Number
-              </Button>
-            </VStack>
-          </form>
-        )}
+                  <Button variant="ghost" onClick={() => setStep(1)} color="whiteAlpha.600" size="md" _hover={{ color: "white", bg: "whiteAlpha.200" }} width="full">
+                    Back to Mobile Number
+                  </Button>
+                </VStack>
+              </VStack>
+            </form>
+          )}
 
-        <HStack pt={8} justify="center">
-          <Text fontSize="sm" color="gray.500">Remember your password?</Text>
-          <Text
-            as="span"
-            color="purple.600"
-            fontWeight="semibold"
-            cursor="pointer"
-            onClick={() => navigate("/")}
-            _hover={{ color: "purple.700", textDecoration: "underline" }}
-          >
-            Log In
-          </Text>
-        </HStack>
+          <HStack pt={6} justify="center">
+            <Text fontSize="sm" color="whiteAlpha.700">Remember your password?</Text>
+            <Text as="span" color="purple.300" fontWeight="bold" fontSize="sm" cursor="pointer" onClick={() => navigate("/")} _hover={{ color: "purple.200", textDecoration: "none" }}>
+              Log In
+            </Text>
+          </HStack>
+        </Box>
       </Box>
     </Box>
   );

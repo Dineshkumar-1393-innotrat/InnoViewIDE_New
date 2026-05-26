@@ -978,6 +978,7 @@ import {
 } from '@chakra-ui/react';
 import { FaPlay, FaStop } from 'react-icons/fa';
 import { useProject } from "../ProjectContext";
+import { baseURL, productAPIBase } from "../utilities";
 
 const DeviceControlButtons = () => {
   const [isRunning, setIsRunning] = useState(false);
@@ -1129,7 +1130,7 @@ const DeviceControlButtons = () => {
   const checkRunningDevices = async (productId) => {
     try {
       const response = await fetch(
-        `https://eureka.innotrat.in/devices/running`,
+        `${baseURL}/devices/running`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1173,7 +1174,7 @@ const DeviceControlButtons = () => {
   const controlDevices = async (action, productId, devId) => {
     try {
       const response = await fetch(
-        `https://eureka.innotrat.in/product/${productId}/devices/control`,
+        `${productAPIBase}/product/${productId}/devices/control`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

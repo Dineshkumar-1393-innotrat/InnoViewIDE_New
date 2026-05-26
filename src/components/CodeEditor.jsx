@@ -18,6 +18,13 @@ import {
   ModalHeader,
   ModalCloseButton,
   ModalBody,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  useDisclosure,
 } from "@chakra-ui/react";
 import ProductDefinition from "./CreateProduct";
 import ProductEditModal from "./Product/ProductEdit/ProductEditModal";
@@ -29,6 +36,7 @@ import { CODE_SNIPPETS, MONACO_LANGUAGE_MAP } from "../constants";
 import Output from "./Output";
 import { useCodeEditorAutoSave, useGlobalAutoSave } from "../hooks/useAutoSave";
 import { autoSaveManager } from "../utils/autoSaveManager";
+import { useResizableSidebar } from "../hooks/useResizableSidebar";
 import { useDispatch, useSelector } from "react-redux";
 import {
   setTabs,
@@ -282,6 +290,14 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       },
       onLoad: (loadedData) => {
         console.log("[CodeEditor] Loading saved editor state:", loadedData);
+        if (loadedData && loadedData.tabs && loadedData.tabs.length > 0) {
+          dispatch(setTabs(loadedData.tabs));
+          if (loadedData.activeTab) {
+            dispatch(setActiveTab(loadedData.activeTab));
+          } else {
+            dispatch(setActiveTab(loadedData.tabs[0].id));
+          }
+        }
       },
       onError: (error) => {
         console.error("[CodeEditor] Auto-save error:", error);
@@ -299,6 +315,20 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const [isDeviceConnected, setIsDeviceConnected] = useState(false);
   const [isEraseOpen, setEraseOpen] = useState(false);
   const [isLibraryManagerOpen, setLibraryManagerOpen] = useState(false);
+  const [isOutputExpanded, setIsOutputExpanded] = useState(false);
+
+  const {
+    isOpen: isSidebarOpen,
+    onToggle: onToggleSidebar,
+    onClose: onCloseSidebar
+  } = useDisclosure({ defaultIsOpen: true });
+
+  const {
+    isOpen: isCreateProductModalOpen,
+    onOpen: handleOpenCreateProductModal,
+    onClose: handleCloseCreateProductModal
+  } = useDisclosure();
+  const { sidebarWidth, isResizing, startResizing } = useResizableSidebar(240, 160, 480);
   const [debugStatus, setDebugStatus] = useState("idle");
   const [debugLastAction, setDebugLastAction] = useState(null);
   const [debugBusy, setDebugBusy] = useState(false);
@@ -554,6 +584,14 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     }
   }, [tabs, activeTab, toast]);
 
+  // Listen for navbar flash event
+  useEffect(() => {
+    window.addEventListener('innoide:flash-start', handleFlashClick);
+    return () => {
+      window.removeEventListener('innoide:flash-start', handleFlashClick);
+    };
+  }, [handleFlashClick]);
+
   const handleEraseClick = useCallback(() => {
     setEraseOpen(true);
     setActiveToolPanel(null);
@@ -562,7 +600,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
   const handleScrollToOutput = useCallback(() => {
     const node = document.getElementById("code-editor-output");
     if (node) {
-      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      node.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     setActiveToolPanel(null);
   }, []);
@@ -797,12 +835,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     [tabs, activeTab],
   );
 
-  const [isCreateProductModalOpen, setCreateProductModalOpen] = useState(false);
-
   const [hasProduct, setHasProduct] = useState(() => !!localStorage.getItem("activeProjectIds"));
-
-  const handleOpenCreateProductModal = () => setCreateProductModalOpen(true);
-  const handleCloseCreateProductModal = () => setCreateProductModalOpen(false);
 
   const handleEditorDidMount = (editor, monaco) => {
     editorRef.current = editor;
@@ -877,17 +910,43 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         overflow="hidden"
       >
         <Flex flex="1" gap={0} overflow="hidden" align="stretch">
+          {/* Sidebar Drawer for Mobile */}
+          <Drawer
+            isOpen={isSidebarOpen}
+            placement="left"
+            onClose={onCloseSidebar}
+            size="xs"
+          >
+            <DrawerOverlay display={{ base: "block", lg: "none" }} />
+            <DrawerContent
+              display={{ base: "block", lg: "none" }}
+              bg={colorMode === "dark" ? "gray.800" : "white"}
+            >
+              <DrawerCloseButton />
+              <DrawerHeader borderBottomWidth="1px" fontSize="sm">Explorer</DrawerHeader>
+              <DrawerBody p={0}>
+                <FileExplorerWithFlash
+                  isFlashing={isFlashing}
+                  onFlashComplete={handleFlashComplete}
+                  onFlashStart={handleFlashStart}
+                  colorMode={colorMode}
+                />
+              </DrawerBody>
+            </DrawerContent>
+          </Drawer>
+
+          {/* Desktop Fixed Sidebar */}
           <Box
-            width="300px"
-            minW="300px"
-            maxW="300px"
-            flex="0 0 300px"
+            display={{ base: "none", lg: "flex" }}
+            width={`${sidebarWidth}px`}
+            minW={`${sidebarWidth}px`}
+            maxW={`${sidebarWidth}px`}
+            flex={`0 0 ${sidebarWidth}px`}
             bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
-            px={3}
-            py={4}
-            display="flex"
+            px={1}
+            py={2}
             flexDirection="column"
-            gap={3}
+            gap={2}
             h="100%"
             overflowY="auto"
             css={{
@@ -936,13 +995,26 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             </Box>
           </Box>
 
+          {/* Sidebar Drag Handle */}
+          <Box
+            display={{ base: "none", lg: "block" }}
+            w="6px"
+            bg="transparent"
+            cursor="col-resize"
+            onMouseDown={startResizing}
+            _hover={{ bg: colorMode === "dark" ? "rgba(59,130,246,0.35)" : "rgba(37,99,235,0.25)" }}
+            transition="background 0.2s"
+            zIndex={10}
+          />
+
           <Flex
+            id="editor-main-scroll-container"
             flex="1"
             direction="column"
-            gap={3}
+            gap={1}
             minW={0}
             h="100%"
-            overflowY="auto"
+            overflow="hidden"
             css={{
               "&::-webkit-scrollbar": {
                 width: "8px",
@@ -971,20 +1043,32 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             <Box
               position="relative"
               bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
-              px={{ base: 2, md: 4 }}
-              py={{ base: 2, md: 4 }}
+              p={2}
               display="flex"
               flexDirection="column"
               gap={2}
-              minH={{ base: "480px", lg: "580px" }}
+              flex="1"
+              minH={0}
               overflow="hidden"
             >
               <Flex
-                justify="space-between"
                 align="center"
                 flexWrap="wrap"
                 gap={2}
+                py={1}
               >
+                {/* Mobile Sidebar Toggle */}
+                <IconButton
+                  display={{ base: "flex", lg: "none" }}
+                  icon={<span>📁</span>}
+                  size="xs"
+                  onClick={onToggleSidebar}
+                  aria-label="Toggle explorer"
+                  variant="ghost"
+                  color={colorMode === "dark" ? "white" : "gray.600"}
+                  mr={2}
+                />
+
                 <HStack spacing={1} flex="1" overflowX="auto">
                   {tabs.map((tab) => {
                     const isActive = activeTabId === tab.id;
@@ -1093,13 +1177,13 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                     _hover={{ bg: "rgba(56,189,248,0.2)" }}
                   />
                 </HStack>
+
                 <Flex align="center" gap={3}>
-                  {/* <MathWidgetButton /> */}
                   <CreateProductButton />
-                  <LanguageSelector language={language} onSelect={onSelect} />
                   <Box display="none">
-                    {" "}
-                    {/* Hidden as per user request */}
+                    <LanguageSelector language={language} onSelect={onSelect} />
+                  </Box>
+                  <Box display="none">
                     <IconBar
                       placement="inline"
                       direction="row"
@@ -1130,7 +1214,48 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                     : "rgba(15,23,42,0.02)"
                 }
                 overflow="hidden"
+                position="relative"
+                onClickCapture={() => {
+                  if (isOutputExpanded) {
+                    setIsOutputExpanded(false);
+                  }
+                }}
               >
+                {/* Blinking canvas hint - disappears when user starts writing code */}
+                {(!activeTab?.content || activeTab.content.trim() === (CODE_SNIPPETS["c"] || CODE_SNIPPETS["C"]).trim() || activeTab.content.trim() === "") && (
+                  <Box
+                    position="absolute"
+                    top="50%"
+                    left="50%"
+                    transform="translate(-50%, -50%)"
+                    zIndex={10}
+                    pointerEvents="none"
+                    textAlign="center"
+                    width="100%"
+                    animation="blink-canvas 2s ease-in-out infinite"
+                  >
+                    <Text
+                      fontWeight="bold"
+                      fontSize={{ base: "xl", md: "2xl", lg: "4xl" }}
+                      color={colorMode === "dark" ? "rgba(153, 219, 248, 0.15)" : "rgba(7, 52, 148, 0.1)"}
+                      letterSpacing="widest"
+                      textTransform="uppercase"
+                      userSelect="none"
+                    >
+                      USE ONLY C PROGRAMMING LANGUAGE
+                    </Text>
+                  </Box>
+                )}
+
+                <style>
+                  {`
+                    @keyframes blink-canvas {
+                      0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                      50% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.98); }
+                    }
+                  `}
+                </style>
+
                 <Editor
                   options={{
                     minimap: { enabled: false },
@@ -1159,9 +1284,13 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                   ? "0 30px 60px rgba(8,15,32,0.45)"
                   : "0 24px 60px rgba(15,23,42,0.06)"
               }
-              px={{ base: 4, md: 6 }}
-              py={{ base: 4, md: 5 }}
-              minH={{ base: "220px", lg: "260px" }}
+              p={3}
+              h={isOutputExpanded ? { base: "280px", lg: "340px" } : { base: "80px", lg: "100px" }}
+              transition="height 0.3s ease-in-out"
+              flexShrink={0}
+              display="flex"
+              flexDirection="column"
+              overflow="hidden"
             >
               <Output
                 ref={outputRef}
@@ -1170,6 +1299,8 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                 id="code-editor-output"
                 onFlashComplete={handleFlashComplete}
                 onFlashStart={handleFlashStart}
+                onExpand={() => setIsOutputExpanded(true)}
+                onCollapse={() => setIsOutputExpanded(false)}
               />
             </Box>
           </Flex>
@@ -1179,9 +1310,9 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       {activeToolPanel === "build" && (
         <Box
           position="fixed"
-          top="120px"
-          right="24px"
-          width={{ base: "280px", md: "320px" }}
+          top={{ base: "70px", md: "120px" }}
+          right={{ base: "0", md: "24px" }}
+          width={{ base: "100%", md: "240px" }}
           zIndex={1200}
         >
           <Box
@@ -1216,7 +1347,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
       )}
 
       {activeToolPanel === "debug" && (
-        <Box position="fixed" top="120px" right="24px" zIndex={1200}>
+        <Box position="fixed" top={{ base: "70px", md: "120px" }} right={{ base: "0", md: "24px" }} width={{ base: "100%", md: "auto" }} zIndex={1200}>
           <Box position="relative">
             <Button
               size="xs"

@@ -76,7 +76,7 @@ const VariableOnlyForm = ({ onSubmit }) => {
     };
 
     return (
-        <Box p={6} border="1px solid #7D7D7D" borderRadius="none" w="350px" bg="white">
+        <Box p={6} border="1px solid #7D7D7D" borderRadius="none" w="full" maxW="350px" bg="white">
             <VStack align="stretch" spacing={6}>
                 <Box>
                     <Text sx={labelStyles}>Add Variables</Text>

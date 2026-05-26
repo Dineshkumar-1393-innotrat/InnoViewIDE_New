@@ -16,7 +16,7 @@ import {
 } from "@chakra-ui/react";
 import { FaFile, FaFolder, FaFolderOpen, FaPlus } from "react-icons/fa";
 import { CloseIcon } from "@chakra-ui/icons";
-import { getUserInfo } from "../../utilities";
+import { getUserInfo, productAPIBase, baseURL } from "../../utilities";
 import axios from "axios";
 import { FaFolderPlus } from "react-icons/fa6";
 import { AiFillFileAdd } from "react-icons/ai";
@@ -33,35 +33,56 @@ import { useProject } from "../../ProjectContext.jsx";
 
 export const checkProductDefinition = async (
   activeProductId,
-  setIsProductDefined
+  setIsProductDefined,
+  activeProjectId = null
 ) => {
   if (!activeProductId) {
     setIsProductDefined(null); // Reset if no active project
     return;
   }
 
-  console.log("activeProduct Id", activeProductId);
+  // Construct URL with optional projectId as query param
+  const url = `${productAPIBase}/product/${activeProductId}/definitionNew${activeProjectId ? `?projectId=${activeProjectId}` : ''}`;
+  
+  console.log(`[checkProductDefinition] Checking: ${url}`);
 
   try {
-    const response = await axios.get(
-      `https://eureka.innotrat.in/product/${activeProductId}/definition`
-    );
+    let response;
+    try {
+      console.log(`[checkProductDefinition] Attempting local check: ${url}`);
+      response = await axios.get(url, { timeout: 3000 }); // Short timeout for local check
+    } catch (localError) {
+      console.warn("[checkProductDefinition] Local check failed/timed out, falling back to Eureka...");
+      // Use definitionNew for fallback as requested
+      const fallbackUrl = `${baseURL}/product/${activeProductId}/definitionNew${activeProjectId ? `?projectId=${activeProjectId}` : ''}`;
+      response = await axios.get(fallbackUrl);
+    }
 
-    // Check if components exist in the response
-    const hasComponents =
-      Object.keys(response.data.components || {}).length > 0;
+    console.log("[checkProductDefinition] RAW Response:", response.data);
+
+    // Check if components exist in the response (either components key or data.components)
+    const components = response.data?.components || response.data?.data?.components;
+    const hasComponents = components && Object.keys(components).length > 0;
+    
+    // Legacy check: If response itself has some core fields like name or productId
+    const hasIdentity = response.data?.productId || response.data?.productID || response.data?.status === "success";
+    
+    console.log(`[checkProductDefinition] Result: hasComponents=${hasComponents}, hasIdentity=${hasIdentity}`);
+    
     setIsProductDefined(hasComponents);
   } catch (error) {
-    console.error("Error fetching product definition:", error);
+    console.error("Error fetching product definition (All servers failed):", error);
     setIsProductDefined(false); // Assume false if error occurs
   }
 };
 
+
 export const buildTree = (flatArray) => {
   const idMap = {};
   let root = null;
+  const orphans = [];
 
-  // First pass: create a map of all nodes
+  // First pass: create a map of all nodes and include the path if available
   flatArray.forEach((item) => {
     idMap[item._id] = {
       _id: item._id,
@@ -69,20 +90,55 @@ export const buildTree = (flatArray) => {
       type: item.type,
       content: item.content || null,
       productId: item.productId || null,
+      path: item.path || "", // Include the path if it exists
       children: [],
     };
   });
 
+  // Helper to recursively compute paths if they are missing from the API
+  const computePaths = (node, parentPath = "") => {
+    const currentPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+    if (!node.path) node.path = currentPath;
+    if (node.children) {
+      node.children.forEach(child => computePaths(child, node.path));
+    }
+  };
+
   // Second pass: Assign children to their parents
   flatArray.forEach((item) => {
-    if (item.parentId) {
-      idMap[item.parentId]?.children.push(idMap[item._id]);
+    if (item.parentId && idMap[item.parentId]) {
+      idMap[item.parentId].children.push(idMap[item._id]);
     } else {
-      root = idMap[item._id]; // The root node (no parentId)
+      if (item.name === "root") {
+        root = idMap[item._id]; // The explicit root node
+      } else {
+        orphans.push(idMap[item._id]); // Items without parentId that are not "root"
+      }
     }
   });
 
-  return root;
+  // Attach orphaned items to root if possible
+  if (root) {
+    orphans.forEach((orphan) => {
+      root.children.push(orphan);
+    });
+  } else if (orphans.length > 0) {
+    // Fallback: create a virtual root if "root" wasn't found
+    root = {
+      _id: "virtual_root",
+      name: "root",
+      type: "folder",
+      path: "root",
+      children: orphans,
+    };
+  }
+
+  // Compute paths recursively for the whole tree if needed
+  if (root) {
+    computePaths(root, "");
+  }
+
+  return root || { _id: "empty", name: "root", type: "folder", path: "root", children: [] };
 };
 
 // Fetch file system and ensure root folder exists
@@ -111,6 +167,12 @@ export const fetchFileSystem = async (userId, setFileSystem, buildTree) => {
     );
 
     if (fileResponse.data.success) {
+      console.log("[EmbeddedFileManagement] Raw Files Received:", fileResponse.data.files?.length);
+      const anyFolders = fileResponse.data.files?.filter(f => f.type === 'folder');
+      if (anyFolders && anyFolders.length > 0) {
+        console.log("[EmbeddedFileManagement] Folder Metadata Sample:", anyFolders.slice(0, 5));
+      }
+
       const structuredData = buildTree(fileResponse.data.files);
       setFileSystem(structuredData);
       return { success: true };
@@ -543,20 +605,27 @@ const EmbeddedFileManagement = () => {
   }, []);
 
   useEffect(() => {
-    checkProductDefinition(activeProductId, setIsProductDefined);
+    checkProductDefinition(activeProductId, setIsProductDefined, activeProjectId);
   }, [activeProjectId]);
 
   return (
     <Box display="flex" flexDirection="column" minHeight="100vh">
       <Navbar />
 
-      <Box display="flex" flex="1" minHeight="100vh" overflow="hidden">
+      <Box
+          display="flex"
+          flex="1"
+          minHeight="100vh"
+          overflow="hidden"
+          flexDirection={{ base: "column", md: "row" }}
+        >
         <Box
-          width="300px"
+          width={{ base: "280px", md: "240px" }}
+          flexShrink={0}
           bg="gray.800"
           mt={16}
           p={4}
-          maxH={"100vh"}
+          maxH={{ base: "auto", md: "100vh" }}
           boxShadow="lg"
           overflowY="auto"
         >
@@ -583,7 +652,7 @@ const EmbeddedFileManagement = () => {
             fileSystem.children.map((child) => renderFileSystem(child))}
         </Box>
 
-        <Box flex="1" mt={16} p={4} bg="gray.900" minHeight="100vh">
+        <Box flex="1" mt={{ base: 0, md: 16 }} p={4} bg="gray.900" minHeight="100vh" overflowX="auto">
           {activeProjectId && (
             <Box>
               {isProductDefined && (

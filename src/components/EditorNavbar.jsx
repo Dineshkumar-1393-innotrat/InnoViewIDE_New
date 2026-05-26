@@ -32,13 +32,15 @@ import {
   Boxes,
   Calculator,
   Brain,
-  Share2,
 } from 'lucide-react';
 import './EditorNavbar.css';
 import hexLogo from '../assets/hex_bg.png';
 import DyteMeetingApp from './DyteMeetingApp';
 import { Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody } from '@chakra-ui/react';
-import ShareDialog from './ShareDialog';
+import ShareModal from './share/ShareModal';
+import { IconButton } from '@mui/material';
+import { Share as ShareIcon } from '@mui/icons-material';
+import { useProject } from '../ProjectContext';
 // import DyteMeetingLauncher from './DyteMeetingLauncher';
 
 const IDENTITY_FIELDS = [
@@ -118,7 +120,7 @@ const loadIdentityFromStorage = () => {
 
   return null;
 };
-const DEFAULT_TABS = ['Block Diagram', 'Flowchart', 'Simulation', 'Code Editor', 'Block Programming', 'MathCodeEditor', 'Rule Engine'];
+const DEFAULT_TABS = ['Block Diagram', 'Flowchart', 'Simulation', 'Code Editor', 'Block Programming', 'MathCodeEditor'];
 
 const TAB_ICON_MAP = {
   'Block Diagram': Blocks,
@@ -127,7 +129,7 @@ const TAB_ICON_MAP = {
   'Code Editor': Braces,
   'Block Programming': Boxes,
   'MathCodeEditor': Calculator,
-  'Rule Engine': Brain,
+
 };
 
 import { onboardingSteps } from '../data/onboardingSteps';
@@ -149,6 +151,7 @@ const EditorNavbar = ({
   isDeviceConnected = true,
 }) => {
   const navigate = useNavigate();
+  const { logout: projectLogout } = useProject?.() ?? {};
   const { toggleMeeting } = useMeeting();
   const [accountOpen, setAccountOpen] = useState(false);
   const [downloadMenuOpen, setDownloadMenuOpen] = useState(false);
@@ -171,6 +174,7 @@ const EditorNavbar = ({
   const [isSerialActive, setIsSerialActive] = useState(false);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!accountOpen && !activeMenu && !downloadMenuOpen) return;
@@ -207,7 +211,9 @@ const EditorNavbar = ({
   }, [accountOpen, activeMenu, isHelpReferenceOpen, downloadMenuOpen]);
 
   const handleLogout = () => {
-    Promise.resolve(onLogout?.()).finally(() => {
+    Promise.resolve(projectLogout?.()).then(() => {
+        return Promise.resolve(onLogout?.());
+    }).finally(() => {
       setAccountOpen(false);
       window.location.assign(loginPath);
     });
@@ -312,26 +318,24 @@ const EditorNavbar = ({
     setActiveMenu(null);
   }, [onLibrariesClick]);
 
+  const handleViewOutput = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('innoide:view-output'));
+  }, []);
+
+  const handleProblem = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('innoide:problem'));
+  }, []);
+
+  const handleDebugConsole = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('innoide:debug-console'));
+  }, []);
+
+  const handlePostman = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('innoide:postman'));
+  }, []);
+
   const toolItems = useMemo(() => {
     return [
-      {
-        key: 'compile',
-        label: 'Compile',
-        icon: isCompiling ? <Loader2 size={14} className="spin" /> : <Cog size={14} />,
-        handler: handleCompile,
-      },
-      {
-        key: 'build',
-        label: 'Build',
-        icon: isBuilding ? <Loader2 size={14} className="spin" /> : <Hammer size={14} />,
-        handler: handleBuild,
-      },
-      {
-        key: 'debugger',
-        label: isDebugging ? 'Stop Debugger' : 'Debugger',
-        icon: <BugPlay size={14} />,
-        handler: handleDebugger,
-      },
       {
         key: 'flash',
         label: 'Flash',
@@ -339,31 +343,37 @@ const EditorNavbar = ({
         handler: handleFlash,
       },
       {
-        key: 'erase',
-        label: 'Erase Chip',
-        icon: isErasing ? <Loader2 size={14} className="spin" /> : <Trash size={14} />,
-        handler: handleErase,
+        key: 'viewOutput',
+        label: 'View Output',
+        icon: <Presentation size={14} />,
+        handler: handleViewOutput,
       },
       {
-        key: 'serialMonitor',
-        label: isSerialActive ? 'Close Serial Monitor' : 'Serial Monitor',
-        icon: <Radio size={14} />,
-        handler: handleSerialMonitor,
+        key: 'problem',
+        label: 'Problem',
+        icon: <Hammer size={14} />,
+        handler: handleProblem,
+      },
+      {
+        key: 'debugConsole',
+        label: 'Debug Console',
+        icon: <BugPlay size={14} />,
+        handler: handleDebugConsole,
       },
       {
         key: 'terminal',
-        label: isTerminalOpen ? 'Close Terminal' : 'Terminal',
+        label: 'Terminal',
         icon: <Terminal size={14} />,
         handler: handleTerminal,
       },
       {
-        key: 'libraries',
-        label: 'Library Manager',
-        icon: <Library size={14} />,
-        handler: handleLibraries,
+        key: 'postman',
+        label: 'Postman',
+        icon: <Radio size={14} />,
+        handler: handlePostman,
       },
     ];
-  }, [handleCompile, handleBuild, handleDebugger, handleFlash, handleErase, handleSerialMonitor, handleTerminal, handleLibraries, isCompiling, isBuilding, isDebugging, isFlashing, isErasing, isSerialActive, isTerminalOpen, isDeviceConnected]);
+  }, [handleFlash, handleViewOutput, handleProblem, handleDebugConsole, handleTerminal, handlePostman, isFlashing, isDeviceConnected]);
 
   const toggleMenu = (menuKey) => {
     setActiveMenu((current) => (current === menuKey ? null : menuKey));
@@ -389,10 +399,19 @@ const EditorNavbar = ({
   };
 
   return (
-    <header className="editor-navbar">
+    <header className={`editor-navbar ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}>
       <div className="editor-navbar__left">
+        {/* ✅ Mobile Menu Toggle */}
+        <button 
+          className="editor-navbar__mobile-toggle"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label="Toggle mobile menu"
+        >
+          {isMobileMenuOpen ? <span>✕</span> : <span>☰</span>}
+        </button>
+
         {/* ✅ Brand with logo */}
-        <div className="editor-navbar__brand">
+        <div className="editor-navbar__brand" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
           <img
             src={hexLogo}
             alt="InnoIDE Logo"
@@ -402,7 +421,7 @@ const EditorNavbar = ({
         </div>
 
         {/* ✅ Menu Items */}
-        <nav className="editor-navbar__menu">
+        <nav className={`editor-navbar__menu ${isMobileMenuOpen ? 'is-visible' : ''}`}>
           <div className="editor-navbar__menu-group" ref={menuRefs.tools}>
             <button
               type="button"
@@ -453,6 +472,7 @@ const EditorNavbar = ({
                   onClick={() => {
                     setHelpReferenceOpen(true);
                     setActiveMenu(null);
+                    setIsMobileMenuOpen(false);
                   }}
                 >
                   <BookOpen size={14} />
@@ -484,8 +504,6 @@ const EditorNavbar = ({
                   navigate('/BlockDiagram');
                 } else if (tabId === 'Block Programming') {
                   navigate('/blockprogramming');
-                } else if (tabId === 'Rule Engine') {
-                  navigate('/rule-engine');
                 } else {
                   onTabChange?.(tabId);
                 }
@@ -607,22 +625,22 @@ const EditorNavbar = ({
           )}
         </div>
         {/* Share button */}
-        <button
-          type="button"
-          className="editor-navbar__icon-btn"
-          title="Share"
+        <IconButton 
           onClick={() => setIsShareOpen(true)}
+          title="Share"
+          sx={{ 
+            color: '#64748b',
+            '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
+            p: 1
+          }}
         >
-          <Share2 size={18} />
-        </button>
+          <ShareIcon fontSize="small" />
+        </IconButton>
       </div>
 
-      <ShareDialog
-        isOpen={isShareOpen}
-        onClose={() => setIsShareOpen(false)}
-        shareUrl={window.location.href}
-        onUpdateSettings={handleUpdateShareSettings}
-        onInvite={handleInviteContributors}
+      <ShareModal 
+        open={isShareOpen} 
+        onClose={() => setIsShareOpen(false)} 
       />
 
       {isHelpReferenceOpen && createPortal(

@@ -4,6 +4,8 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import projectFileManager from '../utils/projectFileManager';
+import { saveProjectFile, ensureProjectFolder } from '../utils/workspaceStorage';
+import { getUserInfo } from '../utilities';
 
 export const useCanvasFileIntegration = (canvasType = 'Flowchart') => {
   const [loadedFiles, setLoadedFiles] = useState([]);
@@ -74,6 +76,44 @@ export const useCanvasFileIntegration = (canvasType = 'Flowchart') => {
       projectFileManager.saveFile(projectId, filePath, serializedContent);
 
       console.log('Canvas content saved to file:', filePath);
+
+      // Sync to backend API
+      try {
+        const userInfo = getUserInfo();
+        const userId = userInfo?.userId || userInfo?._id || userInfo?.id;
+        
+        if (userId) {
+           let targetParentId = projectId;
+           let actualFileName = filePath;
+           
+           if (filePath.includes('/')) {
+             const parts = filePath.split('/');
+             actualFileName = parts.pop();
+             const folderPath = parts.join('/');
+             
+             // Ensure the folder exists inside projectId first
+             targetParentId = await ensureProjectFolder({
+               userId,
+               projectId,
+               folderName: folderPath
+             });
+           }
+           
+           await saveProjectFile({
+             userId,
+             projectId: targetParentId,
+             fileName: actualFileName,
+             content: serializedContent
+           });
+           console.log('Canvas content synced to backend:', actualFileName);
+        }
+      } catch (apiError) {
+        console.warn('Could not sync canvas content to backend:', apiError);
+      }
+
+      // Trigger file system refresh so sidebar and other components update
+      window.dispatchEvent(new CustomEvent('file-system-refresh'));
+
       return true;
 
     } catch (error) {

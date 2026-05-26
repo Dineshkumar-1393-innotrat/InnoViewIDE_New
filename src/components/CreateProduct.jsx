@@ -16,6 +16,8 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
+  FormControl,
+  FormErrorMessage,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
@@ -32,23 +34,52 @@ import {
 
 import axios from "axios";
 import { useProject } from "../ProjectContext";
+import { productAPIBase, baseURL } from "../utilities";
 
 import { COMPONENT_DATA, COMPONENT_TYPES } from "./componentData.js";
 
 export default function ProductDefinition({ onSuccess }) {
   const toast = useToast();
 
-  // Get setters from ProjectContext to update activeProductId
-  const { setActiveProductId, setActiveProductName, setActiveDeviceId } = useProject();
+  // Get project data from ProjectContext to ensure accurate association
+  const {
+    switchProject,
+    activeProjectId,
+    activeProjectName,
+    activeProductId,
+    setActiveProductId,
+    setActiveProductName,
+    setActiveDeviceId
+  } = useProject();
 
-  const SI_UNITS = [
-    "Volt (V)", "Ampere (A)", "Milliampere (mA)", "Ohm (Ω)", "Farad (F)", "Henry (H)",
-    "Watt (W)", "Hertz (Hz)", "Kilohertz (kHz)", "Coulomb (C)",
-    "Second (s)", "Millisecond (ms)", "Microsecond (µs)", "Nanosecond (ns)",
-    "Kelvin (K)", "Degree Celsius (°C)", "Pascal (Pa)", "m/s²", "Tesla (T)",
-    "Lux (lx)", "Decibel (dB)", "Kilometer (km)", "Kilogram (kg)", "Gram (g)",
-    "G-force (G)", "Bits per second (bps)", "PPM", "K/W"
-  ].sort();
+  // const SI_UNITS = [
+  //   "Volt (V)", "Ampere (A)", "Milliampere (mA)", "Ohm (Ω)", "Farad (F)", "Henry (H)",
+  //   "Watt (W)", "Hertz (Hz)", "Kilohertz (kHz)", "Coulomb (C)",
+  //   "Second (s)", "Millisecond (ms)", "Microsecond (µs)", "Nanosecond (ns)",
+  //   "Kelvin (K)", "Degree Celsius (°C)", "Pascal (Pa)", "m/s²", "Tesla (T)",
+  //   "Lux (lx)", "Decibel (dB)", "Kilometer (km)", "Kilogram (kg)", "Gram (g)",
+  //   "G-force (G)", "Bits per second (bps)", "PPM", "K/W"
+  // ].sort();
+
+  const SIUNITS = [
+    'meter m',
+    'kilogram kg',
+    'second s',
+    'ampere A',
+    'kelvin K',
+    'mole mol',
+    'candela cd',
+    'Volt V',
+    'Ohm Ω',
+    'Farad F',
+    'Henry H',
+    'Watt W',
+    'Hertz Hz',
+    'Pascal Pa',
+    'Tesla T',
+    'lumen lm',
+    'lux lx'
+  ].sort((a, b) => a.localeCompare(b));
 
 
   // Component Names list
@@ -64,8 +95,19 @@ export default function ProductDefinition({ onSuccess }) {
 
   const [specificParams, setSpecificParams] = useState([]);
 
-  const parameterOptions = specificParams
-    .flatMap(item => item.parameterName); // flatten array
+  const parameterOptions = (() => {
+    const unique = new Map();
+    specificParams
+      .flatMap(item => item.parameterName || [])
+      .forEach(name => {
+        const trimmed = name.trim();
+        const lower = trimmed.toLowerCase();
+        if (trimmed && !unique.has(lower)) {
+          unique.set(lower, trimmed);
+        }
+      });
+    return Array.from(unique.values()).sort((a, b) => a.localeCompare(b));
+  })();
 
   console.log(parameterOptions, "parameterOptions---");
 
@@ -405,6 +447,19 @@ export default function ProductDefinition({ onSuccess }) {
       parameters: [],
     }
   ]);
+
+  // Auto-advance to Step 2 if a product is already associated with the project
+  useEffect(() => {
+    if (activeProductId && step === 1) {
+      console.log("[ProductDefinition] Existing product found, advancing to Step 2", activeProductId);
+      setStep(2);
+    }
+    // Pre-populate name if available
+    if (activeProjectName && !productName) {
+      setProductName(activeProjectName);
+    }
+  }, [activeProductId, activeProjectName, step]);
+
   console.log(formComponents, "formComponents---");
 
   // Sync formComponents with numComponents
@@ -711,41 +766,6 @@ export default function ProductDefinition({ onSuccess }) {
 
   //newly added start 10/12/2025
   const [loading, setLoading] = useState(false);
-  const [activeProjectId, setActiveProjectId] = useState(undefined);
-
-  useEffect(() => {
-    const readActiveProject = () => {
-      try {
-        const id = localStorage.getItem("activeProjectId");
-        if (id) setActiveProjectId(id);
-        else {
-          const objRaw = localStorage.getItem("activeProject");
-          if (objRaw) {
-            try {
-              const obj = JSON.parse(objRaw);
-              if (obj?.id) setActiveProjectId(obj.id);
-              else if (obj?._id) setActiveProjectId(obj._id);
-              else if (obj?.projectId) setActiveProjectId(obj.projectId);
-            } catch {
-              /* ignore parse errors */
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Failed reading activeProjectId from localStorage", e);
-      }
-    };
-
-    readActiveProject();
-
-    const onStorage = (e) => {
-      if (e.key === "activeProjectId" || e.key === "activeProject") {
-        readActiveProject();
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
 
   const saveToLocal = (key, value) => {
     try {
@@ -775,7 +795,7 @@ export default function ProductDefinition({ onSuccess }) {
     const payload = {
       name: productName,
       userId: userData.userId,
-      projectId: localStorage.getItem("activeProjectId") ?? undefined,
+      projectId: activeProjectId || localStorage.getItem("activeProjectId"),
       productDesc: description ?? "",
     };
 
@@ -805,9 +825,17 @@ export default function ProductDefinition({ onSuccess }) {
       localStorage.setItem("activeProductId", productId);
       localStorage.setItem("activeProductName", productName);
 
-      // Update ProjectContext state so components can react to the change
+      // Explicitly update context states to ensure UI updates even if switchProject skips
       setActiveProductId(productId);
       setActiveProductName(productName);
+
+      // Update ProjectContext using switchProject to guarantee safe auto-save flushing and clean state mapping
+      switchProject({
+        projectId: activeProjectId || localStorage.getItem("activeProjectId"),
+        projectName: activeProjectName || localStorage.getItem("activeProjectName"),
+        productId: productId,
+        productName: productName
+      });
 
       saveToLocal("productNewResponse", resp.data);
 
@@ -976,7 +1004,9 @@ export default function ProductDefinition({ onSuccess }) {
       componentsPayload[safeName] = {
         componentID: "",
         type: type,
-        parameters: paramsObj
+        parameters: paramsObj,
+        note: note || "",
+        urls: urlLink ? [urlLink] : []
       };
     });
 
@@ -991,9 +1021,21 @@ export default function ProductDefinition({ onSuccess }) {
     console.log("📤 Definition Payload:", JSON.stringify(payload, null, 2));
 
     try {
-      const url = `https://eureka.innotrat.in/product/${productId}/definitionNew`;
+      let url = `${productAPIBase}/product/${productId}/definitionNew`;
+      let resp;
+      
+      try {
+        console.log(`[CreateProduct] Attempting definition submission to local API: ${url}`);
+        // Set a shorter timeout for the local API to avoid long UI hangs
+        resp = await axios.post(url, payload, { timeout: 5000 });
+      } catch (localError) {
+        console.warn("[CreateProduct] Local Definition API failed or timed out. Falling back to Eureka server...", localError.message);
+        // Use definitionNew for fallback as requested
+        url = `${baseURL}/product/${productId}/definitionNew`;
+        console.log(`[CreateProduct] Attempting definition submission to fallback API: ${url}`);
+        resp = await axios.post(url, payload);
+      }
 
-      const resp = await axios.post(url, payload);
       console.log("📥 Definition Response:", resp.data);
 
       toast({
@@ -1003,22 +1045,28 @@ export default function ProductDefinition({ onSuccess }) {
         duration: 3000,
       });
 
+      if (resp.data?.success || resp.data?.status === "success") {
+        setActiveProductId(productId);
+        if (productName) setActiveProductName(productName);
+      }
+
       if (onSuccess) onSuccess();
 
     } catch (error) {
-      console.error("❌ Definition API Error:", error);
+      console.error("❌ Definition API Error (All servers failed):", error);
       toast({
         title: "Failed to Save Definition",
-        description: error?.response?.data?.message || "Error saving definition",
+        description: error?.response?.data?.message || error.message || "Connection to definition server failed. Please check if the microservice is running.",
         status: "error",
-        duration: 3000,
+        duration: 5000,
+        isClosable: true
       });
     }
   };
 
   const handleSubmitDevices = async () => {
-    setIsLoading(true);
-    const productId = localStorage.getItem("activeProductId");
+    setLoading(true);
+    const productId = activeProductId || localStorage.getItem("activeProductId");
 
     if (!productId) {
       toast({
@@ -1027,7 +1075,7 @@ export default function ProductDefinition({ onSuccess }) {
         status: "error",
         duration: 3000,
       });
-      setIsLoading(false);
+      setLoading(false);
       return;
     }
 
@@ -1043,7 +1091,25 @@ export default function ProductDefinition({ onSuccess }) {
         status: "warning",
         duration: 3000,
       });
-      setIsLoading(false);
+      setLoading(false);
+      return;
+    }
+
+    // Validation for IMEI, ICCID, Phone
+    const invalidDevice = deviceInfos.find(dev => 
+      (dev.imei && !/^\d{15}$/.test(dev.imei)) ||
+      (dev.iccid && !/^\d{19,20}$/.test(dev.iccid)) ||
+      (dev.phone && !/^\d{10}$/.test(dev.phone))
+    );
+
+    if (invalidDevice) {
+      toast({
+        title: "Invalid Device Info",
+        description: "Please check IMEI (15 digits), ICCID (19-20 digits), and Phone (10 digits).",
+        status: "error",
+        duration: 3000,
+      });
+      setLoading(false);
       return;
     }
 
@@ -1101,6 +1167,7 @@ export default function ProductDefinition({ onSuccess }) {
       });
     } finally {
       setIsLoading(false);
+      setLoading(false); // Reset both to ensure UI spinner stops
     }
   };
 
@@ -1333,7 +1400,7 @@ export default function ProductDefinition({ onSuccess }) {
               Basic Information
             </Text>
 
-            <Grid templateColumns="repeat(2, 1fr)" gap={6} mb={6}>
+            <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={6} mb={6}>
               {/* No. Of Devices */}
               <GridItem>
                 <Text fontSize="sm" mb={1} fontWeight="medium">
@@ -1385,7 +1452,7 @@ export default function ProductDefinition({ onSuccess }) {
 
             {/* Dynamic Component Rows */}
             {formComponents.map((comp, index) => (
-              <Grid key={index} templateColumns="repeat(2, 1fr)" gap={6} mb={4} p={2} borderWidth="1px" borderRadius="md" bg="white">
+              <Grid key={index} templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={6} mb={4} p={2} borderWidth="1px" borderRadius="md" bg="white">
                 <GridItem colSpan={2}>
                   <Text fontSize="xs" color="gray.500" fontWeight="bold">Component {index + 1}</Text>
                 </GridItem>
@@ -1539,7 +1606,7 @@ export default function ProductDefinition({ onSuccess }) {
                       <IconButton size="xs" aria-label="Delete parameter" icon={<DeleteIcon />} onClick={() => deleteParameter(compIndex, paramIndex)} variant="ghost" />
                     </HStack>
 
-                    <Grid templateColumns="repeat(4, 1fr)" gap={4}>
+                    <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)", lg: "repeat(4, 1fr)" }} gap={4}>
                       {/* Specific Parameter Name */}
                       <GridItem>
                         <Text fontSize="sm" mb={1} fontWeight="medium">
@@ -1579,7 +1646,19 @@ export default function ProductDefinition({ onSuccess }) {
                                   For now using global parameterOptions or specificParams if fetched.
                                   TODO: Make parameterOptions specific to the component type/id. 
                               */}
-                            {((comp.nameName && COMPONENT_DATA[comp.nameName]) || parameterOptions).map((name, idx) => (
+                            {(() => {
+                              const hardcoded = (comp.nameName && COMPONENT_DATA[comp.nameName]) || [];
+                              const combined = [...hardcoded, ...parameterOptions];
+                              const uniqueCombined = new Map();
+                              combined.forEach(name => {
+                                const trimmed = name.trim();
+                                const lower = trimmed.toLowerCase();
+                                if (trimmed && !uniqueCombined.has(lower)) {
+                                  uniqueCombined.set(lower, trimmed);
+                                }
+                              });
+                              return Array.from(uniqueCombined.values()).sort((a, b) => a.localeCompare(b));
+                            })().map((name, idx) => (
                               <option key={idx} value={name}>
                                 {name}
                               </option>
@@ -1652,7 +1731,7 @@ export default function ProductDefinition({ onSuccess }) {
                               <HStack>
                                 <Select size="sm" value={param.unit || ""} onChange={(e) => updateParameter(compIndex, paramIndex, "unit", e.target.value)} sx={inputStyles}>
                                   <option value="">Select Unit</option>
-                                  {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                  {SIUNITS.map(u => <option key={u} value={u}>{u}</option>)}
                                 </Select>
                                 <IconButton
                                   size="xs"
@@ -1682,7 +1761,7 @@ export default function ProductDefinition({ onSuccess }) {
                               <Text fontSize="sm" mb={1} fontWeight="medium">Unit</Text>
                               <Select size="sm" value={param.unit} onChange={(e) => updateParameter(compIndex, paramIndex, "unit", e.target.value)} sx={inputStyles}>
                                 <option value="">Select Unit</option>
-                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                {SIUNITS.map(u => <option key={u} value={u}>{u}</option>)}
                               </Select>
                             </GridItem>
                           </Grid>
@@ -1753,7 +1832,7 @@ export default function ProductDefinition({ onSuccess }) {
                                 }}
                               >
                                 <option value="">Unit</option>
-                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                {SIUNITS.map(u => <option key={u} value={u}>{u}</option>)}
                               </select>
                             </HStack>
                             {/* Y Range */}
@@ -1817,7 +1896,7 @@ export default function ProductDefinition({ onSuccess }) {
                                 }}
                               >
                                 <option value="">Unit</option>
-                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                {SIUNITS.map(u => <option key={u} value={u}>{u}</option>)}
                               </select>
                             </HStack>
                             {/* Z Range */}
@@ -1881,7 +1960,7 @@ export default function ProductDefinition({ onSuccess }) {
                                 }}
                               >
                                 <option value="">Unit</option>
-                                {SI_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                {SIUNITS.map(u => <option key={u} value={u}>{u}</option>)}
                               </select>
                             </HStack>
                           </VStack>
@@ -1981,24 +2060,33 @@ export default function ProductDefinition({ onSuccess }) {
                   </Text>
                   <Grid templateColumns="repeat(3, 1fr)" gap={4}>
                     <GridItem>
-                      <Text fontSize="sm" mb={1} fontWeight="medium">
-                        IMEI
-                      </Text>
-                      <Input size="sm" value={dev.imei} onChange={(e) => handleDeviceInfoChange(idx, "imei", e.target.value)} sx={inputStyles} placeholder="Enter IMEI" />
+                      <FormControl isInvalid={dev.imei && !/^\d{15}$/.test(dev.imei)}>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          IMEI
+                        </Text>
+                        <Input size="sm" value={dev.imei} onChange={(e) => handleDeviceInfoChange(idx, "imei", e.target.value)} sx={inputStyles} placeholder="Enter IMEI (15 digits)" maxLength={15} />
+                        <FormErrorMessage fontSize="2xs">Must be 15 digits</FormErrorMessage>
+                      </FormControl>
                     </GridItem>
 
                     <GridItem>
-                      <Text fontSize="sm" mb={1} fontWeight="medium">
-                        ICCID
-                      </Text>
-                      <Input size="sm" value={dev.iccid} onChange={(e) => handleDeviceInfoChange(idx, "iccid", e.target.value)} sx={inputStyles} placeholder="Enter ICCID" />
+                      <FormControl isInvalid={dev.iccid && !/^\d{19,20}$/.test(dev.iccid)}>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          ICCID
+                        </Text>
+                        <Input size="sm" value={dev.iccid} onChange={(e) => handleDeviceInfoChange(idx, "iccid", e.target.value)} sx={inputStyles} placeholder="Enter ICCID (19-20 digits)" maxLength={20} />
+                        <FormErrorMessage fontSize="2xs">Must be 19-20 digits</FormErrorMessage>
+                      </FormControl>
                     </GridItem>
 
                     <GridItem>
-                      <Text fontSize="sm" mb={1} fontWeight="medium">
-                        Phone No.
-                      </Text>
-                      <Input size="sm" value={dev.phone} onChange={(e) => handleDeviceInfoChange(idx, "phone", e.target.value)} sx={inputStyles} placeholder="Enter Phone Number" />
+                      <FormControl isInvalid={dev.phone && !/^\d{10}$/.test(dev.phone)}>
+                        <Text fontSize="sm" mb={1} fontWeight="medium">
+                          Phone No.
+                        </Text>
+                        <Input size="sm" value={dev.phone} onChange={(e) => handleDeviceInfoChange(idx, "phone", e.target.value)} sx={inputStyles} placeholder="Enter Phone (10 digits)" maxLength={10} />
+                        <FormErrorMessage fontSize="2xs">Must be 10 digits</FormErrorMessage>
+                      </FormControl>
                     </GridItem>
                   </Grid>
                 </Box>
@@ -2012,12 +2100,12 @@ export default function ProductDefinition({ onSuccess }) {
               Cancel
             </Button>
             <Button colorScheme="blue" size="md" px={10} onClick={handleSubmitDevices}
-              isLoading={isLoading}>
+              isLoading={loading}>
               Create Product
             </Button>
           </HStack>
         </VStack>
-      </Box >
+      </Box>
 
       {/* POPUP: Add Component (type + name) */}
       {
@@ -2186,6 +2274,6 @@ export default function ProductDefinition({ onSuccess }) {
           </ModalFooter>
         </ModalContent>
       </Modal>
-    </Box >
+    </Box>
   );
 }

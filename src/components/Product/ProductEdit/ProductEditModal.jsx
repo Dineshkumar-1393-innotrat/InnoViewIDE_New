@@ -28,6 +28,7 @@ function ProductEditModal({
 }) {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [userId, setUserId] = useState(null);
+  const [removeRefreshKey, setRemoveRefreshKey] = useState(0);
 
   const btnRef = useRef(null);
 
@@ -41,11 +42,13 @@ function ProductEditModal({
     }
 
     try {
-      await axios.delete(`${baseURL}/product/${productID}/definition`);
+      await axios.delete(`${baseURL}/product/${productID}/definitionNew`);
 
       alert("All components removed successfully");
-
-      // Clear the components array in Formik state
+      
+      if (setIsProductDefined) {
+        setIsProductDefined(false);
+      }
     } catch (error) {
       console.error("Error removing all components:", error);
       alert("Failed to remove all components. Please try again.");
@@ -55,11 +58,11 @@ function ProductEditModal({
   useEffect(() => {
     return () => {
       const userInfo = getUserInfo();
-      if (userInfo) {
+      if (userInfo && typeof fetchFileSystem === 'function') {
         fetchFileSystem(userInfo.userId);
       }
     };
-  }, []);
+  }, [fetchFileSystem]);
 
   return (
     <>
@@ -140,7 +143,16 @@ function ProductEditModal({
               />
 
               <Box px={10} py={8} position="relative" zIndex={1}>
-                <Tabs variant="unstyled" defaultIndex={0}>
+                <Tabs
+                  variant="unstyled"
+                  defaultIndex={0}
+                  onChange={(index) => {
+                    // Re-fetch components list every time Remove Component tab is activated
+                    if (index === 2) {
+                      setRemoveRefreshKey((k) => k + 1);
+                    }
+                  }}
+                >
                   <TabList
                     gap={3}
                     borderBottom="none"
@@ -345,6 +357,7 @@ function ProductEditModal({
                           setIsProductDefined={setIsProductDefined}
                           productID={productID}
                           productName={productName}
+                          refreshKey={removeRefreshKey}
                         />
                       </Box>
                     </TabPanel>

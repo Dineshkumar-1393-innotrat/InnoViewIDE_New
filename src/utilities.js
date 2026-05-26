@@ -1,3 +1,4 @@
+// Updated at 2026-05-08 17:55
 const getUserInfo = () => {
   try {
     const userData = localStorage.getItem("userData");
@@ -8,6 +9,9 @@ const getUserInfo = () => {
   }
 };
 
-const baseURL = "https://eureka.innotrat.in";
+// In development Vite proxies these paths to avoid CORS.
+// In production set VITE_API_BASE_URL and VITE_PRODUCT_API_BASE_URL env vars.
+const baseURL = import.meta.env.VITE_API_BASE_URL || "";
+const productAPIBase = import.meta.env.VITE_PRODUCT_API_BASE_URL || "/product-api";
 
-export { getUserInfo, baseURL };
+export { getUserInfo, baseURL, productAPIBase };

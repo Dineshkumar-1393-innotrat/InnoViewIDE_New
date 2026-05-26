@@ -248,7 +248,7 @@ const SelectProduct = () => {
         </Button>
       </Box>
 
-      <Box>
+      <Box overflowX="auto" w="full">
         <DataTable
           selectedProduct={selectedProduct}
           selectedDevice={selectedDevice}

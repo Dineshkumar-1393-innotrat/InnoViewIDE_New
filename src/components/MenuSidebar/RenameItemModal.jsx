@@ -43,23 +43,19 @@ const RenameItemModal = ({ isOpen, onClose, item, onSuccess }) => {
                 return;
             }
 
+            const payload = {
+                fileId: item._id,
+                newName: newName,
+            };
+
+            // If it's a file, we should preserve its content during rename
+            if (item.type === "file") {
+                payload.newContent = item.content || "";
+            }
+
             const { data } = await axios.put(
                 "https://eureka.innotrat.in/api/v1/updateFileAndFolder",
-                {
-                    fileId: item._id,
-                    name: newName,
-                    // content: item.content // Assuming we don't need to send content for rename, but API might require it. 
-                    // Based on grep, updateFileAndFolder usually takes fileName, newContent, fileId.
-                    // Let's try sending just name and fileId first, or check if there's a specific rename endpoint.
-                    // If updateFileAndFolder requires content, we might need to fetch it first or send null/current.
-                    // However, usually rename is separate. 
-                    // Re-checking grep results: 
-                    // "updateFileContent(value?.name, newValue, value?._id)"
-                    // It seems updateFileAndFolder updates both name and content. 
-                    // If we only want to rename, we should hopefully be able to omit content or send current.
-                    // But we don't have current content here easily for files.
-                    // Let's assume the API handles partial updates or we just send name.
-                }
+                payload
             );
 
             if (data.success) {

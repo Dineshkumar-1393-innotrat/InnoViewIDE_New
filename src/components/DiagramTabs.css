@@ -58,6 +58,21 @@
 
 .diagram-tabs__label {
   user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.diagram-tabs__dirty-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #ef4444; /* red-500 */
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.is-active .diagram-tabs__dirty-dot {
+  background-color: #fca5a5; /* red-300 for better visibility on blue */
 }
 
 .diagram-tabs__close {
@@ -110,9 +125,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-left: 8px;
-  padding-left: 8px;
-  border-left: 1px solid #d1d5db;
+  margin-right: 8px;
+  padding-right: 8px;
+  border-right: 1px solid #d1d5db;
 }
 
 .diagram-tabs__action {
@@ -156,8 +171,8 @@
   }
 
   .diagram-tabs__actions {
-    margin-left: 6px;
-    padding-left: 6px;
+    margin-right: 6px;
+    padding-right: 6px;
   }
 
   .diagram-tabs__action {
@@ -194,8 +209,8 @@
 
   .diagram-tabs__actions {
     gap: 3px;
-    margin-left: 4px;
-    padding-left: 4px;
+    margin-right: 4px;
+    padding-right: 4px;
   }
 
   .diagram-tabs__action {

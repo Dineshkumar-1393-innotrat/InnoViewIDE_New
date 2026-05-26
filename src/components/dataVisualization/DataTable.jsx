@@ -4,7 +4,7 @@ import "./SensorTable.css";
 import SensorTable from "./SensorTable";
 import axios from "axios";
 import { Heading, Center } from "@chakra-ui/react";
-import { baseURL } from "../../utilities";
+import { baseURL, productAPIBase } from "../../utilities";
 
 const data = [
   {
@@ -101,24 +101,35 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
         deviceID: selectedDevice,
       };
 
+      // 1. Optional: Trigger data generation (Simulation)
       try {
         await axios.post(
-          `${baseURL}/generateNewProductData`,
+          `${productAPIBase}/generateNewProductData`,
           payload
         );
-
-        const response = await axios.post(
-          `${baseURL}/data`,
-          payload
-        );
-
-        console.log("Data fetched successfully:", response.data.data);
-
-        // Set the fetched devices data
-        setDevicesData(response.data.data);
       } catch (error) {
-        console.log("Error generating data:", error.response);
-        alert(error.response.data.message);
+        // Silently log failure for simulation endpoint to avoid annoying alerts
+        console.warn("Simulation data generation skipped or unavailable:", error.response?.status);
+      }
+
+      // 2. Main: Fetch actual device data
+      try {
+        const response = await axios.post(
+          `${productAPIBase}/data`,
+          payload
+        );
+
+        if (response.data && response.data.data) {
+          console.log("Data fetched successfully:", response.data.data);
+          setDevicesData(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching device data:", error.response);
+        // Only alert if it's a critical failure and we have a message
+        const errorMessage = error.response?.data?.message;
+        if (errorMessage && errorMessage !== "undefined") {
+          alert(`Data Fetch Error: ${errorMessage}`);
+        }
       }
     }, interval);
 

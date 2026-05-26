@@ -1,102 +1,143 @@
-import React, { useState, useEffect } from "react";
-import {
-    Button,
-    Modal,
-    ModalOverlay,
-    ModalContent,
-    ModalHeader,
-    ModalCloseButton,
-    ModalBody,
+import React, { useState, useEffect, useCallback } from "react";
+import { 
+    Button, 
+    Modal, 
+    ModalOverlay, 
+    ModalContent, 
+    ModalHeader, 
+    ModalBody, 
+    ModalCloseButton 
 } from "@chakra-ui/react";
-import ProductEditModal from "../Product/ProductEdit/ProductEditModal";
 import ProductDefinition from "../CreateProduct";
+import ProductEditModal from "../Product/ProductEdit/ProductEditModal";
+import { useProject } from "../../ProjectContext";
+import { checkProductDefinition } from "../EmbeddedFileManagement/EmbeddedFileManagement";
 
 /**
  * CreateProductButton - A reusable component that handles both product creation and viewing.
- * 
- * - If product exists: Shows "View Product" (via ProductEditModal)
- * - If product missing: Shows "+ Create Product" button
+ * It dynamically toggles between "Create Product", "Define Product", and "View Product" based on 
+ * whether a product is associated with the active project and if its definition exists in the backend.
  */
 const CreateProductButton = () => {
-    const [productId, setProductId] = useState(() => localStorage.getItem("activeProductId"));
-    const [productName, setProductName] = useState(() => localStorage.getItem("activeProductName"));
-    const [isModalOpen, setModalOpen] = useState(false);
+    const { 
+        activeProductId, 
+        activeProductName, 
+        activeProjectName,
+        activeProjectId,
+        setActiveProductId,
+        setActiveProductName
+    } = useProject();
 
+    const [isModalOpen, setModalOpen] = useState(false);
+    const [isProductDefined, setIsProductDefined] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Synchronize local state with backend when activeProductId or activeProjectId changes
     useEffect(() => {
-        const handleStorageChange = () => {
-            if (!isModalOpen) {
-                setProductId(localStorage.getItem("activeProductId"));
-                setProductName(localStorage.getItem("activeProductName"));
+        const fetchStatus = async () => {
+            if (!activeProductId) {
+                console.log(`[CreateProductButton] No activeProductId for project ${activeProjectId}`);
+                setIsProductDefined(false);
+                return;
+            }
+
+            // Only reset to null if we are actually about to fetch for a new ID
+            // or if we haven't checked yet.
+            setIsLoading(true);
+            
+            try {
+                console.log(`[CreateProductButton] Checking definition for product: ${activeProductId} in project: ${activeProjectId}`);
+                await checkProductDefinition(activeProductId, (defined) => {
+                    console.log(`[CreateProductButton] Definition status for ${activeProductId}: ${defined}`);
+                    setIsProductDefined(defined);
+                }, activeProjectId);
+            } catch (error) {
+                console.error("Failed to check product definition:", error);
+                setIsProductDefined(false);
+            } finally {
+                setIsLoading(false);
             }
         };
-        window.addEventListener("storage", handleStorageChange);
 
-        // Interval check for local changes that don't trigger "storage" event
-        const interval = setInterval(handleStorageChange, 1000);
+        fetchStatus();
+    }, [activeProductId, activeProjectId]);
 
-        return () => {
-            window.removeEventListener("storage", handleStorageChange);
-            clearInterval(interval);
-        };
-    }, [isModalOpen]);
+    // Handle successful product creation/definition
+    const handleSuccess = useCallback(() => {
+        // Refresh definition status immediately
+        if (activeProductId) {
+            checkProductDefinition(activeProductId, setIsProductDefined);
+        }
+        setModalOpen(false);
+        
+        // Notify other components (legacy support for storage listeners)
+        window.dispatchEvent(new Event("storage"));
+        // Custom event to refresh sidebar filesystem
+        window.dispatchEvent(new Event("innoide:refresh-filesystem"));
+    }, [activeProductId]);
 
-    // If product exists, show the View Product button (wrapped in ProductEditModal)
-    if (productId) {
+    // 1. Loading State: Show a consistent loading pill while checking definition
+    if (activeProductId && isProductDefined === null) {
         return (
-            <ProductEditModal
-                productID={productId}
-                productName={productName}
-                fetchFileSystem={() => { }} // Placeholder if needed
-                setIsProductDefined={(val) => {
-                    // Compatible interface for modal's internal update if needed, 
-                    // though modal mainly uses this to clear state on delete.
-                    // If val is false, we clear our state.
-                    if (!val) {
-                        setProductId(null);
-                        setProductName(null);
-                    }
-                }}
+            <Button
+                size="sm"
+                colorScheme="teal"
+                borderRadius="full"
+                height="32px"
+                px={6}
+                isLoading={true}
+                loadingText="Checking..."
+                variant="outline"
+                isDisabled={true}
             />
         );
     }
 
-    // Otherwise, show Create Product button
+    // 2. If we have a product ID AND it is defined in the backend, show the View Product Modal
+    if (activeProductId && isProductDefined) {
+        return (
+            <ProductEditModal
+                productID={activeProductId}
+                productName={activeProductName || activeProjectName || "Product"}
+                setIsProductDefined={setIsProductDefined}
+            />
+        );
+    }
+
+    // 2. If we have no product OR it's not defined, show the Create/Define button
     return (
         <>
             <Button
                 size="sm"
                 colorScheme="blue"
-                variant="solid"
                 borderRadius="full"
                 height="32px"
                 px={6}
                 onClick={() => setModalOpen(true)}
+                isLoading={isLoading}
+                leftIcon={<span>+</span>}
+                _hover={{ transform: "translateY(-1px)", boxShadow: "lg" }}
+                _active={{ transform: "translateY(0)" }}
             >
-                + Create Product
+                {activeProductId ? "Define Product" : "Create Product"}
             </Button>
 
-            <Modal
-                isOpen={isModalOpen}
-                onClose={() => setModalOpen(false)}
-                size="xl"
-            >
-                <ModalOverlay />
-                <ModalContent>
-                    <ModalHeader>Product Configuration</ModalHeader>
-                    <ModalCloseButton />
-                    <ModalBody pb={6}>
-                        <ProductDefinition
-                            onSuccess={() => {
-                                setProductId(localStorage.getItem("activeProductId"));
-                                setProductName(localStorage.getItem("activeProductName"));
-                                setModalOpen(false);
-                                // Trigger an event so other components can update
-                                window.dispatchEvent(new Event("storage"));
-                            }}
-                        />
-                    </ModalBody>
-                </ModalContent>
-            </Modal>
+            {isModalOpen && (
+                <Modal isOpen={isModalOpen} onClose={() => setModalOpen(false)} size="full" scrollBehavior="inside">
+                    <ModalOverlay backdropFilter="blur(8px)" />
+                    <ModalContent bg="gray.100">
+                        <ModalHeader bg="white" borderBottom="1px solid" borderColor="gray.200">
+                            {activeProductId ? "Define Product" : "Create New Product"}
+                        </ModalHeader>
+                        <ModalCloseButton />
+                        <ModalBody p={0}>
+                            <ProductDefinition
+                                onSuccess={handleSuccess}
+                            />
+                        </ModalBody>
+                    </ModalContent>
+                </Modal>
+            )}
         </>
     );
 };

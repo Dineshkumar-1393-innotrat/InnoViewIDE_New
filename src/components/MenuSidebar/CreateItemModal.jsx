@@ -62,32 +62,27 @@ const CreateItemModal = ({
 
     const handleCreate = async () => {
         try {
-            if (!itemName.trim()) {
-                toast({
-                    title: "Name required",
-                    description: `Please enter a ${type} name.`,
-                    status: "warning",
-                    duration: 3000,
-                    isClosable: true,
-                });
-                return;
-            }
-
-            // Basic validation for file extension if needed, but user requested editable extension
-            if (type === "file" && !itemName.includes(".")) {
-                // Optional: warning or auto-append extension? 
-                // For now, allowing any name as per "editable extension" request.
+            let finalName = itemName.trim();
+            
+            // Auto-append appropriate extensions if missing
+            if (type === "file" && !finalName.includes(".")) {
+                const extensionMap = {
+                    writeCode: ".c",
+                    flowChart: ".json",
+                    blockDiagram: ".json",
+                    simulation: ".c",
+                    blockProgramming: ".json"
+                };
+                finalName += extensionMap[feature] || ".c";
             }
 
             const { data } = await axios.post(
                 "https://eureka.innotrat.in/api/v1/createFileAndFolder",
                 {
                     parentId: parentFolder._id,
-                    name: itemName,
+                    name: finalName,
                     type,
                     userId,
-                    // Sending feature might be useful if backend supports it for files too, 
-                    // otherwise it's mainly for our frontend redirection
                 }
             );
 
@@ -111,24 +106,32 @@ const CreateItemModal = ({
                 onClose();
 
                 // Redirect based on selection
+                // Redirect based on selection with the newly created file in state for Smooth Loading
+                const navigationState = { 
+                    state: { 
+                        filePath: data.file?.path || finalName, 
+                        fileContent: data.file?.content || (type === "file" ? "" : null)
+                    } 
+                };
+
                 switch (feature) {
                     case "writeCode":
-                        navigate("/editor");
+                        navigate("/editor", navigationState);
                         break;
                     case "flowChart":
-                        navigate("/flowcharttest");
+                        navigate("/flowcharttest", navigationState);
                         break;
                     case "blockDiagram":
-                        navigate("/BlockDiagram");
+                        navigate("/BlockDiagram", navigationState);
                         break;
                     case "simulation":
-                        navigate("/simulation");
+                        navigate("/simulation", navigationState);
                         break;
                     case "blockProgramming":
-                        navigate("/blockprogramming"); // Assuming this route exists
+                        navigate("/blockprogramming", navigationState);
                         break;
                     default:
-                        navigate("/editor");
+                        navigate("/editor", navigationState);
                 }
             } else {
                 throw new Error(data.message || "Creation failed");

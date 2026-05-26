@@ -20,6 +20,7 @@ import LanguageSelector from "./LanguageSelector";
 import { CODE_SNIPPETS, MONACO_LANGUAGE_MAP } from "../constants";
 import Output from "./Output";
 import { useCodeEditorAutoSave, useGlobalAutoSave } from "../hooks/useAutoSave";
+import { useResizableSidebar } from "../hooks/useResizableSidebar";
 import { useDispatch, useSelector } from "react-redux";
 import {
     setTabs,
@@ -37,6 +38,8 @@ import Flash from "./Flash";
 import DefineProductButton from "./shared/DefineProductButton";
 import MathWidgetButton from "./shared/MathWidgetButton";
 import ScientificCalculator from "./ScientificCalculator";
+import { calculatorService } from "../services/calculatorService";
+import { getUserInfo } from "../utils/platformUtils";
 // Component to handle FileExplorer and Flash panel layout  
 const FileExplorerWithFlash = ({ isFlashing, onFlashComplete, onFlashStart, colorMode }) => {
     const [isDeviceConnected, setIsDeviceConnected] = useState(() => {
@@ -104,6 +107,7 @@ import LibraryManager from "./LibraryManager";
 // import Navbar from "./Navbar";
 // import Navbartwo from "./Navbartwo";
 import EditorNavbar from "./EditorNavbar";
+import { Save } from "lucide-react";
 
 const parseJSON = (raw) => {
     if (!raw) return null;
@@ -177,13 +181,26 @@ const getStoredIdentity = () => {
 
 const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     const editorRef = useRef();
+    const monacoRef = useRef();
     const outputRef = useRef(null);
+    const { sidebarWidth, startResizing } = useResizableSidebar(340, 250, 600);
 
     const dispatch = useDispatch();
     const { tabs, activeTabId } = useSelector((state) => state.mathEditor);
     const activeTabObj = useMemo(
         () => tabs.find((t) => t.id === activeTabId),
         [tabs, activeTabId],
+    );
+
+    const {
+        saveNow: saveEditorNow,
+    } = useCodeEditorAutoSave(
+        activeTabObj?.content || "",
+        {
+            screenKey: "/mathcodeeditor",
+            tabs,
+            activeTab: activeTabId,
+        }
     );
 
     const addNewTab = useCallback(() => {
@@ -243,26 +260,8 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     ]);
     const [debugVariables, setDebugVariables] = useState([]);
     const [debugBreakpoints, setDebugBreakpoints] = useState([]);
-    const [savedEquations, setSavedEquations] = useState([
-        {
-            id: 1,
-            name: 'Equation 1',
-            expression: 'E = mc²',
-            timestamp: new Date().toLocaleString()
-        },
-        {
-            id: 2,
-            name: 'Equation 2',
-            expression: 'a² + b² = c²',
-            timestamp: new Date().toLocaleString()
-        },
-        {
-            id: 3,
-            name: 'Algorithms',
-            expression: 'f(x) = x² + 2x + 1',
-            timestamp: new Date().toLocaleString()
-        }
-    ]);
+    const [savedEquations, setSavedEquations] = useState([]);
+    const [loadingEquations, setLoadingEquations] = useState(false);
     const [showEquationsList, setShowEquationsList] = useState(false);
     const { colorMode } = useColorMode();
     const toast = useToast();
@@ -646,8 +645,9 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         }
     }, [activeTabObj, activeTabId, updateTabContent]);
 
-    const onMount = (editor) => {
+    const onMount = (editor, monaco) => {
         editorRef.current = editor;
+        monacoRef.current = monaco;
         editor.focus();
     };
 
@@ -697,12 +697,53 @@ const MathCodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
     }, [tabs, searchQuery]);
     const visibleTabs = filteredFiles || tabs;
 
+    // Resolve user credentials — fall back to the default admin account when not logged in
+    const getEffectiveUserInfo = useCallback(() => {
+        const userInfo = getUserInfo();
+        return {
+            userId: userInfo?.userId || userInfo?._id || "6926c69500610847a79be7eb",
+            isAdmin: userInfo?.isAdmin ?? 1,
+        };
+    }, []);
+
+    // Fetch saved equations from the backend
+    const fetchEquations = useCallback(async () => {
+        setLoadingEquations(true);
+        try {
+            const { userId, isAdmin } = getEffectiveUserInfo();
+            const response = await calculatorService.getEquations(userId, isAdmin);
+            const raw = response?.data ?? response ?? [];
+            if (Array.isArray(raw)) {
+                const normalised = raw.map((eq) => ({
+                    id:         eq._id   || eq.id,
+                    name:       eq.equationName || eq.name || 'Equation',
+                    expression: eq.equation     || eq.expression || '',
+                    result:     eq.result        || '',
+                    timestamp:  eq.createdAt
+                                    ? new Date(eq.createdAt).toLocaleString()
+                                    : (eq.timestamp || ''),
+                }));
+                setSavedEquations(normalised);
+            }
+        } catch (error) {
+            console.error('Failed to fetch equations:', error);
+        } finally {
+            setLoadingEquations(false);
+        }
+    }, [getEffectiveUserInfo]);
+
+    // Load equations on mount
+    useEffect(() => {
+        fetchEquations();
+    }, [fetchEquations]);
+
     // Handler for loading equation into editor
     const handleLoadEquation = useCallback((equation) => {
-        if (activeTabId && equation.expression) {
-            const equationText = `// ${equation.name || 'Equation'}
+        const expr = equation.expression || equation.equation || '';
+        if (activeTabId && expr) {
+            const equationText = `// ${equation.name || equation.equationName || 'Equation'}
 // Saved: ${equation.timestamp || ''}
-${equation.expression}
+${expr}
 // Result: ${equation.result || ''}
 `;
             updateTabContent(activeTabId, equationText);
@@ -710,11 +751,10 @@ ${equation.expression}
         setShowEquationsList(false);
     }, [activeTabId, updateTabContent]);
 
-    // Handler for saving equation from calculator
-    const handleSaveEquationFromCalculator = useCallback((newEquation) => {
-        // Add equation to the list
-        setSavedEquations(prev => [newEquation, ...prev]);
-    }, []);
+    // Re-fetch from backend after a save so the list stays in sync
+    const handleSaveEquationFromCalculator = useCallback(() => {
+        fetchEquations();
+    }, [fetchEquations]);
 
     return (
         <>
@@ -726,33 +766,65 @@ ${equation.expression}
             />
             <Flex
                 direction="column"
-                minH="calc(100vh - 88px)"
+                minH="calc(100vh - 64px)"
                 w="100%"
-                pt={6}
-                pb={8}
-                mt={10}
-                px={{ base: 4, lg: 8 }}
+                pt={2}
+                pb={2}
+                mt={14}
+                px={{ base: 2, lg: 4 }}
                 bg={colorMode === "dark" ? "#0b1220" : "#f5f7fb"}
-                gap={6}
+                gap={2}
             >
-                <Flex flex="1" gap={6} overflow="hidden" align="stretch">
+                <Flex flex="1" gap={2} overflow="hidden" align="stretch" direction={{ base: "column", lg: "row" }}>
                     <Box
-                        w={{ base: "300px", lg: "340px" }}
+                        w={{ base: "100%", lg: `${sidebarWidth}px` }}
+                        minW={{ lg: `${sidebarWidth}px` }}
+                        maxW={{ lg: `${sidebarWidth}px` }}
+                        flex={{ lg: `0 0 ${sidebarWidth}px` }}
                         bg={colorMode === "dark" ? "rgba(15,23,42,0.72)" : "white"}
                         border="1px solid"
                         borderColor={colorMode === "dark" ? "rgba(148,163,184,0.18)" : "rgba(15,23,42,0.08)"}
                         borderRadius="2xl"
                         boxShadow={colorMode === "dark" ? "0 30px 60px rgba(8,15,32,0.55)" : "0 24px 56px rgba(15,23,42,0.08)"}
-                        p={3}
+                        p={0}
                         display="flex"
                         flexDirection="column"
                         backdropFilter="blur(16px)"
-                        overflow="auto"
+                        overflow="hidden"
                     >
-                        <ScientificCalculator onSaveEquation={handleSaveEquationFromCalculator} />
+                        <ScientificCalculator 
+                            onSaveEquation={handleSaveEquationFromCalculator} 
+                            onInsertResult={(value) => {
+                                if (editorRef.current && monacoRef.current) {
+                                  const editor = editorRef.current;
+                                  const monacoInstance = monacoRef.current;
+                                  const selection = editor.getSelection();
+                                  const range = new monacoInstance.Range(
+                                    selection.startLineNumber,
+                                    selection.startColumn,
+                                    selection.endLineNumber,
+                                    selection.endColumn
+                                  );
+                                  editor.executeEdits("calculator-insert", [
+                                    { range, text: value, forceMoveMarkers: true }
+                                  ]);
+                                  editor.focus();
+                                }
+                            }}
+                        />
                     </Box>
 
-                    <Flex flex="1" direction="column" gap={6} minW={0}>
+                    {/* Sidebar Drag Handle */}
+                    <Box
+                        display={{ base: "none", lg: "block" }}
+                        w="6px"
+                        bg="transparent"
+                        cursor="col-resize"
+                        onMouseDown={startResizing}
+                        zIndex={10}
+                    />
+
+                    <Flex flex="1" direction="column" gap={2} minW={0}>
                         <Box
                             position="relative"
                             borderRadius="2xl"
@@ -760,11 +832,11 @@ ${equation.expression}
                             border="1px solid"
                             borderColor={colorMode === "dark" ? "rgba(148,163,184,0.14)" : "rgba(15,23,42,0.1)"}
                             boxShadow={colorMode === "dark" ? "0 40px 80px rgba(8,15,32,0.55)" : "0 32px 64px rgba(15,23,42,0.1)"}
-                            px={{ base: 4, md: 6 }}
-                            py={{ base: 4, md: 5 }}
+                            px={{ base: 2, md: 3 }}
+                            py={{ base: 2, md: 3 }}
                             display="flex"
                             flexDirection="column"
-                            gap={4}
+                            gap={2}
                             flex="1"
                             overflow="hidden"
                         >
@@ -822,6 +894,19 @@ ${equation.expression}
                                             color={colorMode === "dark" ? "rgba(226,232,240,0.9)" : "#0f172a"}
                                             _hover={{ bg: "rgba(56,189,248,0.2)" }}
                                         />
+                                        <IconButton
+                                            icon={<Save size={14} />}
+                                            size="xs"
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (saveEditorNow) await saveEditorNow();
+                                            }}
+                                            aria-label="Save"
+                                            variant="outline"
+                                            borderColor={colorMode === "dark" ? "rgba(148,163,184,0.4)" : "rgba(15,23,42,0.15)"}
+                                            color={colorMode === "dark" ? "rgba(226,232,240,0.9)" : "#0f172a"}
+                                            _hover={{ bg: "rgba(56,189,248,0.2)" }}
+                                        />
                                     </HStack>
                                 </Flex>
 
@@ -855,7 +940,11 @@ ${equation.expression}
                                             overflowY="auto"
                                             zIndex={1000}
                                         >
-                                            {savedEquations.length === 0 ? (
+                                            {loadingEquations ? (
+                                                <Box p={3} textAlign="center" fontSize="sm" color={colorMode === "dark" ? "gray.400" : "gray.600"}>
+                                                    Loading…
+                                                </Box>
+                                            ) : savedEquations.length === 0 ? (
                                                 <Box p={3} textAlign="center" fontSize="sm" color={colorMode === "dark" ? "gray.400" : "gray.600"}>
                                                     No saved equations
                                                 </Box>
@@ -872,10 +961,10 @@ ${equation.expression}
                                                         onClick={() => handleLoadEquation(eq)}
                                                     >
                                                         <Text fontSize="sm" fontWeight="600" color={colorMode === "dark" ? "gray.200" : "gray.800"} mb={1}>
-                                                            {eq.name || 'Equation ' + eq.id}
+                                                            {eq.name || eq.equationName || ('Equation ' + eq.id)}
                                                         </Text>
                                                         <Text fontSize="xs" color={colorMode === "dark" ? "gray.400" : "gray.600"} noOfLines={2}>
-                                                            {eq.expression}
+                                                            {eq.expression || eq.equation}
                                                         </Text>
                                                         {eq.timestamp && (
                                                             <Text fontSize="10px" color={colorMode === "dark" ? "gray.500" : "gray.500"} mt={1}>
@@ -922,7 +1011,7 @@ ${equation.expression}
                     position="fixed"
                     top="120px"
                     right="24px"
-                    width={{ base: "280px", md: "320px" }}
+                    width={{ base: "280px", md: "240px" }}
                     zIndex={1200}
                 >
                     <Box

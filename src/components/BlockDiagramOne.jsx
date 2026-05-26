@@ -31,7 +31,7 @@
 //   // Fetch product definition
 //   const getProductDefinition = async () => {
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -57,7 +57,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       alert("Product definition deleted successfully!");
 //       setProductDetails(null);
 //       onClose();
@@ -176,7 +176,7 @@
 //   // Fetch product definition
 //   const getProductDefinition = async () => {
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -202,7 +202,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       alert("Product definition deleted successfully!");
 //       setProductDetails(null);
 //       onClose();
@@ -331,7 +331,7 @@
 //   // Fetch product definition
 //   const getProductDefinition = async () => {
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -441,7 +441,7 @@
 //     }
 
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -584,7 +584,7 @@
 //     }
 
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -610,7 +610,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       alert("Product definition deleted successfully!");
 //       setProductDetails(null);
 //       onClose();
@@ -795,7 +795,7 @@
 //     }
 
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -839,7 +839,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNew`);
+//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
 //       toast({
 //         title: "Success",
 //         description: "Product definition deleted successfully!",
@@ -1071,7 +1071,7 @@ const BlockDiagramOne = () => {
 
     try {
       const response = await axios.get(
-        `https://eureka.innotrat.in/product/:productID/definitionNew`
+        `https://eureka.innotrat.in/product/:productID/definitionNewNew`
       );
       setProductDetails(response.data);
       onOpen();
@@ -1121,7 +1121,7 @@ const BlockDiagramOne = () => {
   const handleDeleteDefinition = async () => {
     try {
       await axios.delete(
-        `https://eureka.innotrat.in/product/:productID/definitionNew`
+        `https://eureka.innotrat.in/product/:productID/definitionNewNew`
       );
       toast({
         title: "Success",

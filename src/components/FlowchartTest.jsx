@@ -38,18 +38,44 @@ import {
   addTab,
   closeTab,
   updateTabState,
+  markTabClean,
 } from "../store/slices/flowchartSlice";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toPng } from "html-to-image";
 import "reactflow/dist/style.css";
-import "./BlockDiagramTest.css";
+import "./FlowChartTest.css";
 import FileExplorer from "./FileExplorer";
 import "./FileExplorer.css";
 import EditorNavbar from "./EditorNavbar";
 import DiagramTabs from "./DiagramTabs";
 import MobileMenuButton from "./MobileMenuButton";
 import { useResponsiveSidebar } from "../hooks/useResponsiveSidebar";
-import { Settings, ArrowLeftRight, RotateCcw, RotateCw } from "lucide-react";
+import { useResizableSidebar } from "../hooks/useResizableSidebar";
+import { useToast } from "@chakra-ui/react";
+import { Settings, ArrowLeftRight, RotateCcw, RotateCw, Monitor, Loader2, Trash, CheckCircle } from "lucide-react";
+
+// --- Gold Standard Transition Components ---
+const DiagramLoader = () => (
+  <div className="diagram-loader-overlay">
+    <div className="diagram-spinner" />
+    <span className="diagram-loader-text">Switching Project...</span>
+  </div>
+);
+
+const DiagramEmptyState = () => (
+  <div className="diagram-empty-state">
+    <div className="empty-state-content">
+      <div className="empty-state-icon">
+        <Monitor size={32} />
+      </div>
+      <h3 className="empty-state-title">No Diagram Found</h3>
+      <p className="empty-state-description">
+        This project doesn't have a flowchart yet.
+        Start by dragging shapes from the palette on the left.
+      </p>
+    </div>
+  </div>
+);
 import hexBg from "../assets/hex_bg.png";
 import { useProject } from "../ProjectContext";
 import PropertiesPanel from "./PropertiesPanel";
@@ -62,7 +88,8 @@ import { saveAssetToScreenFolder } from "../utils/screenFileManager";
 import CreateProductButton from "./shared/CreateProductButton";
 import projectFileManager from "../utils/projectFileManager";
 import { useCanvasFileIntegration } from "../hooks/useCanvasFileIntegration";
-import { useReactFlowAutoSave } from "../hooks/useCanvasAutoSave";
+import axios from "axios";
+import { baseURL } from "../utilities";
 import { loadSequenceDiagram } from "../utils/sequenceDiagramLoader";
 
 // Helper hook for updating node data via Redux
@@ -106,8 +133,7 @@ const useEdgeDataUpdate = () => {
 };
 
 // Simple id helpers
-let nodeId = 1;
-const getId = () => `n_${nodeId++}`;
+const getId = () => `n_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
 const createFlowchartState = () => ({
   nodes: [],
@@ -115,11 +141,11 @@ const createFlowchartState = () => ({
   viewport: null,
 });
 
-export const ItemTypes = {
+const ItemTypes = {
   SHAPE: "shape",
 };
 
-export const shapeData = {
+const shapeData = {
   Flowchart: [
     {
       id: "flow-rectangle",
@@ -457,32 +483,32 @@ export const shapeData = {
         },
       ],
     },
-    {
-      id: "flow-bracket-open",
-      name: "Bracket Open",
-      icon: { viewBox: "0 0 30 100", path: "M20 0 H10 V100 H20" },
-    },
-    {
-      id: "flow-bracket-close",
-      name: "Bracket Close",
-      icon: { viewBox: "0 0 30 100", path: "M10 0 H20 V100 H10" },
-    },
-    {
-      id: "flow-brace-open",
-      name: "Brace Open",
-      icon: {
-        viewBox: "0 0 30 100",
-        path: "M20 0 H10 C5 0 5 25 10 25 V75 C5 75 5 100 10 100 H20",
-      },
-    },
-    {
-      id: "flow-brace-close",
-      name: "Brace Close",
-      icon: {
-        viewBox: "0 0 30 100",
-        path: "M10 0 H20 C25 0 25 25 20 25 V75 C25 75 25 100 20 100 H10",
-      },
-    },
+    // {
+    //   id: "flow-bracket-open",
+    //   name: "Bracket Open",
+    //   icon: { viewBox: "0 0 30 100", path: "M20 0 H10 V100 H20" },
+    // },
+    // {
+    //   id: "flow-bracket-close",
+    //   name: "Bracket Close",
+    //   icon: { viewBox: "0 0 30 100", path: "M10 0 H20 V100 H10" },
+    // },
+    // {
+    //   id: "flow-brace-open",
+    //   name: "Brace Open",
+    //   icon: {
+    //     viewBox: "0 0 30 100",
+    //     path: "M20 0 H10 C5 0 5 25 10 25 V75 C5 75 5 100 10 100 H20",
+    //   },
+    // },
+    // {
+    //   id: "flow-brace-close",
+    //   name: "Brace Close",
+    //   icon: {
+    //     viewBox: "0 0 30 100",
+    //     path: "M10 0 H20 C25 0 25 25 20 25 V75 C25 75 25 100 20 100 H10",
+    //   },
+    // },
     {
       id: "flow-square",
       name: "Square",
@@ -1337,6 +1363,7 @@ export const shapeData = {
         return handles;
       },
     },
+    /*
     {
       id: "uml-seq-activation",
       name: "Activation",
@@ -1349,6 +1376,7 @@ export const shapeData = {
         { x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 100 }, { x: 0, y: 100 }
       ],
     },
+    */
     {
       id: "uml-seq-note",
       name: "Note",
@@ -4430,6 +4458,8 @@ const PALETTE_GROUPS = [
 
 // Main DiagramEditor component
 function DiagramEditor() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { tabs, activeTabId } = useSelector((state) => state.flowchart);
   const activeTab = useMemo(
@@ -4439,6 +4469,7 @@ function DiagramEditor() {
 
   const [isExplorerVisible, setIsExplorerVisible] = useState("shapes");
   const reactFlowWrapper = useRef(null);
+  const { sidebarWidth, startResizing } = useResizableSidebar(240, 160, 480);
 
   // Derive nodes and edges from active tab
   const nodes = activeTab?.state?.nodes || [];
@@ -4490,9 +4521,123 @@ function DiagramEditor() {
   });
   const [paletteSearch, setPaletteSearch] = useState("");
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
-  const rf = useReactFlow();
+  const {
+    user,
+    activeProjectId,
+    activeProjectName,
+    activeProductId,
+    setActiveProjectId,
+    diagramData,
+    setDiagramData,
+    saveDiagramData,
+    isSwitchingProject,
+    isHydrated,
+    isRestoring,
+    hasFetchedOnce,
+    transitionError
+  } = useProject?.() ?? {};
 
+  const rf = useReactFlow();
   const hydratingRef = useRef(false);
+
+  // --- API Integration for Save/Load ---
+  const fetchFlowchart = useCallback(async () => {
+    if (!activeProductId || !activeProjectId) return;
+    try {
+      const url = `${baseURL}/api/v1/getFlowDiagram/${activeProductId}/${activeProjectId}`;
+      console.log("[Flowchart] Fetching from API:", url);
+      const response = await axios.get(url);
+
+      if (response.data?.success && response.data?.data?.[0]) {
+        const doc = response.data.data[0];
+
+        // Handle root-level nodes/edges from the specified API response
+        if (doc.nodes && Array.isArray(doc.nodes)) {
+          console.log("[Flowchart] API Data loaded (root-level structure)");
+
+          const fetchedState = {
+            nodes: doc.nodes,
+            edges: doc.edges || [],
+            viewport: doc.viewport || { x: 0, y: 0, zoom: 1 }
+          };
+
+          // Update Redux state. Since the specified API uses a single set of nodes/edges, 
+          // we map it to the active tab or a default tab.
+          dispatch(updateTabState({
+            tabId: activeTabId,
+            nodes: fetchedState.nodes,
+            edges: fetchedState.edges,
+            viewport: fetchedState.viewport
+          }));
+
+          if (doc.viewport) {
+            rf.setViewport(doc.viewport);
+          }
+        } else if (Array.isArray(doc.flowDiagram)) {
+          // Legacy support for multi-tab flowDiagram array
+          const flowchartData = doc.flowDiagram;
+          if (flowchartData.length > 0) {
+            console.log("[Flowchart] API Data loaded (legacy array structure):", flowchartData.length, "tabs");
+            dispatch(setTabs(flowchartData));
+            const currentTabExists = flowchartData.some(t => t.id === activeTabId);
+            if (!activeTabId || !currentTabExists) {
+              dispatch(setActiveTab(flowchartData[0].id));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("[Flowchart] API fetch error:", error);
+    }
+  }, [activeProductId, activeProjectId, activeTabId, dispatch, rf]);
+
+  const saveFlowchart = useCallback(async () => {
+    const userId = user?.userId || user?._id || user?.id;
+    if (!activeProductId || !activeProjectId || !userId) {
+      console.warn("[Flowchart] Missing IDs for save:", { activeProductId, activeProjectId, userId });
+      return;
+    }
+
+    try {
+      // Re-aligning with specified API requirement: root-level keys
+      const payload = {
+        productId: activeProductId,
+        fileORFolderId: activeProjectId,
+        userId: userId,
+        nodes: nodes,
+        edges: edges,
+        viewport: rf.getViewport(),
+      };
+
+      const diagramId = diagramData?.flowchart?.id;
+
+      if (diagramId) {
+        console.log("[Flowchart] Updating existing via PUT:", diagramId);
+        await axios.put(`${baseURL}/api/v1/updateFlowDiagram/${diagramId}`, payload);
+        console.log("[Flowchart] Updated successfully");
+      } else {
+        console.log("[Flowchart] Adding new via POST");
+        const response = await axios.post(`${baseURL}/api/v1/addFlowDiagram`, payload);
+        if (response.data?.data?._id) {
+          // Update the ID in project context to enable PUT for subsequent saves
+          setDiagramData(prev => ({
+            ...prev,
+            flowchart: { ...prev.flowchart, id: response.data.data._id }
+          }));
+        }
+        console.log("[Flowchart] Added successfully");
+      }
+    } catch (error) {
+      console.error("[Flowchart] API save error:", error);
+    }
+  }, [activeProductId, activeProjectId, user, nodes, edges, rf, diagramData?.flowchart?.id, setDiagramData]);
+
+  // Fetch data on mount or project switch
+  useEffect(() => {
+    if (activeProjectId && activeProductId) {
+      fetchFlowchart();
+    }
+  }, [activeProjectId, activeProductId, fetchFlowchart]);
 
   // Initialize first tab if none exists
   useEffect(() => {
@@ -4523,7 +4668,7 @@ function DiagramEditor() {
 
   const updateActiveTabState = useCallback(
     (updater) => {
-      if (!activeTabId) return;
+      if (!activeTabId || !activeTab) return;
       const nextState =
         typeof updater === "function" ? updater(activeTab.state) : updater;
       dispatch(updateTabState({ tabId: activeTabId, ...nextState }));
@@ -4534,37 +4679,37 @@ function DiagramEditor() {
   // Canvas file integration for Flowchart
   const canvasIntegration = useCanvasFileIntegration("Flowchart");
 
-  // Canvas auto-save for state persistence
-  const {
-    isSaving: isCanvasSaving,
-    lastSaveTime: canvasLastSaveTime,
-    isLoaded: canvasIsLoaded,
-    saveNow: saveCanvasNow,
-    scheduleSave: scheduleCanvasSave,
-  } = useReactFlowAutoSave(nodes, edges, setNodes, setEdges, rf, {
-    screenPath: "/FlowchartTest",
-    saveDelay: 1500,
-    onSave: (state) =>
-      console.log(
-        "[FlowchartTest] Canvas auto-saved:",
-        state.nodes?.length,
-        "nodes",
-      ),
-    onLoad: (state) => {
-      console.log(
-        "[FlowchartTest] Canvas state restored:",
-        state.nodes?.length,
-        "nodes",
-      );
-    },
-    onError: (error) =>
-      console.error("[FlowchartTest] Canvas auto-save error:", error),
-  });
+  // Canvas auto-save REMOVED from backend sync - kept only for local persistence if needed
+  // We will now rely on explicit Save button
 
-  // Project management state
-  const [hasProjects, setHasProjects] = useState(false);
-  const { user, activeProjectId, activeProjectName, setActiveProjectId } =
-    useProject?.() ?? {};
+  // --- Sync Redux Tabs with Central Project Data ---
+  useEffect(() => {
+    // GUARD: If a file was just loaded from the explorer, SKIP this sync to prevent overwrite
+    if (lastLoadedFilePathRef.current !== null) {
+      console.log("[Flowchart] Sync skipped: Manual file load in progress");
+      return;
+    }
+
+    const data = diagramData?.flowchart?.data;
+    if (data && Array.isArray(data) && data.length > 0) {
+      // ONLY hydrate from context if Redux is currently empty
+      // This prevents switching screens from overwriting local unsaved changes with stale backend data
+      if (tabs.length === 0) {
+        console.log("[Flowchart] Hydrating Redux tabs from central data:", data.length, "tabs");
+        hydratingRef.current = true;
+        dispatch(setTabs(data));
+        
+        // Set active tab if it's not set
+        const firstTabId = data[0].id;
+        if (!activeTabId || !data.find(t => t.id === activeTabId)) {
+          dispatch(setActiveTab(firstTabId));
+        }
+        
+        setTimeout(() => hydratingRef.current = false, 100);
+      }
+    }
+  }, [diagramData?.flowchart?.data, dispatch, tabs.length]);
+
   const userId = user?.userId || user?._id || user?.id;
 
   // History & snapshots
@@ -4606,8 +4751,6 @@ function DiagramEditor() {
           }),
           { markDirty: true, scheduleSave: true },
         );
-        // Also force save to localStorage as backup
-        saveCanvasNow();
       }
     };
 
@@ -4622,7 +4765,7 @@ function DiagramEditor() {
         handleBeforeTabSwitch,
       );
     };
-  }, [updateActiveTabState, rf, saveCanvasNow]);
+  }, [updateActiveTabState, rf]);
 
   // PART 2: Restore state when active tab changes
   useEffect(() => {
@@ -4665,6 +4808,14 @@ function DiagramEditor() {
         if (newState.viewport && rf) {
           setTimeout(() => {
             rf.setViewport(newState.viewport);
+            // If it's a manual file load, also perform fitView (limited to maxZoom 1)
+            if (lastLoadedFilePathRef.current) {
+              rf.fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
+              // Reset the ref after viewing to allow future syncs if needed
+              setTimeout(() => {
+                  lastLoadedFilePathRef.current = null;
+              }, 1000);
+            }
           }, 50);
         }
       }
@@ -5163,24 +5314,19 @@ function DiagramEditor() {
     scheduleSnapshot();
   }, [scheduleSnapshot]);
 
-  const onDragStart = (event, shape) => {
+  const handlePaletteDragStart = useCallback((event, item) => {
     let payload;
-    if (shape.type === "genericShape") {
+    if (item.id && item.label) {
       payload = JSON.stringify({
         type: "genericShape",
-        data: { shapeId: shape.shapeId, label: shape.label },
-      });
-    } else if (shape.svgSrc) {
-      payload = JSON.stringify({
-        type: shape.type,
-        data: { src: shape.svgSrc, label: shape.label },
+        data: { shapeId: item.id, label: item.label },
       });
     } else {
-      payload = shape.type;
+      payload = item.type || JSON.stringify(item);
     }
     event.dataTransfer.setData("application/reactflow", payload);
     event.dataTransfer.effectAllowed = "move";
-  };
+  }, []);
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
@@ -5205,13 +5351,16 @@ function DiagramEditor() {
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
-      const payloadStr = event.dataTransfer.getData("application/reactflow");
-      if (!payloadStr) return;
+      const payload = event.dataTransfer.getData("application/reactflow");
+      if (!payload) {
+        console.warn("[Flowchart] onDrop: No payload found");
+        return;
+      }
 
-      let type = payloadStr;
+      let type = payload;
       let extraData = {};
       try {
-        const parsed = JSON.parse(payloadStr);
+        const parsed = JSON.parse(payload);
         if (parsed && parsed.type) {
           type = parsed.type;
           extraData = parsed.data || {};
@@ -5224,6 +5373,7 @@ function DiagramEditor() {
         x: event.clientX,
         y: event.clientY,
       });
+
       const id = getId();
       const baseData = {
         label: "",
@@ -5241,9 +5391,21 @@ function DiagramEditor() {
         : undefined;
 
       // Compute appropriate initial size based on shape type
-      let initialWidth = 90;
-      let initialHeight = 50;
+      let initialWidth = 80;
+      let initialHeight = 80;
 
+      // Special handling for common flowchart shapes to have better aspect ratios
+      if (extraData.shapeId?.includes('diamond')) {
+        initialWidth = 80;
+        initialHeight = 80;
+      } else if (extraData.shapeId?.includes('rectangle') || extraData.shapeId?.includes('process')) {
+        initialWidth = 100;
+        initialHeight = 60;
+      } else if (extraData.shapeId?.includes('oval') || extraData.shapeId?.includes('terminator')) {
+        initialWidth = 100;
+        initialHeight = 50;
+      }
+      
       if (type === "decision" || type === "ellipse") {
         initialWidth = 60;
         initialHeight = 60;
@@ -5261,8 +5423,8 @@ function DiagramEditor() {
         initialHeight = 60;
       }
 
-      setNodes((nds) =>
-        nds.concat({
+      setNodes((nds) => {
+        const newNodes = nds.concat({
           id,
           type,
           position,
@@ -5272,8 +5434,10 @@ function DiagramEditor() {
             ...(slots ? { slots } : {}),
           },
           style: { width: initialWidth, height: initialHeight },
-        }),
-      );
+        });
+        console.log("[Flowchart] setNodes new count:", newNodes.length);
+        return newNodes;
+      });
     },
     [rf, setNodes],
   );
@@ -5482,22 +5646,74 @@ function DiagramEditor() {
     setSelected,
   ]);
 
-  // Save / Load as JSON
-  const saveDiagram = () => {
-    const payload = {
+  const toast = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const saveDiagram = async () => {
+    if (!activeTabId || !activeTab) return;
+
+    setIsSaving(true);
+    const payloadContent = {
       nodes,
       edges,
       viewport: rf.getViewport(),
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "diagram.json";
-    a.click();
-    URL.revokeObjectURL(url);
+
+    console.log("------------------------------------------");
+    console.log("[Flowchart] EXPLICIT SAVE TRIGGERED");
+    console.log("[Flowchart] Nodes Count:", nodes.length);
+    console.log("[Flowchart] Edges Count:", edges.length);
+    console.log("------------------------------------------");
+
+    try {
+      // 1. Save to the specialized Flowchart backend API
+      // Update Redux tabs state first to ensure consistency
+      const latestTabs = tabs.map(t => 
+        t.id === activeTabId 
+          ? { ...t, state: payloadContent } 
+          : t
+      );
+      
+      await saveDiagramData(payloadContent, 'flowchart');
+
+      // 2. Save to the individual project file
+      if (activeProjectId) {
+        const tabName = activeTab.name || "flow_diagram";
+        const sanitizedName = sanitizeSegment(tabName);
+        const fileName = `${sanitizedName}.json`;
+
+        await canvasIntegration.saveCanvasToFile(
+          payloadContent,
+          `Flowchart/${fileName}`,
+          activeProjectId,
+        );
+        console.log(`[Flowchart] Saved to project file: Flowchart/${fileName}`);
+      }
+
+      // 3. Mark tab as clean in Redux
+      dispatch(markTabClean(activeTabId));
+
+      toast({
+        title: "Flowchart Saved",
+        description: `"${activeTab.name}" has been saved successfully.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+        position: "top-right",
+      });
+    } catch (error) {
+      console.error("[Flowchart] Save failed:", error);
+      toast({
+        title: "Save Failed",
+        description: error.message || "An error occurred while saving.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "top-right",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const loadDiagram = () => {
@@ -5539,7 +5755,6 @@ function DiagramEditor() {
 
   const selectedEntity = getSelectedEntity();
 
-  const navigate = useNavigate();
   const handleTabChange = useCallback(
     (tab) => {
       const routes = {
@@ -5600,72 +5815,154 @@ function DiagramEditor() {
     };
   }, [activeProjectId, userId]);
 
+  // (useEffect removed from here and moved below handleFileClick)
+
+
   // File click handler for project integration
   const handleFileClick = useCallback(
     async (filePath, fileName, parsedContent, fileData) => {
       try {
-        console.log("File clicked in Flowchart:", fileName, filePath);
+        // Basic validation
+        if (!parsedContent || typeof parsedContent !== 'object') {
+          console.error("[Flowchart] Invalid parsed content for file:", fileName);
+          return;
+        }
 
-        // Load file using canvas integration
-        const result = await canvasIntegration.loadFileToCanvas(
+        // Extract diagram state (handle both flat and nested formats)
+        const diagramState = parsedContent.nodes ? parsedContent : (parsedContent.state || parsedContent);
+        const hasNodes = diagramState.nodes && Array.isArray(diagramState.nodes);
+        const hasEdges = diagramState.edges && Array.isArray(diagramState.edges);
+
+        console.log("------------------------------------------");
+        console.log("[Flowchart] File Clicked:", fileName);
+        console.log("[Flowchart] File Path:", filePath);
+        console.log("[Flowchart] Nodes Count:", diagramState?.nodes?.length || 0);
+        console.log("[Flowchart] Edges Count:", diagramState?.edges?.length || 0);
+        console.log("------------------------------------------");
+
+        // Check if tab already exists for this file (Improved matching)
+        const strippedFileName = fileName.replace(/\.json$/, "");
+        const normalize = (s) => (s || "").replace(/blockdiagram_|flowchart_/gi, "").replace(/[\s\-_]/g, "").toLowerCase();
+        const normalizedStripped = normalize(strippedFileName);
+
+        const existingTab = tabs.find(
+          (tab) => tab.fileId === filePath || normalize(tab.name) === normalizedStripped
+        );
+
+        if (existingTab) {
+          // Only update if needed
+          const hasNodes = parsedContent.nodes && Array.isArray(parsedContent.nodes);
+          const hasEdges = parsedContent.edges && Array.isArray(parsedContent.edges);
+
+          if (activeTabId !== existingTab.id) {
+            console.log("[Flowchart] Found existing tab. Switching to ID:", existingTab.id);
+            dispatch(setActiveTab(existingTab.id));
+          }
+
+          console.log("[Flowchart] Force-updating existing tab from file content");
+          dispatch(updateTabState({
+            tabId: existingTab.id,
+            nodes: diagramState.nodes || [],
+            edges: diagramState.edges || [],
+            viewport: diagramState.viewport || null
+          }));
+        } else {
+          console.log("[Flowchart] Creating new tab for:", fileName);
+          // Load file into a NEW tab
+          const newId = `tab-${Date.now()}`;
+          dispatch(
+            addTab({
+              id: newId,
+              name: strippedFileName,
+              fileId: filePath,
+              state: {
+              nodes: diagramState?.nodes || [],
+              edges: diagramState?.edges || [],
+              viewport: diagramState?.viewport || null,
+            },
+              dirty: false,
+            })
+          );
+        }
+
+        // Force viewport update on next tick
+        if (parsedContent.viewport && rf) {
+            setTimeout(() => {
+                rf.setViewport(parsedContent.viewport);
+                rf.fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
+            }, 100);
+        }
+
+        // Load file using canvas integration (for backend sync if needed)
+        await canvasIntegration.loadFileToCanvas(
           filePath,
           fileName,
           parsedContent,
           fileData,
         );
 
-        if (result.success) {
-          // Apply content to canvas if it's JSON diagram data
-          if (
-            fileName.endsWith(".json") &&
-            parsedContent &&
-            typeof parsedContent === "object"
-          ) {
-            if (parsedContent.nodes && parsedContent.edges) {
-              setNodes(parsedContent.nodes || []);
-              setEdges(parsedContent.edges || []);
-
-              // Apply viewport if available
-              if (parsedContent.viewport && rf) {
-                setTimeout(() => {
-                  rf.setViewport(parsedContent.viewport);
-                }, 100);
-              }
-            }
-          }
-
-          console.log(`Loaded ${fileName} into Flowchart canvas`);
-        } else {
-          console.error("Failed to load file:", result.error);
-        }
       } catch (error) {
-        console.error("Failed to handle file click:", error);
+        console.error("[Flowchart] Failed to handle file click:", error);
       }
     },
-    [canvasIntegration, setNodes, setEdges, rf],
+    [canvasIntegration, dispatch, tabs, activeTabId],
   );
 
-  // Setup auto-save functionality for Flowchart
+  // Use a ref to track the last loaded file path to avoid redundant loading
+  const lastLoadedFilePathRef = useRef(null);
+
+  // Handle incoming file from navigation state (sidebar click)
   useEffect(() => {
-    const activeProject = projectFileManager.getActiveProject();
-    if (!activeProject) return;
+    const state = location.state;
+    if (state?.filePath && activeProjectId) {
+      const { filePath, fileContent } = state;
 
-    // Debounced save trigger
-    const timer = setTimeout(() => {
-      const content = {
-        nodes,
-        edges,
-        viewport: rf.getViewport(),
-      };
-      canvasIntegration.saveCanvasToFile(
-        content,
-        "Flowchart/main_flow.json",
-        activeProject.id,
-      );
-    }, 1000);
+      // Skip if this file was just loaded
+      if (filePath === lastLoadedFilePathRef.current) {
+        return;
+      }
 
-    return () => clearTimeout(timer);
-  }, [nodes, edges, rf, canvasIntegration]);
+      const fileName = filePath.split("/").pop();
+      console.log("[Flowchart] Loading file from navigation state:", filePath);
+
+      // Use fileContent if passed from Explorer, otherwise load from projectFileManager
+      const content = fileContent || projectFileManager.loadFile(activeProjectId, filePath);
+
+      if (content) {
+        try {
+          // Only parse if it's a string
+          const parsed = typeof content === "string" ? JSON.parse(content) : content;
+          console.log("[Flowchart] Parsed JSON Content:", parsed);
+
+          lastLoadedFilePathRef.current = filePath;
+          handleFileClick(filePath, fileName, parsed, {
+            projectId: activeProjectId,
+          });
+
+          // Reset the ref after a delay to allow background syncs to resume later
+          setTimeout(() => {
+            lastLoadedFilePathRef.current = null;
+            if (rf && rf.fitView) {
+              rf.fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
+            }
+          }, 2000);
+
+          // Clear state after loading to prevent re-loads on other state changes
+          navigate(location.pathname, { replace: true, state: {} });
+        } catch (e) {
+          console.error("[Flowchart] Failed to parse diagram file:", e);
+        }
+      }
+    }
+  }, [
+    location.state,
+    activeProjectId,
+    handleFileClick,
+    navigate,
+    location.pathname,
+  ]);
+
+  // Auto-save REMOVED - Using manual Save button instead
 
   const showExportPreview = useCallback((dataUrl, fileName) => {
     const host = reactFlowWrapper.current;
@@ -5791,7 +6088,7 @@ function DiagramEditor() {
 
       // Define margins
       const padding = 50;
-      const watermarkHeight = 40;
+      const watermarkHeight = 120;
 
       // Calculate dimensions of the export image
       const imageWidth = nodesBounds.width + (padding * 2);
@@ -5811,7 +6108,7 @@ function DiagramEditor() {
       Object.assign(watermark.style, {
         position: "absolute",
         left: `${nodesBounds.x + nodesBounds.width - 200}px`, // 200px approx width
-        top: `${nodesBounds.y + nodesBounds.height + 20}px`,  // 20px below content
+        top: `${nodesBounds.y + nodesBounds.height + 80}px`,  // 80px below content
         width: "fit-content",
         display: "flex",
         alignItems: "center",
@@ -5944,6 +6241,9 @@ function DiagramEditor() {
     };
   }, [reactFlowInstance]);
 
+  const [showProperties, setShowProperties] = useState(false);
+
+
   return (
     <div className="diagram-builder">
       <EditorNavbar
@@ -5957,7 +6257,10 @@ function DiagramEditor() {
       />
       <div className="content">
         {/* Left palette */}
-        <div className="sidebarr">
+        <div 
+          className="sidebarr fc-sidebar-scope"
+          style={{ width: sidebarWidth, minWidth: sidebarWidth, maxWidth: sidebarWidth, flex: `0 0 ${sidebarWidth}px` }}
+        >
           <div className="sidebar-toggle-bar">
             <button
               type="button"
@@ -6025,7 +6328,7 @@ function DiagramEditor() {
                                   key={s.id || `${s.type}-${s.label}`}
                                   className="shape-card"
                                   draggable
-                                  onDragStart={(e) => onDragStart(e, s)}
+                                  onDragStart={(e) => handlePaletteDragStart(e, s)}
                                   title={s.label}
                                 >
                                   <div className="shape-svg">{s.icon}</div>
@@ -6051,6 +6354,17 @@ function DiagramEditor() {
           </div>
         </div>
 
+        {/* Sidebar Drag Handle */}
+        <div
+          style={{
+            width: '6px',
+            background: 'transparent',
+            cursor: 'col-resize',
+            zIndex: 10,
+          }}
+          onMouseDown={startResizing}
+        />
+
         {/* Canvas */}
         <div className="diagram-container">
           <div
@@ -6063,7 +6377,7 @@ function DiagramEditor() {
               alignItems: "center",
             }}
           >
-            <DiagramTabs title="Flowchart Workspace" kind="flowchart" />
+            <DiagramTabs title="Flowchart Workspace" kind="flowchart" onSaveJSON={saveDiagram} />
             <div style={{ display: 'flex', gap: '8px' }}>
               {/* <button
                 onClick={async () => {
@@ -6102,12 +6416,23 @@ function DiagramEditor() {
               <CreateProductButton />
             </div>
           </div>
-          <div className="canvas-frame">
+          <div className="canvas-frame" onDrop={onDrop} onDragOver={onDragOver}>
+            {isSwitchingProject && <DiagramLoader />}
+
+            {hasFetchedOnce && !isSwitchingProject && nodes.length === 0 && (
+              <DiagramEmptyState />
+            )}
+
             <div
               className="rf-wrapper"
               ref={reactFlowWrapper}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
+              style={{
+                width: '100%',
+                height: '100%',
+                opacity: (isSwitchingProject || !isHydrated) ? 0.6 : 1,
+                pointerEvents: isSwitchingProject ? 'none' : 'all',
+                transition: 'opacity 0.2s ease'
+              }}
             >
               <ReactFlow
                 nodes={nodes}
@@ -6120,7 +6445,7 @@ function DiagramEditor() {
                 onInit={setReactFlowInstance}
                 onNodeDragStop={onNodeDragStop}
                 onSelectionChange={onSelectionChange}
-                onPaneClick={exitEditing}
+                onPaneClick={(e) => { exitEditing(e); setShowProperties(false); }}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 connectionLineType={ConnectionLineType.SmoothStep}
@@ -6137,8 +6462,7 @@ function DiagramEditor() {
                 snapGrid={[16, 16]}
                 minZoom={0.1}
                 maxZoom={4}
-                fitView
-                fitViewOptions={{ padding: 0.2 }}
+                fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
               >
                 <MiniMap className="export-ignore" />
                 <Controls className="export-ignore">
@@ -6152,19 +6476,44 @@ function DiagramEditor() {
                 <Background className="export-ignore" gap={16} size={1} />
               </ReactFlow>
             </div>
+
+            {/* Floating Properties Toggle Button */}
+            {!showProperties && (
+              <button
+                className="floating-props-toggle"
+                onClick={() => setShowProperties(true)}
+                title="Show Properties"
+                aria-label="Show Properties Panel"
+              >
+                <Settings size={16} />
+              </button>
+            )}
+
+            {/* Floating Properties Panel */}
+            <div className={`floating-properties-panel${showProperties ? ' is-visible' : ''}`}>
+              <div className="floating-props-header">
+                <span>Properties</span>
+                <button
+                  className="floating-props-close"
+                  onClick={() => setShowProperties(false)}
+                  title="Close"
+                  aria-label="Close Properties Panel"
+                >
+                  ✕
+                </button>
+              </div>
+              <PropertiesPanel
+                selectedNode={selected?.kind === "node" ? selectedEntity : null}
+                onNodeUpdate={(nodeId, property, value) => {
+                  updateSelectedNode((n) => ({
+                    ...n,
+                    data: { ...n.data, [property]: value },
+                  }));
+                }}
+              />
+            </div>
           </div>
         </div>
-
-        {/* Right properties panel */}
-        <PropertiesPanel
-          selectedNode={selected?.kind === "node" ? selectedEntity : null}
-          onNodeUpdate={(nodeId, property, value) => {
-            updateSelectedNode((n) => ({
-              ...n,
-              data: { ...n.data, [property]: value },
-            }));
-          }}
-        />
       </div>
     </div>
   );

@@ -49,7 +49,7 @@
 
 // //     try {
 // //       const response = await axios.post(
-// //         `https://eureka.innotrat.in/product/:productID/definitionNew`,
+// //         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
 // //         resultData
 // //       );
 // //       console.log("Data successfully sent to the server:", response.data);
@@ -772,7 +772,7 @@ const CreateProductDefinition = ({
 
     try {
       const response = await axios.post(
-        `${baseURL}/product/${values.productID}/definition`,
+        `${baseURL}/product/${values.productID}/definitionNew`,
         resultData
       );
       console.log("Data successfully sent to the server:", response.data);

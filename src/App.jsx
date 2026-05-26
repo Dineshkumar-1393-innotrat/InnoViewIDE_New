@@ -154,9 +154,10 @@ import FlowchartTest from "./components/FlowchartTest";
 import BlockProgramming from "./components/BlockProgramming";
 import MathCodeEditor from "./components/MathCodeEditor";
 import MeetingPage from "./components/MeetingPage";
-import RuleEngineDashboard from "./components/RuleEngine/RuleEngineDashboard";
+
 
 const App = () => {
+  const location = useLocation();
   const [currentPanel, setCurrentPanel] = useState("fileExplorer");
 
   const handleToggleDebug = () => {
@@ -194,8 +195,7 @@ const App = () => {
         <WorkspaceStateProvider>
           <AuthProvider>
             <MeetingProvider>
-              {/* <Navbar /> */}
-
+            <Box minH="100vh" display="flex" flexDirection="column" overflowX="hidden">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/template" element={<Template />} />
@@ -242,13 +242,15 @@ const App = () => {
                 <Route path="/mathcodeeditor" element={<MathCodeEditor />} />
                 <Route path="/meet" element={<MeetingPage />} />
                 <Route path="/meet/:meetingId" element={<MeetingPage />} />
-                <Route path="/rule-engine" element={<RuleEngineDashboard />} />
+
                 <Route path="/autosave-demo" element={<AutoSaveDemo />} />
               </Routes>
+            </Box>
 
-              {/* Auto-save status indicator */}
+            {/* AutoSaveStatus hidden on /simulation route per user request */}
+            {location.pathname !== "/simulation" && (
               <AutoSaveStatus position="corner" />
-
+            )}
               {/* <Footer /> */}
             </MeetingProvider>
           </AuthProvider>

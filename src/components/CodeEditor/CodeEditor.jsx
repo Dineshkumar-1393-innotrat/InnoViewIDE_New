@@ -149,7 +149,7 @@ const CodeEditor = ({
     tabs.find((tab) => tab.id === activeTab)?.content || "";
 
   return (
-    <Flex direction="column" h="100vh" w="100%" mt={4} overflow="hidden">
+    <Flex direction="column" h="100vh" w="100%" overflow="hidden">
       {/* Code Editor & Sidebar */}
       <Flex flex="1" overflow="hidden">
         {/* Main Code Editor Section */}
@@ -159,7 +159,7 @@ const CodeEditor = ({
           {/* Code Editor (Scrollable) */}
           <Box
             flex="1"
-            height={"40vh"}
+            height={{ base: "40vh", md: "60vh", lg: "70vh" }}
             overflow="auto"
             bg="gray.900"
             position={"relative"}

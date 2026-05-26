@@ -15,7 +15,14 @@ import { useWorkspaceState } from '../contexts/WorkspaceStateContext';
  */
 export const useAutoSave = (options = {}) => {
   const location = useLocation();
-  const { user, activeProjectId } = useProject?.() ?? {};
+  const { 
+    user, 
+    activeProjectId, 
+    activeProductId,
+    isSwitchingProject, 
+    isHydrated, 
+    isRestoring 
+  } = useProject?.() ?? {};
   const workspaceState = useWorkspaceState?.();
 
   const {
@@ -173,7 +180,11 @@ export const useAutoSave = (options = {}) => {
    * Schedule debounced save
    */
   const scheduleSave = useCallback((delay = autoSaveDelay) => {
-    if (!enabled) return;
+    if (!enabled || !isHydrated || isSwitchingProject || isRestoring) {
+      if (!enabled) return;
+      console.warn(`[useAutoSave] scheduleSave blocked: isHydrated=${isHydrated}, switching=${isSwitchingProject}, restoring=${isRestoring}`);
+      return;
+    }
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -189,7 +200,11 @@ export const useAutoSave = (options = {}) => {
    * Trigger immediate save
    */
   const saveNow = useCallback(async () => {
-    if (!enabled) return false;
+    if (!enabled || !isHydrated || isSwitchingProject || isRestoring) {
+      if (!enabled) return false;
+      console.warn(`[useAutoSave] saveNow blocked: isHydrated=${isHydrated}, switching=${isSwitchingProject}, restoring=${isRestoring}`);
+      return false;
+    }
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);

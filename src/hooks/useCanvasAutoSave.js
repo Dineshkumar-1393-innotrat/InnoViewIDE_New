@@ -49,11 +49,7 @@ const SCREEN_CONFIGS = {
         dataKeys: ['equations', 'canvasState'],
         defaultState: { equations: [], canvasState: {} }
     },
-    '/rule-engine': {
-        name: 'ruleengine',
-        dataKeys: ['rules', 'connections', 'canvasState'],
-        defaultState: { rules: [], connections: [], canvasState: {} }
-    }
+
 };
 
 /**
@@ -103,6 +99,15 @@ const loadFromLocalStorage = (key, defaultState) => {
         // Fall back to sessionStorage
         if (!stored) {
             stored = sessionStorage.getItem(key);
+        }
+
+        // Fallback to old "default" project ID key to recover yesterday's work
+        if (!stored && key.includes(`:${CANVAS_STORAGE_PREFIX.split(':')[1]}`)) {
+             const parts = key.split(':');
+             if (parts.length >= 5) {
+                const oldKey = `${parts[0]}:${parts[1]}:${parts[2]}:default:${parts[4]}`;
+                stored = localStorage.getItem(oldKey) || sessionStorage.getItem(oldKey);
+             }
         }
 
         if (stored) {

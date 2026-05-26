@@ -76,7 +76,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -258,7 +258,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -465,7 +465,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -680,7 +680,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNew`,
+//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -835,6 +835,7 @@ import {
 } from "@chakra-ui/react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import { productAPIBase } from "../utilities";
 
 const DefineProductOne = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -916,7 +917,7 @@ const DefineProductOne = () => {
 
     try {
       const response = await axios.post(
-        `https://eureka.innotrat.in/product/:productID/definitionNew`,
+        `${productAPIBase}/product/${productID}/definitionNew`,
         {
           productID,
           productName: deviceName,

@@ -993,11 +993,35 @@ import React, {
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { Rnd } from "react-rnd";
-import { Maximize, ZoomIn, ZoomOut, ArrowLeft, ArrowRight } from "lucide-react";
+import { Maximize, ZoomIn, ZoomOut, ArrowLeft, ArrowRight, Plus, Save } from "lucide-react";
 import { FiTrash } from "react-icons/fi";
 import { FaSearch } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { Monitor, Loader2 } from "lucide-react";
+
+// --- Gold Standard Transition Components ---
+const DiagramLoader = () => (
+  <div className="diagram-loader-overlay">
+    <div className="diagram-spinner" />
+    <span className="diagram-loader-text">Switching Project...</span>
+  </div>
+);
+
+const DiagramEmptyState = () => (
+  <div className="diagram-empty-state">
+    <div className="empty-state-content">
+      <div className="empty-state-icon">
+        <Monitor size={32} />
+      </div>
+      <h3 className="empty-state-title">No Simulation Found</h3>
+      <p className="empty-state-description">
+        This project doesn't have a simulation design yet.
+        Start by dragging components from the palette on the left.
+      </p>
+    </div>
+  </div>
+);
 
 // Import all your existing SVG icons
 import SoundAndVibrationsSensor from "../images/sound and vibrarions sensor.svg";
@@ -1085,6 +1109,16 @@ import {
   chakra,
   Tooltip,
   useToast,
+  SimpleGrid,
+  Drawer,
+  DrawerBody,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  useDisclosure,
+  IconButton,
+  Flex,
 } from "@chakra-ui/react";
 import { ToggleSwitch } from "./Toggle/Toggle";
 import { baseURL } from "../utilities";
@@ -1157,21 +1191,21 @@ const symbolsData = [
     category: "POWER ▼",
     items: [{ type: "svg", src: PowerSupply, name: "Power Supply" }],
   },
-  {
-    category: "CONNECTORS ▼",
-    items: [
-      // { type: "svg", src: Connectors, name: "Connectors" },
-      { type: "svg", src: Wire, name: "Wire" },
-      { type: "svg", src: RedWire, name: "RedWire" },
-      { type: "svg", src: GreenWire, name: "GreenWire" },
-      { type: "svg", src: BlackWire, name: "BlackWire" },
-      { type: "svg", src: Connectorone, name: "Connector Zone1" },
-      { type: "svg", src: Connectortwo, name: "Connector Zone2" },
-      { type: "svg", src: Connectorthree, name: "Connector Zone3" },
-      { type: "svg", src: Connectorfour, name: "Connector Zone4" },
-      { type: "svg", src: Connectorfive, name: "Connector Zone5" },
-    ],
-  },
+  // {
+  //   category: "CONNECTORS ▼",
+  //   items: [
+  //     // { type: "svg", src: Connectors, name: "Connectors" },
+  //     { type: "svg", src: Wire, name: "Wire" },
+  //     { type: "svg", src: RedWire, name: "RedWire" },
+  //     { type: "svg", src: GreenWire, name: "GreenWire" },
+  //     { type: "svg", src: BlackWire, name: "BlackWire" },
+  //     { type: "svg", src: Connectorone, name: "Connector Zone1" },
+  //     { type: "svg", src: Connectortwo, name: "Connector Zone2" },
+  //     { type: "svg", src: Connectorthree, name: "Connector Zone3" },
+  //     { type: "svg", src: Connectorfour, name: "Connector Zone4" },
+  //     { type: "svg", src: Connectorfive, name: "Connector Zone5" },
+  //   ],
+  // },
   {
     category: "AMPLIFIERS ▼",
     items: [{ type: "svg", src: Amplifier, name: "Amplifier" }],
@@ -1196,6 +1230,7 @@ import {
   updateTabContent,
   renameTab
 } from "../store/slices/simulationSlice";
+import { useResizableSidebar } from '../hooks/useResizableSidebar';
 
 const BlockDiagram = () => {
   const dispatch = useDispatch();
@@ -1251,7 +1286,12 @@ const BlockDiagram = () => {
     autoSaveDelay: 2000,
     priority: 3,
     onSave: (data) => {
-      console.log("[Simulation] Auto-saved canvas state:", data);
+      console.log("[Simulation] Auto-saved canvas state locally:", data);
+      // Use centralized save logic for Simulation
+      saveDiagramData({
+        symbols: data.droppedItems,
+        connections: data.connections
+      }, 'simulation');
     },
     onLoad: (loadedData) => {
       console.log("[Simulation] Loading saved canvas state:", loadedData);
@@ -1332,6 +1372,8 @@ const BlockDiagram = () => {
   // const [connections, setConnections] = useState(new Set()); // REMOVED - using Redux
   const [sparkEffects, setSparkEffects] = useState([]); // Track active spark animations
   const [rotatingItem, setRotatingItem] = useState(null); // Optimize rotation performance
+  const { isOpen: isSidebarOpen, onToggle: onToggleSidebar, onClose: onCloseSidebar } = useDisclosure({ defaultIsOpen: true });
+  const { sidebarWidth, startResizing } = useResizableSidebar(240, 160, 480);
 
   const [selectedProject, setSelectedProject] = useState(null);
   const [isProductDefined, setIsProductDefined] = useState(null);
@@ -1409,188 +1451,36 @@ const BlockDiagram = () => {
     activeProjectId,
     activeProductId,
     activeProductName,
-
     user,
+    diagramData,
+    saveDiagramData,
+    isSwitchingProject,
+    isHydrated,
+    isRestoring,
+    hasFetchedOnce,
+    transitionError
   } = useProject();
+
   // start
   // Add this effect to store productID in sessionStorage
 
-  const [isFetched, setIsFetched] = useState(false);
-  const lastSavedDiagrams = useRef(null);
-  const droppedItemsRef = useRef(droppedItems);
-
+  // --- Sync Redux Tabs with Central Project Data ---
   useEffect(() => {
-    droppedItemsRef.current = droppedItems;
-  }, [droppedItems]);
+    const data = diagramData?.simulation?.data;
+    if (data) {
+      console.log("[Simulation] Syncing Redux state with central data");
+      // Simulation usually has a specific structure or single tab behavior in this file
+      // If it's single-diagram, we update the active tab
+      const symbols = data.symbols || data.simulationDiagram || [];
+      const connections = data.connections || [];
 
-  const fetchSimulationDiagrams = useCallback(async () => {
-    try {
-      if (!activeProductId || !activeProjectId) return;
-
-      const url = `${baseURL}/api/v1/getStoredSimulationDiagramData/${activeProductId}/${activeProjectId}`;
-      console.log("Fetching from:", url);
-
-      const response = await axios.get(url);
-      console.log("Raw Response:", response.data);
-
-      if (
-        response?.data?.data?.length > 0 &&
-        Array.isArray(response.data.data[0]?.simulationDiagram)
-      ) {
-        const fetchedDiagrams = response.data.data[0].simulationDiagram.map(
-          (diagram) => ({
-            ...diagram,
-            id: diagram.id || Date.now() + Math.random(), // Ensure ID exists
-            symbol: {
-              ...diagram.symbol,
-              src: decodeURIComponent(diagram.symbol.src),
-            },
-            x: Number(diagram.x) || 0,
-            y: Number(diagram.y) || 0,
-            width: Number(diagram.width) || 120,
-            height: Number(diagram.height) || 120,
-            rotation: Number(diagram.rotation) || 0,
-          }),
-        );
-
-        console.log("Decoded simulation diagrams:", fetchedDiagrams);
-
-        // Only dispatch if data is actually different to prevent loops
-        if (JSON.stringify(fetchedDiagrams) !== JSON.stringify(droppedItemsRef.current)) {
-          dispatch(setTabSymbolsAndConnections({
-            tabId: activeTabId,
-            symbols: fetchedDiagrams,
-            connections: [] // Backend doesn't seem to store connections yet
-          }));
-        }
-
-        setIsFetched(true);
-        lastSavedDiagrams.current = fetchedDiagrams;
-      } else {
-        console.warn("No simulation diagrams found, initializing empty state.");
-        if (droppedItemsRef.current.length > 0) {
-          dispatch(setTabSymbolsAndConnections({
-            tabId: activeTabId,
-            symbols: [],
-            connections: []
-          }));
-        }
-        setIsFetched(false);
-        lastSavedDiagrams.current = [];
-      }
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
-        console.warn("No stored simulation diagrams yet for this project.");
-        if (droppedItemsRef.current.length > 0) {
-          dispatch(setTabSymbolsAndConnections({
-            tabId: activeTabId,
-            symbols: [],
-            connections: []
-          }));
-        }
-        setIsFetched(false);
-        lastSavedDiagrams.current = [];
-        return;
-      }
-      console.error("Error fetching diagrams:", err);
-      // Don't clear state on error unless necessary
-      setIsFetched(false);
+      dispatch(setTabSymbolsAndConnections({
+        tabId: activeTabId,
+        symbols: symbols,
+        connections: connections
+      }));
     }
-  }, [activeProductId, activeProjectId, dispatch]);
-
-  // Fetch diagrams when product or project changes
-  useEffect(() => {
-    if (!activeProductId || !activeProjectId) return;
-    fetchSimulationDiagrams();
-  }, [activeProductId, activeProjectId, fetchSimulationDiagrams]);
-
-  const saveSimulationDiagram = useCallback(async (data) => {
-    try {
-      const itemsToSave = data || droppedItemsRef.current;
-
-      if (!activeProductId || !activeProjectId || !user?.userId) return;
-
-      if (!isFetched && (!itemsToSave || itemsToSave.length === 0)) {
-        console.warn(
-          "Skipping save: Default empty state should not be auto-saved.",
-        );
-        return;
-      }
-
-      // Prevent saving if no changes
-      if (JSON.stringify(lastSavedDiagrams.current) === JSON.stringify(itemsToSave)) {
-        console.log("No changes detected, skipping save.");
-        return;
-      }
-
-      const payload = {
-        fileORFolderId: activeProjectId,
-        productId: activeProductId,
-        userId: user.userId,
-        simulationDiagram: itemsToSave, // Ensure all diagrams are saved
-      };
-
-      console.log("Saving or updating simulation diagram:", payload);
-
-      const fetchUrl = `${baseURL}/api/v1/getStoredSimulationDiagramData/${activeProductId}/${activeProjectId}`;
-      let existingDiagramId = null;
-
-      try {
-        const response = await axios.get(fetchUrl);
-        existingDiagramId = response.data?.data[0]?._id || null;
-      } catch (error) {
-        if (error.response?.status === 404) {
-          console.warn("No existing diagram found, creating a new one.");
-        } else {
-          console.error("Error checking existing diagram:", error);
-          return;
-        }
-      }
-
-      console.log("DiagramId:", existingDiagramId);
-
-      if (existingDiagramId) {
-        const response = await axios.put(
-          `${baseURL}/api/v1/updateStoredSimulationDiagramData/${existingDiagramId}`,
-          payload,
-        );
-
-        console.log(response.data);
-        console.log("Simulation diagram updated successfully!");
-      } else {
-        await axios.post(
-          `${baseURL}/api/v1/storeSimulationDiagramData`,
-          payload,
-        );
-        console.log("Simulation diagram saved successfully!");
-      }
-
-      // Update last saved reference after successful save
-      lastSavedDiagrams.current = itemsToSave;
-    } catch (error) {
-      console.error("Error saving/updating simulation diagram data:", error);
-    }
-  }, [activeProductId, activeProjectId, user, isFetched]);
-
-  // Auto-save every 5 seconds if data changes
-  // Auto-save every 5 seconds if data changes
-  useEffect(() => {
-    // Check for changes immediately when droppedItems changes
-    const currentItems = droppedItems;
-    if (!currentItems || currentItems.length === 0) return;
-
-    if (
-      lastSavedDiagrams.current &&
-      JSON.stringify(lastSavedDiagrams.current) !== JSON.stringify(currentItems)
-    ) {
-      saveSimulationDiagram(currentItems);
-    }
-
-    const interval = setInterval(() => {
-      saveSimulationDiagram(droppedItemsRef.current);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [droppedItems, saveSimulationDiagram]);
+  }, [diagramData?.simulation?.data, dispatch, activeTabId]);
 
   useEffect(() => {
     try {
@@ -1700,64 +1590,71 @@ const BlockDiagram = () => {
       setActiveSymbol(null);
       alert("Symbol deleted successfully!");
     }
-  };
+  }; // Added missing closing brace for handleDelete
 
-  const SNAP_THRESHOLD = 50; // Distance in pixels to trigger snap
-
-  // Calculate the best snap position
+  // Calculate the best snap position including edge-to-edge snapping
   const calculateSnapPosition = (movedItem, allItems) => {
     let bestX = movedItem.x;
     let bestY = movedItem.y;
     let snapped = false;
+    const SNAP_MARGIN = 30; // Closer threshold for final snap
 
     allItems.forEach((item) => {
       if (item.id === movedItem.id) return;
 
+      // 1. Center alignment (existing center-to-center snapping)
       const centerX1 = movedItem.x + movedItem.width / 2;
       const centerY1 = movedItem.y + movedItem.height / 2;
       const centerX2 = item.x + item.width / 2;
       const centerY2 = item.y + item.height / 2;
 
-      const distance = Math.sqrt(
-        Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2),
-      );
+      // Center-X alignment
+      if (Math.abs(centerX1 - centerX2) < SNAP_MARGIN) {
+        bestX = centerX2 - movedItem.width / 2;
+        snapped = true;
+      }
+      // Center-Y alignment
+      if (Math.abs(centerY1 - centerY2) < SNAP_MARGIN) {
+        bestY = centerY2 - movedItem.height / 2;
+        snapped = true;
+      }
 
-      // If close enough, snap to a position that aligns centers or edges
-      // For "magnetic" feel, let's pull it towards the other component but keep a small gap or align centers
-      // Here we implement a simple "gravity" pull towards the center if within threshold
-      if (distance < SNAP_THRESHOLD + 100) {
-        // Increased range for "pull"
-        // Calculate vector to target
-        const dx = centerX2 - centerX1;
-        const dy = centerY2 - centerY1;
+      // 2. Edge-to-Edge snapping (joining on sides) with small overlap for seamless feel
+      const OVERLAP = 15; // Adjustment for visual padding in hexagonal images
 
-        // If very close, snap to a fixed distance or align
-        // Let's try to align centers if they are somewhat aligned
-        if (Math.abs(dx) < SNAP_THRESHOLD) {
-          bestX = item.x + item.width / 2 - movedItem.width / 2; // Align vertically
-          snapped = true;
-        }
-        if (Math.abs(dy) < SNAP_THRESHOLD) {
-          bestY = item.y + item.height / 2 - movedItem.height / 2; // Align horizontally
-          snapped = true;
-        }
+      // Left of movedItem to Right of item
+      if (Math.abs(movedItem.x - (item.x + item.width - OVERLAP)) < SNAP_MARGIN) {
+        bestX = item.x + item.width - OVERLAP;
+        snapped = true;
+      }
+      // Right of movedItem to Left of item
+      if (Math.abs((movedItem.x + movedItem.width) - (item.x + OVERLAP)) < SNAP_MARGIN) {
+        bestX = item.x - movedItem.width + OVERLAP;
+        snapped = true;
+      }
+      // Top of movedItem to Bottom of item
+      if (Math.abs(movedItem.y - (item.y + item.height - OVERLAP)) < SNAP_MARGIN) {
+        bestY = item.y + item.height - OVERLAP;
+        snapped = true;
+      }
+      // Bottom of movedItem to Top of item
+      if (Math.abs((movedItem.y + movedItem.height) - (item.y + OVERLAP)) < SNAP_MARGIN) {
+        bestY = item.y - movedItem.height + OVERLAP;
+        snapped = true;
       }
     });
 
     return { x: bestX, y: bestY, snapped };
   };
-
   // Check if two components are close enough to be considered "connected"
-  const checkProximity = (item1, item2, threshold = 150) => {
-    // Increased threshold
-    const centerX1 = item1.x + item1.width / 2;
-    const centerY1 = item1.y + item1.height / 2;
-    const centerX2 = item2.x + item2.width / 2;
-    const centerY2 = item2.y + item2.height / 2;
+  // This uses the distance between nearest edges for more accurate side-joining
+  const checkProximity = (item1, item2, threshold = 60) => {
+    // Calculate the distance between the closest points of the two bounding boxes
+    const dx = Math.max(item2.x - (item1.x + item1.width), 0, item1.x - (item2.x + item2.width));
+    const dy = Math.max(item2.y - (item1.y + item1.height), 0, item1.y - (item2.y + item2.height));
 
-    const distance = Math.sqrt(
-      Math.pow(centerX2 - centerX1, 2) + Math.pow(centerY2 - centerY1, 2),
-    );
+    // Distance between rectangles
+    const distance = Math.sqrt(dx * dx + dy * dy);
 
     return distance <= threshold;
   };
@@ -1884,41 +1781,35 @@ const BlockDiagram = () => {
       item: { symbol },
     }));
     return (
-      <chakra.button
-        ref={drag}
-        display="flex"
-        alignItems="center"
-        gap={3}
-        w="100%"
-        p={3}
-        borderRadius="lg"
-        bg="rgba(39,55,77,0.35)"
-        border="1px solid rgba(221,230,237,0.2)"
-        boxShadow="0 10px 20px rgba(39,55,77,0.35)"
-        _hover={{ bg: "rgba(221,230,237,0.2)", transform: "translateY(-2px)" }}
-        transition="all 0.2s ease"
-        cursor="grab"
-        textAlign="left"
+      <Tooltip
+        label={symbol.name}
+        placement="right"
+        hasArrow
+        bg="#1e293b"
+        color="#ffffff"
+        fontSize="xs"
       >
-        <Box
-          w="48px"
-          h="48px"
-          borderRadius="lg"
-          bg="rgba(39,55,77,0.6)"
-          display="grid"
-          placeItems="center"
-          flexShrink={0}
+        <chakra.button
+          ref={drag}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          w="40px" // Fixed width for grid
+          h="40px" // Fixed height for grid
+          borderRadius="md"
+          bg="#ffffff"
+          border="1px solid #e2e8f0"
+          _hover={{ bg: "#f1f5f9", transform: "scale(1.05)" }}
+          transition="all 0.15s ease"
+          cursor="grab"
         >
           <img
             src={symbol.src}
             alt={symbol.name}
-            style={{ width: "32px", height: "32px" }}
+            style={{ width: "28px", height: "28px" }} // Slightly smaller icon
           />
-        </Box>
-        <Text fontSize="sm" fontWeight="600" color="#DDE6ED" noOfLines={2}>
-          {symbol.name}
-        </Text>
-      </chakra.button>
+        </chakra.button>
+      </Tooltip>
     );
   };
 
@@ -1933,8 +1824,8 @@ const BlockDiagram = () => {
               symbol: item.symbol,
               x: offset.x - 100,
               y: offset.y - 100,
-              width: 120,
-              height: 120,
+              width: 100, // Reduced default size
+              height: 100, // Reduced default size
               rotation: 0,
               id: Date.now() + Math.random(),
             };
@@ -2053,12 +1944,21 @@ const BlockDiagram = () => {
           className="canvas-placeholder"
           style={{
             width: "100%",
-            height: "100vh",
+            flex: 1,
+            minHeight: 0,
             position: "relative",
             backgroundColor: "white",
+            opacity: (isSwitchingProject || !isHydrated) ? 0.3 : 1,
+            pointerEvents: (isSwitchingProject || !isHydrated) ? 'none' : 'all',
+            transition: 'opacity 0.2s ease'
           }}
           onClick={() => setActiveSymbol(null)} // Deselects when clicking outside
         >
+          {isSwitchingProject && <DiagramLoader />}
+
+          {hasFetchedOnce && !isSwitchingProject && droppedItems.length === 0 && (
+            <DiagramEmptyState />
+          )}
           {/* Connection Lines Layer */}
           <svg
             style={{
@@ -2234,28 +2134,7 @@ const BlockDiagram = () => {
                     🔄 {/* Unicode icon for rotation visual cue */}
                   </div>
                 )}
-                {/* Size display overlay */}
-                {activeSymbol === index && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: "-35px",
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      background: "rgba(0, 0, 0, 0.8)",
-                      color: "white",
-                      padding: "4px 12px",
-                      borderRadius: "4px",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      whiteSpace: "nowrap",
-                      pointerEvents: "none",
-                      zIndex: 1000,
-                    }}
-                  >
-                    {Math.round(item.width)} × {Math.round(item.height)} px
-                  </div>
-                )}
+                {/* Size display overlay removed per user request */}
               </div>
             </Rnd>
           ))}
@@ -2334,9 +2213,176 @@ const BlockDiagram = () => {
     );
   };
 
+  const SidebarContent = (
+  <>
+<Box
+              display="flex"
+              flexDirection="column"
+              px={2}
+              py={3}
+              h="100%"
+              bg="#f8fafc"
+              borderRight="1px solid #e2e8f0"
+              gap={3}
+            >
+              <Stack direction="row" spacing={2}>
+                <chakra.button
+                  onClick={() => setSidebarMode("explorer")}
+                  flex="1"
+                  py={1}
+                  borderRadius="md"
+                  fontWeight="600"
+                  fontSize="sm"
+                  letterSpacing="0.05em"
+                  textTransform="uppercase"
+                  color={sidebarMode === "explorer" ? "#1e293b" : "#64748b"}
+                  bg={
+                    sidebarMode === "explorer"
+                      ? "#e2e8f0"
+                      : "transparent"
+                  }
+                  border={sidebarMode === "explorer" ? "1px solid #e2e8f0" : "1px solid transparent"}
+                  transition="all 0.2s ease"
+                  _hover={{
+                    bg:
+                      sidebarMode === "explorer"
+                        ? "#ffffff"
+                        : "rgba(0,0,0,0.05)",
+                  }}
+                  boxShadow={sidebarMode === "explorer" ? "sm" : "none"}
+                >
+                  Explorer
+                </chakra.button>
+                <chakra.button
+                  onClick={() => setSidebarMode("components")}
+                  flex="1"
+                  py={2}
+                  borderRadius="md"
+                  fontWeight="600"
+                  fontSize="sm"
+                  letterSpacing="0.05em"
+                  textTransform="uppercase"
+                  color={sidebarMode === "components" ? "#1e293b" : "#64748b"}
+                  bg={
+                    sidebarMode === "components"
+                      ? "#e2e8f0"
+                      : "transparent"
+                  }
+                  border={sidebarMode === "components" ? "1px solid #e2e8f0" : "1px solid transparent"}
+                  transition="all 0.2s ease"
+                  _hover={{
+                    bg:
+                      sidebarMode === "components"
+                        ? "#ffffff"
+                        : "rgba(0,0,0,0.05)",
+                  }}
+                  boxShadow={sidebarMode === "components" ? "sm" : "none"}
+                >
+                  Components
+                </chakra.button>
+              </Stack>
+
+              {sidebarMode === "explorer" ? (
+                <Box
+                  flex="1"
+                  overflowY="auto"
+                  borderRadius="lg"
+                  border="1px solid #e2e8f0"
+                  bg="#ffffff"
+                  px={3}
+                  py={4}
+                >
+                  <FileExplorer variant="diagram" />
+                </Box>
+              ) : (
+                <Box flex="1" display="flex" flexDirection="column" gap={4}>
+                  <InputGroup size="sm">
+                    <InputLeftElement pointerEvents="none">
+                      <FaSearch color="#94a3b8" />
+                    </InputLeftElement>
+                    <Input
+                      type="text"
+                      placeholder="Search sensors, actuators..."
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      borderRadius="full"
+                      border="1px solid #e2e8f0"
+                      bg="#ffffff"
+                      color="#1e293b"
+                      _placeholder={{ color: "#94a3b8" }}
+                      _focus={{
+                        borderColor: "#3b82f6",
+                        boxShadow: "0 0 0 1px #3b82f6",
+                      }}
+                    />
+                  </InputGroup>
+
+                  <VStack
+                    align="stretch"
+                    spacing={5}
+                    overflowY="auto"
+                    className="symbol-grid"
+                  >
+                    {filteredSymbols.length === 0 ? (
+                      <Center py={12}>
+                        <Text color="#64748b">
+                          No components found.
+                        </Text>
+                      </Center>
+                    ) : (
+                      filteredSymbols.map((section, sectionIndex) => (
+                        <Box key={sectionIndex} className="symbol-section" style={{ backgroundColor: "transparent", border: "none", boxShadow: "none" }}>
+                          <chakra.button
+                            onClick={() => toggleCategory(section.category)}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            width="100%"
+                            px={3}
+                            py={2}
+                            borderRadius="md"
+                            bg="#ffffff"
+                            border="1px solid #e2e8f0"
+                            color="#1e293b"
+                            fontSize="xs"
+                            fontWeight="700"
+                            letterSpacing="0.08em"
+                            textTransform="uppercase"
+                            transition="all 0.2s ease"
+                            _hover={{ bg: "#f8fafc" }}
+                          >
+                            {section.category.replace(" ▼", "")}
+                            <Text fontSize="sm" color="#64748b">
+                              {openCategories[section.category] ? "▲" : "▼"}
+                            </Text>
+                          </chakra.button>
+
+                          {openCategories[section.category] && (
+                            <SimpleGrid
+                              columns={4}
+                              mt={3}
+                              spacing={2}
+                              px={1}
+                              className="symbol-items"
+                            >
+                              {section.items.map((symbol, symbolIndex) => (
+                                <SymbolItem key={symbolIndex} symbol={symbol} />
+                              ))}
+                            </SimpleGrid>
+                          )}
+                        </Box>
+                      ))
+                    )}
+                  </VStack>
+                </Box>
+              )}
+            </Box>
+  </>
+);
+
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flowchart-container">
+      <div className="flowchart-container" style={{ backgroundColor: "#ffffff" }}>
         <EditorNavbar activeTab="Simulation" onTabChange={handleTabChange} />
         <div
           className="top-controls"
@@ -2375,7 +2421,7 @@ const BlockDiagram = () => {
           <Box display="flex" alignItems="center" gap={3} justifyContent="flex-end" width="100%">
             <SimulationOne />
 
-            <SimulationPopup>
+            {/* <SimulationPopup>
               <Button
                 size="sm"
                 colorScheme="teal"
@@ -2386,7 +2432,7 @@ const BlockDiagram = () => {
               >
                 Code
               </Button>
-            </SimulationPopup>
+            </SimulationPopup> */}
 
             <Button
               width="auto"
@@ -2403,185 +2449,97 @@ const BlockDiagram = () => {
           </Box>
         </div>
 
-        <div className="main-content">
-          <div className="sidebar">
-            <Box
-              display="flex"
-              flexDirection="column"
-              px={4}
-              py={6}
-              h="100%"
-              bg="#27374D"
-              gap={5}
-            >
-              <Stack direction="row" spacing={2}>
-                <chakra.button
-                  onClick={() => setSidebarMode("explorer")}
-                  flex="1"
-                  py={2}
-                  borderRadius="md"
-                  fontWeight="600"
-                  fontSize="sm"
-                  letterSpacing="0.05em"
-                  textTransform="uppercase"
-                  color={sidebarMode === "explorer" ? "#27374D" : "#DDE6ED"}
-                  bg={
-                    sidebarMode === "explorer"
-                      ? "#DDE6ED"
-                      : "rgba(221,230,237,0.12)"
-                  }
-                  border="1px solid rgba(221,230,237,0.24)"
-                  transition="all 0.2s ease"
-                  _hover={{
-                    bg:
-                      sidebarMode === "explorer"
-                        ? "#B0C4D8"
-                        : "rgba(221,230,237,0.2)",
-                  }}
-                >
-                  Explorer
-                </chakra.button>
-                <chakra.button
-                  onClick={() => setSidebarMode("components")}
-                  flex="1"
-                  py={2}
-                  borderRadius="md"
-                  fontWeight="600"
-                  fontSize="sm"
-                  letterSpacing="0.05em"
-                  textTransform="uppercase"
-                  color={sidebarMode === "components" ? "#27374D" : "#DDE6ED"}
-                  bg={
-                    sidebarMode === "components"
-                      ? "#DDE6ED"
-                      : "rgba(221,230,237,0.12)"
-                  }
-                  border="1px solid rgba(221,230,237,0.24)"
-                  transition="all 0.2s ease"
-                  _hover={{
-                    bg:
-                      sidebarMode === "components"
-                        ? "#B0C4D8"
-                        : "rgba(221,230,237,0.2)",
-                  }}
-                >
-                  Components
-                </chakra.button>
-              </Stack>
+        <div className="main-content" style={{ backgroundColor: "#ffffff" }}>
+          
+          {/* Mobile Sidebar */}
+          <Drawer isOpen={isSidebarOpen} placement="left" onClose={onCloseSidebar} size="xs">
+            <DrawerOverlay display={{ base: "block", lg: "none" }} />
+            <DrawerContent display={{ base: "block", lg: "none" }} bg="#f8fafc">
+              <DrawerCloseButton />
+              <DrawerHeader borderBottomWidth="1px" fontSize="sm">Components</DrawerHeader>
+              <DrawerBody p={0}>
+                {SidebarContent}
+              </DrawerBody>
+            </DrawerContent>
+          </Drawer>
 
-              {sidebarMode === "explorer" ? (
-                <Box
-                  flex="1"
-                  overflowY="auto"
-                  borderRadius="lg"
-                  border="1px solid rgba(221,230,237,0.22)"
-                  bg="rgba(39,55,77,0.35)"
-                  px={3}
-                  py={4}
-                >
-                  <FileExplorer variant="diagram" />
-                </Box>
-              ) : (
-                <Box flex="1" display="flex" flexDirection="column" gap={4}>
-                  <InputGroup size="sm">
-                    <InputLeftElement pointerEvents="none">
-                      <FaSearch color="rgba(221,230,237,0.7)" />
-                    </InputLeftElement>
-                    <Input
-                      type="text"
-                      placeholder="Search sensors, actuators..."
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      borderRadius="full"
-                      border="1px solid rgba(221,230,237,0.3)"
-                      bg="rgba(39,55,77,0.35)"
-                      color="#DDE6ED"
-                      _placeholder={{ color: "rgba(221,230,237,0.7)" }}
-                      _focus={{
-                        borderColor: "#9DB2BF",
-                        boxShadow: "0 0 0 1px #9DB2BF",
-                      }}
-                    />
-                  </InputGroup>
+          {/* Desktop Sidebar */}
+          <Box 
+            display={{ base: "none", lg: "block" }} 
+            width={`${sidebarWidth}px`}
+            minW={`${sidebarWidth}px`}
+            maxW={`${sidebarWidth}px`}
+            flex={`0 0 ${sidebarWidth}px`}
+            h="100%" 
+            bg="#f8fafc"
+          >
+            {SidebarContent}
+          </Box>
 
-                  <VStack
-                    align="stretch"
-                    spacing={5}
-                    overflowY="auto"
-                    className="symbol-grid"
-                  >
-                    {filteredSymbols.length === 0 ? (
-                      <Center py={12}>
-                        <Text color="rgba(221,230,237,0.7)">
-                          No components found.
-                        </Text>
-                      </Center>
-                    ) : (
-                      filteredSymbols.map((section, sectionIndex) => (
-                        <Box key={sectionIndex} className="symbol-section">
-                          <chakra.button
-                            onClick={() => toggleCategory(section.category)}
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="space-between"
-                            width="100%"
-                            px={3}
-                            py={2}
-                            borderRadius="md"
-                            bg="rgba(39,55,77,0.35)"
-                            border="1px solid rgba(221,230,237,0.2)"
-                            color="#DDE6ED"
-                            fontSize="xs"
-                            fontWeight="700"
-                            letterSpacing="0.08em"
-                            textTransform="uppercase"
-                            transition="all 0.2s ease"
-                            _hover={{ bg: "rgba(221,230,237,0.2)" }}
-                          >
-                            {section.category.replace(" ▼", "")}
-                            <Text fontSize="sm" color="rgba(221,230,237,0.75)">
-                              {openCategories[section.category] ? "▲" : "▼"}
-                            </Text>
-                          </chakra.button>
-
-                          {openCategories[section.category] && (
-                            <Stack
-                              mt={3}
-                              spacing={3}
-                              pl={1}
-                              borderLeft="1px solid rgba(221,230,237,0.25)"
-                              className="symbol-items"
-                            >
-                              {section.items.map((symbol, symbolIndex) => (
-                                <SymbolItem key={symbolIndex} symbol={symbol} />
-                              ))}
-                            </Stack>
-                          )}
-                        </Box>
-                      ))
-                    )}
-                  </VStack>
-                </Box>
-              )}
-            </Box>
-          </div>
-          <div className="main-area">
+          {/* Sidebar Drag Handle */}
+          <Box
+            display={{ base: "none", lg: "block" }}
+            w="6px"
+            bg="transparent"
+            cursor="col-resize"
+            onMouseDown={startResizing}
+            zIndex={10}
+          />
+<div className="main-area" style={{ backgroundColor: "#ffffff" }}>
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "#27374D",
-                padding: "8px",
-                borderRadius: "8px",
-                marginBottom: "10px",
-                border: "1px solid rgba(221,230,237,0.2)",
+                backgroundColor: "#ffffff",
+                padding: "8px 12px",
+                borderRadius: "0",
+                marginBottom: "0px",
+                borderBottom: "1px solid #e5e7eb",
                 position: "relative",
                 zIndex: 1000,
                 pointerEvents: "auto"
               }}
             >
               <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', flex: 1, position: 'relative', zIndex: 1001, pointerEvents: 'auto' }}>
+                <IconButton
+                  display={{ base: "flex", lg: "none" }}
+                  icon={<span>📁</span>}
+                  size="xs"
+                  onClick={onToggleSidebar}
+                  aria-label="Toggle components"
+                  variant="ghost"
+                  color="#64748b"
+                  mr={2}
+                />
+                
+                <div className="diagram-tabs__actions" style={{ display: 'flex', gap: '4px', marginRight: '8px', paddingRight: '8px', borderRight: '1px solid #d1d5db', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="diagram-tabs__action"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addNewSimulationTab();
+                    }}
+                    title="Add tab"
+                    style={{ zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="diagram-tabs__action"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (saveSimulationNow) await saveSimulationNow();
+                    }}
+                    title="Save"
+                    style={{ zIndex: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer', color: '#374151' }}
+                  >
+                    <Save size={16} />
+                  </button>
+                </div>
+
                 {tabs.map((tab) => (
                   <div
                     key={tab.id}
@@ -2597,15 +2555,15 @@ const BlockDiagram = () => {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      backgroundColor: activeTabId === tab.id ? '#DDE6ED' : 'rgba(221,230,237,0.1)',
-                      color: activeTabId === tab.id ? '#27374D' : '#DDE6ED',
+                      backgroundColor: activeTabId === tab.id ? '#3b82f6' : '#f1f5f9',
+                      color: activeTabId === tab.id ? '#ffffff' : '#64748b',
                       padding: '6px 12px',
                       borderRadius: '6px',
                       cursor: 'pointer',
                       fontSize: '13px',
                       fontWeight: '600',
                       transition: 'all 0.2s ease',
-                      border: '1px solid rgba(221,230,237,0.2)',
+                      border: activeTabId === tab.id ? '1px solid #3b82f6' : '1px solid #e2e8f0',
                       whiteSpace: 'nowrap',
                       minWidth: '120px',
                       userSelect: 'none',
@@ -2643,7 +2601,7 @@ const BlockDiagram = () => {
                       <Box
                         as="span"
                         onClick={(e) => closeSimulationTab(tab.id, e)}
-                        _hover={{ color: '#ef4444', bg: 'rgba(0,0,0,0.1)', borderRadius: '50%' }}
+                        _hover={{ color: '#ef4444', bg: activeTabId === tab.id ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)', borderRadius: '50%' }}
                         style={{ marginLeft: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px' }}
                       >
                         ×
@@ -2651,34 +2609,10 @@ const BlockDiagram = () => {
                     )}
                   </div>
                 ))}
-                <Button
-                  size="xs"
-                  variant="solid" // Changed to solid for visibility
-                  colorScheme="blue" // Distinct color
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addNewSimulationTab();
-                  }}
-                  sx={{
-                    minWidth: '80px',
-                    height: '28px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    zIndex: 10
-                  }}
-                >
-                  + Add Tab
-                </Button>
               </div>
             </div>
 
-            {activeProjectName && (
-              <Box mt={4}>
-                <Center>
-                  <Heading size={"md"}>{activeProjectName}</Heading>
-                </Center>
-              </Box>
-            )}
+            {/* Heading removed per user request */}
             {/*
             {!selectedProject?.name && (
               <ProjectSelectionModal

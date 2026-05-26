@@ -1,4 +1,6 @@
 // import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Drawer, DrawerBody, DrawerHeader, DrawerOverlay, DrawerContent, DrawerCloseButton, useDisclosure, IconButton, Box } from '@chakra-ui/react';
+
 // import ReactFlow, {
 //   Background,
 //   Controls,
@@ -2496,7 +2498,7 @@ import { toPng } from 'html-to-image';
 import EditorNavbar from './EditorNavbar';
 import FileExplorer from './FileExplorer';
 import './FileExplorer.css';
-import './BlockDiagramTest.css';
+import './BlockProgramming.css';
 import hexBg from '../assets/hex_bg.png';
 import { saveProjectFile, sanitizeSegment, ensureProjectFolder } from '../utils/workspaceStorage';
 import { saveAssetToScreenFolder } from '../utils/screenFileManager';
@@ -2505,6 +2507,7 @@ import DiagramTabs from './DiagramTabs';
 import projectFileManager from '../utils/projectFileManager';
 import { useCanvasFileIntegration } from '../hooks/useCanvasFileIntegration';
 import ProjectFileExplorer from './ProjectFileExplorer';
+import { useResizableSidebar } from '../hooks/useResizableSidebar';
 
 // Sound effect paths (Blockly inspired)
 const SOUND_PATHS = {
@@ -2606,7 +2609,7 @@ const LOGIC_GROUPS = [
 ];
 
 let logicId = 1;
-const getId = () => `logic_${logicId++}`;
+const getId = () => `logic_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 const createBlockProgrammingState = () => ({ nodes: [], edges: [], viewport: null, idSeed: 1 });
 
 const handleStyle = {
@@ -2690,6 +2693,9 @@ function LogicBlockNode({ id, data, selected }) {
 const nodeTypes = { logic: LogicBlockNode };
 
 function BlockProgrammingCanvas() {
+  const { isOpen: isSidebarOpen, onToggle: onToggleSidebar, onClose: onCloseSidebar } = useDisclosure({ defaultIsOpen: true });
+  const { sidebarWidth, startResizing } = useResizableSidebar(240, 160, 480);
+
   const dispatch = useDispatch();
   const { tabs, activeTabId } = useSelector((state) => state.blockProgramming);
   const activeTab = useMemo(
@@ -2709,6 +2715,7 @@ function BlockProgrammingCanvas() {
   const [isExplorerVisible, setIsExplorerVisible] = useState('blocks');
 
   // Execution state
+  const [showExecutionControl, setShowExecutionControl] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [activeNodeId, setActiveNodeId] = useState(null);
   const [executionLogs, setExecutionLogs] = useState([]);
@@ -2819,22 +2826,50 @@ function BlockProgrammingCanvas() {
     [dispatch],
   );
 
+  const undo = useCallback(() => {
+    if (historyRef.current.index > 0) {
+      const nextIndex = historyRef.current.index - 1;
+      const snapshot = historyRef.current.entries[nextIndex];
+      historyRef.current.index = nextIndex;
+      setNodes(snapshot.nodes);
+      setEdges(snapshot.edges);
+      if (snapshot.viewport) rf.setViewport(snapshot.viewport);
+    }
+  }, [rf, setNodes, setEdges]);
+
+  const redo = useCallback(() => {
+    if (historyRef.current.index < historyRef.current.entries.length - 1) {
+      const nextIndex = historyRef.current.index + 1;
+      const snapshot = historyRef.current.entries[nextIndex];
+      historyRef.current.index = nextIndex;
+      setNodes(snapshot.nodes);
+      setEdges(snapshot.edges);
+      if (snapshot.viewport) rf.setViewport(snapshot.viewport);
+    }
+  }, [rf, setNodes, setEdges]);
+
   const handleNodesChange = useCallback(
     (changes) => {
-      const meaningfulChanges = changes.filter(c => c.type !== 'dimensions');
-      if (meaningfulChanges.length === 0) return;
-      const nextNodes = applyNodeChanges(meaningfulChanges, nodesRef.current);
+      const nextNodes = applyNodeChanges(changes, nodesRef.current);
       dispatch(updateTabState({ tabId: activeTabIdRef.current, nodes: nextNodes }));
+
+      const shouldSnapshot = changes.some(c =>
+        c.type === 'remove' || c.type === 'position' || c.type === 'dimensions' || c.type === 'select'
+      );
+      if (shouldSnapshot) {
+        scheduleSnapshot();
+      }
     },
-    [dispatch],
+    [dispatch, scheduleSnapshot],
   );
 
   const handleEdgesChange = useCallback(
     (changes) => {
       const nextEdges = applyEdgeChanges(changes, edgesRef.current);
       dispatch(updateTabState({ tabId: activeTabIdRef.current, edges: nextEdges }));
+      scheduleSnapshot();
     },
-    [dispatch],
+    [dispatch, scheduleSnapshot],
   );
 
   // Canvas file integration for Block Programming
@@ -3206,30 +3241,6 @@ function BlockProgrammingCanvas() {
   // persistCurrentState, scheduleSnapshot moved up
 
 
-  // Undo functionality
-  const undo = useCallback(() => {
-    const { entries, index } = historyRef.current;
-    if (index > 0) {
-      const snapshot = entries[index - 1];
-      historyRef.current.index = index - 1;
-      setNodes(snapshot.nodes || []);
-      setEdges(snapshot.edges || []);
-      if (snapshot.viewport) rf.setViewport(snapshot.viewport);
-    }
-  }, [rf, setEdges, setNodes]);
-
-  // Redo functionality
-  const redo = useCallback(() => {
-    const { entries, index } = historyRef.current;
-    if (index < entries.length - 1) {
-      const snapshot = entries[index + 1];
-      historyRef.current.index = index + 1;
-      setNodes(snapshot.nodes || []);
-      setEdges(snapshot.edges || []);
-      if (snapshot.viewport) rf.setViewport(snapshot.viewport);
-    }
-  }, [rf, setEdges, setNodes]);
-
   const onConnect = useCallback(
     (params) => {
       playSound(SOUND_PATHS.CLICK);
@@ -3302,10 +3313,15 @@ function BlockProgrammingCanvas() {
     [rf, scheduleSnapshot, setNodes],
   );
 
-  const onDragStart = (event, entry) => {
-    event.dataTransfer.setData('application/reactflow', JSON.stringify(entry));
+  const handlePaletteDragStart = useCallback((event, item) => {
+    const payload = JSON.stringify({
+      type: 'logic',
+      label: item.label,
+      variant: item.variant || 'rectangle'
+    });
+    event.dataTransfer.setData('application/reactflow', payload);
     event.dataTransfer.effectAllowed = 'move';
-  };
+  }, []);
 
   const onDragOver = useCallback((event) => {
     event.preventDefault();
@@ -3595,20 +3611,10 @@ function BlockProgrammingCanvas() {
   // Keyboard deletion handler - removed as it's merged above
 
 
-  return (
-    <div className="diagram-builder">
-      <EditorNavbar
-        activeTab="Block Programming"
-        onTabChange={handleTabChange}
-        onSaveJSON={saveDiagram}
-        onLoadJSON={loadDiagram}
-        onExportPNG={handleExportPNG}
-        onUndo={undo}
-        onRedo={redo}
-      />
-      <div className="content">
-        <div className="sidebarr">
-          <div className="sidebar-toggle-bar">
+  
+const SidebarContent = (
+  <div className="bp-sidebar-scope" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+<div className="sidebar-toggle-bar">
             <button
               type="button"
               className={`sidebar-tab ${isExplorerVisible === 'explorer' ? 'active' : ''}`}
@@ -3679,7 +3685,7 @@ function BlockProgrammingCanvas() {
                                     draggable
                                     onDragStart={(e) => {
                                       playSound(SOUND_PATHS.CLICK);
-                                      onDragStart(e, item);
+                                      handlePaletteDragStart(e, item);
                                     }}
                                     style={{
                                       backgroundColor: colors.fill || '#ffffff',
@@ -3727,18 +3733,75 @@ function BlockProgrammingCanvas() {
               </div>
             )}
           </div>
-        </div>
+  </div>
+);
+return (
+    <div className="diagram-builder">
+      <EditorNavbar
+        activeTab="Block Programming"
+        onTabChange={handleTabChange}
+        onSaveJSON={saveDiagram}
+        onLoadJSON={loadDiagram}
+        onExportPNG={handleExportPNG}
+        onUndo={undo}
+        onRedo={redo}
+      />
+      <div className="content">
+        
+          {/* Mobile Sidebar */}
+          <Drawer isOpen={isSidebarOpen} placement="left" onClose={onCloseSidebar} size="xs">
+            <DrawerOverlay display={{ base: "block", lg: "none" }} />
+            <DrawerContent display={{ base: "block", lg: "none" }} bg="#f8fafc">
+              <DrawerCloseButton />
+              <DrawerHeader borderBottomWidth="1px" fontSize="sm">Blocks</DrawerHeader>
+              <DrawerBody p={0}>
+                {SidebarContent}
+              </DrawerBody>
+            </DrawerContent>
+          </Drawer>
+
+          {/* Desktop Sidebar */}
+          <Box
+            display={{ base: "none", lg: "block" }}
+            className="sidebarr"
+            width={`${sidebarWidth}px`}
+            minW={`${sidebarWidth}px`}
+            maxW={`${sidebarWidth}px`}
+            flex={`0 0 ${sidebarWidth}px`}
+          >
+            {SidebarContent}
+          </Box>
+
+          {/* Sidebar Drag Handle */}
+          <Box
+            display={{ base: "none", lg: "block" }}
+            w="6px"
+            bg="transparent"
+            cursor="col-resize"
+            onMouseDown={startResizing}
+            zIndex={10}
+          />
 
         <div className="diagram-container" style={{ flex: 1 }}>
           <div style={{ padding: '8px 12px', background: '#ffffff', borderBottom: '1px solid #e5e7eb' }}>
+            
+            <IconButton
+              display={{ base: "inline-flex", lg: "none" }}
+              icon={<span>📁</span>}
+              size="xs"
+              onClick={onToggleSidebar}
+              aria-label="Toggle blocks"
+              variant="ghost"
+              color="#64748b"
+              mr={2}
+              verticalAlign="middle"
+            />
             <DiagramTabs title="Block Programming Workspace" kind="blockProgramming" />
           </div>
-          <div className="canvas-frame">
+          <div className="canvas-frame" onDrop={onDrop} onDragOver={onDragOver}>
             <div
               className="rf-wrapper"
               ref={reactFlowWrapper}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
             >
               <ReactFlow
                 nodes={nodes}
@@ -3770,39 +3833,65 @@ function BlockProgrammingCanvas() {
                   }
                 `}</style>
                 <Background className="export-ignore" gap={16} size={1} />
-                <Panel position="top-right" style={{
-                  background: 'rgba(255,255,255,0.9)',
-                  padding: '12px',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-                  border: '1px solid #e2e8f0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  width: '240px'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#1e293b' }}>Execution Control</div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <div style={{
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        background: ledState ? '#ef4444' : '#94a3b8',
-                        boxShadow: ledState ? '0 0 10px #ef4444' : 'none',
-                        transition: 'all 0.3s'
-                      }} title={ledState ? "LED is ON" : "LED is OFF"} />
-                      <div style={{
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '2px',
-                        background: switchState ? '#3b82f6' : '#94a3b8',
-                        boxShadow: switchState ? '0 0 10px #3b82f6' : 'none',
-                        transition: 'all 0.3s'
-                      }} title={switchState ? "Switch is HIGH" : "Switch is LOW"} />
+                {showExecutionControl ? (
+                  <Panel position="top-right" style={{
+                    background: 'rgba(255,255,255,0.95)',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    width: '50vw',
+                    minWidth: '400px',
+                    height: 'calc(100vh - 100px)',
+                    maxHeight: 'calc(100vh - 100px)',
+                    zIndex: 100
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#1e293b' }}>Execution Control</div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <div style={{
+                            width: '14px',
+                            height: '14px',
+                            borderRadius: '50%',
+                            background: ledState ? '#ef4444' : '#94a3b8',
+                            boxShadow: ledState ? '0 0 10px #ef4444' : 'none',
+                            transition: 'all 0.3s'
+                          }} title={ledState ? "LED is ON" : "LED is OFF"} />
+                          <div style={{
+                            width: '14px',
+                            height: '14px',
+                            borderRadius: '2px',
+                            background: switchState ? '#3b82f6' : '#94a3b8',
+                            boxShadow: switchState ? '0 0 10px #3b82f6' : 'none',
+                            transition: 'all 0.3s'
+                          }} title={switchState ? "Switch is HIGH" : "Switch is LOW"} />
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowExecutionControl(false)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '18px',
+                          color: '#64748b',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '4px'
+                        }}
+                        title="Close Panel"
+                        onMouseOver={(e) => e.target.style.background = '#f1f5f9'}
+                        onMouseOut={(e) => e.target.style.background = 'transparent'}
+                      >✕</button>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                     {!isRunning ? (
                       <button
                         onClick={handleRun}
@@ -3811,10 +3900,10 @@ function BlockProgrammingCanvas() {
                           background: '#22c55e',
                           color: 'white',
                           border: 'none',
-                          padding: '6px',
+                          padding: '8px 12px',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          fontSize: '12px',
+                          fontSize: '14px',
                           fontWeight: '600'
                         }}
                       >Run Program</button>
@@ -3826,10 +3915,10 @@ function BlockProgrammingCanvas() {
                           background: '#ef4444',
                           color: 'white',
                           border: 'none',
-                          padding: '6px',
+                          padding: '8px 12px',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          fontSize: '12px',
+                          fontSize: '14px',
                           fontWeight: '600'
                         }}
                       >Stop</button>
@@ -3841,10 +3930,10 @@ function BlockProgrammingCanvas() {
                         background: '#94a3b8',
                         color: 'white',
                         border: 'none',
-                        padding: '6px',
+                        padding: '8px 12px',
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        fontSize: '12px',
+                        fontSize: '14px',
                         fontWeight: '600'
                       }}
                     >Reset</button>
@@ -3852,20 +3941,53 @@ function BlockProgrammingCanvas() {
                   <div
                     ref={logContainerRef}
                     style={{
-                      background: '#f8fafc',
-                      height: '140px',
-                      borderRadius: '4px',
-                      padding: '8px',
-                      fontSize: '11px',
-                      fontFamily: 'monospace',
+                      background: '#1e1e1e',
+                      flex: 1,
+                      width: '100%',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontSize: '14px',
+                      fontFamily: 'Consolas, Monaco, monospace',
                       overflowY: 'auto',
                       border: '1px solid #e2e8f0',
-                      color: '#334155'
+                      color: '#e2e8f0',
+                      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
                     }}>
-                    {executionLogs.length === 0 && <div style={{ color: '#94a3b8' }}>Logs will appear here...</div>}
-                    {executionLogs.map((log, i) => <div key={i} style={{ marginBottom: '2px' }}>{log}</div>)}
+                    {executionLogs.length === 0 && <div style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '15px' }}>Logs will appear here...</div>}
+                    {executionLogs.map((log, i) => <div key={i} style={{ marginBottom: '4px' }}>{log}</div>)}
                   </div>
                 </Panel>
+                ) : (
+                  <Panel position="top-right">
+                    <button
+                      onClick={() => setShowExecutionControl(true)}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '10px 16px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#1e293b',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      <span style={{ fontSize: '16px' }}>⚙️</span> Execution Control
+                    </button>
+                  </Panel>
+                )}
+                <Controls className="export-ignore">
+                  <ControlButton onClick={undo} title="Undo (Ctrl+Z)">
+                    <RotateCcw size={16} />
+                  </ControlButton>
+                  <ControlButton onClick={redo} title="Redo (Ctrl+Y)">
+                    <RotateCw size={16} />
+                  </ControlButton>
+                </Controls>
               </ReactFlow>
             </div>
           </div>

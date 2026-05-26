@@ -132,8 +132,8 @@ const symbols = [
 
 const BlockDiagram = () => {
   const [tabs, setTabs] = useState([]);
-
-  const [activeTab, setActiveTab] = useState(1);
+  const [activeTab, setActiveTab] = useState(null);
+  const [diagramId, setDiagramId] = useState(null); // ✅ Store document ID for updates
   const [selectedProject, setSelectedProject] = useState(null);
   const [isProductDefined, setIsProductDefined] = useState(null);
   const [fileSystem, setFileSystem] = useState({});
@@ -162,7 +162,10 @@ const BlockDiagram = () => {
         response.data?.data[0]?.blockDiagram &&
         Array.isArray(response?.data?.data[0]?.blockDiagram)
       ) {
-        const fetchedDiagrams = response.data.data[0].blockDiagram.map(
+        const doc = response.data.data[0];
+        setDiagramId(doc._id); // ✅ Store ID for future updates
+        
+        const fetchedDiagrams = doc.blockDiagram.map(
           (diagram) => ({
             ...diagram,
             symbols:
@@ -181,20 +184,38 @@ const BlockDiagram = () => {
         if (fetchedDiagrams.length > 0) {
           setTabs(fetchedDiagrams);
           setActiveTab(fetchedDiagrams[0]?.id || null);
-          // setIsFetched(true); // ✅ Mark fetch as successful
         } else {
           console.warn("No block diagrams found, initializing default.");
           const defaultDiagram = [{ id: 1, name: "Diagram 1", symbols: [] }];
           setTabs(defaultDiagram);
           setActiveTab(1);
-          // setIsFetched(true); // ✅ Allow saving
-          saveData(defaultDiagram); // ✅ Auto-save default diagram
+          saveData(defaultDiagram);
         }
       } else {
         console.warn("No block diagrams found, initializing default.");
-        const defaultDiagram = [{ id: 1, name: "Diagram 1", symbols: [] }];
+        console.warn("Checking local storage first.");
+        const storageKey = `block_diagram_tabs_${activeProductId}_${activeProjectId}`;
+        let localData = localStorage.getItem(storageKey);
+        
+        // Fallback to recover yesterday's block diagram which was saved under a global key
+        if (!localData) {
+          localData = localStorage.getItem("block_diagram_tabs");
+        }
+        
+        let defaultDiagram = [{ id: 1, name: "Diagram 1", symbols: [] }];
+        if (localData) {
+          try {
+            const parsed = JSON.parse(localData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              defaultDiagram = parsed;
+              console.log("Recovered from local storage:", defaultDiagram);
+            }
+          } catch (e) {
+            console.error("Failed to parse local storage diagrams", e);
+          }
+        }
         setTabs(defaultDiagram);
-        setActiveTab(1);
+        setActiveTab(defaultDiagram[0].id);
         // setIsFetched(true); // ✅ Allow saving
         saveData(defaultDiagram); // ✅ Auto-save default diagram
       }
@@ -205,12 +226,31 @@ const BlockDiagram = () => {
         "No diagrams found for the given productId and projectId"
       ) {
         // ✅ No diagrams exist, so create the default and store it
-        console.warn("No diagrams exist yet. Storing default locally.");
-        const defaultDiagram = [{ id: 1, name: "Diagram 1", symbols: [] }];
+        console.warn("No diagrams exist yet. Checking local storage first.");
+        const storageKey = `block_diagram_tabs_${activeProductId}_${activeProjectId}`;
+        let localData = localStorage.getItem(storageKey);
+        
+        // Fallback to recover yesterday's block diagram which was saved under a global key
+        if (!localData) {
+          localData = localStorage.getItem("block_diagram_tabs");
+        }
+        
+        let defaultDiagram = [{ id: 1, name: "Diagram 1", symbols: [] }];
+        if (localData) {
+          try {
+            const parsed = JSON.parse(localData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              defaultDiagram = parsed;
+              console.log("Recovered from local storage:", defaultDiagram);
+            }
+          } catch (e) {
+            console.error("Failed to parse local storage diagrams", e);
+          }
+        }
         setTabs(defaultDiagram);
-        setActiveTab(1);
+        setActiveTab(defaultDiagram[0].id);
         // setIsFetched(true); // ✅ Allow saving
-        saveData(defaultDiagram); // ✅ Store the default diagram
+        saveData(defaultDiagram); // ✅ Store the recovered or default diagram
       } else {
         console.error("Error fetching diagrams:", err);
         console.warn("Fetch failed, setting default locally.");
@@ -240,26 +280,29 @@ const BlockDiagram = () => {
 
       console.log("Saving or updating block diagram:", payload);
 
-      let existingDiagramId = null;
+      let existingDiagramId = diagramId;
 
-      try {
-        // Step 1: Check if a diagram exists
-        const fetchUrl = `${baseURL}/api/v1/getStoredBlockDiagramData/${activeProductId}/${activeProjectId}`;
-        const response = await axios.get(fetchUrl);
-        existingDiagramId = response?.data?.data[0]?._id;
-        console.log("Existing diagram ID found:", existingDiagramId);
-      } catch (error) {
-        if (
-          error.response &&
-          error.response.status === 404 &&
-          error.response.data?.message ===
-          "No diagrams found for the given productId and projectId"
-        ) {
-          console.warn("No diagrams exist. Proceeding with new save.");
-          existingDiagramId = null; // Explicitly set to null
-        } else {
-          console.error("Error checking existing diagrams:", error);
-          return; // Exit if another error occurs
+      if (!existingDiagramId) {
+        try {
+          // Step 1: Check if a diagram exists if we don't have the ID yet
+          const fetchUrl = `${baseURL}/api/v1/getStoredBlockDiagramData/${activeProductId}/${activeProjectId}`;
+          const response = await axios.get(fetchUrl);
+          existingDiagramId = response?.data?.data[0]?._id;
+          if (existingDiagramId) setDiagramId(existingDiagramId);
+          console.log("Existing diagram ID found:", existingDiagramId);
+        } catch (error) {
+          if (
+            error.response &&
+            error.response.status === 404 &&
+            error.response.data?.message ===
+            "No diagrams found for the given productId and projectId"
+          ) {
+            console.warn("No diagrams exist. Proceeding with new save.");
+            existingDiagramId = null;
+          } else {
+            console.error("Error checking existing diagrams:", error);
+            return;
+          }
         }
       }
 
@@ -272,7 +315,10 @@ const BlockDiagram = () => {
         console.log("Block diagram updated successfully!");
       } else {
         // Step 3: Save a new diagram
-        await axios.post(`${baseURL}/api/v1/storeBlockDiagramData`, payload);
+        const response = await axios.post(`${baseURL}/api/v1/storeBlockDiagramData`, payload);
+        if (response.data?.data?._id) {
+          setDiagramId(response.data.data._id);
+        }
         console.log("Block diagram saved successfully!");
       }
     } catch (error) {
@@ -333,10 +379,13 @@ const BlockDiagram = () => {
     fetchProductDefinition(activeProductId, setIsProductDefined);
   }, [activeProductId]); // Only depend on activeProductId
 
-  // useEffect(() => {
-  //   // Save to localStorage whenever tabs change
-  //   localStorage.setItem("block_diagram_tabs", JSON.stringify(tabs));
-  // }, [tabs]);
+  useEffect(() => {
+    // Save to localStorage whenever tabs change
+    if (tabs && tabs.length > 0 && activeProductId && activeProjectId) {
+      const storageKey = `block_diagram_tabs_${activeProductId}_${activeProjectId}`;
+      localStorage.setItem(storageKey, JSON.stringify(tabs));
+    }
+  }, [tabs, activeProductId, activeProjectId]);
 
   const [openCategories, setOpenCategories] = useState({}); // Moved here
   const [isExplorerVisible, setIsExplorerVisible] = useState('blocks');

@@ -34,12 +34,21 @@ const blockDiagramSlice = createSlice({
             }
         },
         updateTabState: (state, action) => {
-            const { tabId, nodes, edges, viewport } = action.payload;
+            const { tabId, ...updates } = action.payload;
             const tab = state.tabs.find((t) => t.id === tabId);
             if (tab) {
-                if (nodes !== undefined) tab.state.nodes = nodes;
-                if (edges !== undefined) tab.state.edges = edges;
-                if (viewport !== undefined) tab.state.viewport = viewport;
+                tab.state = { ...(tab.state || {}), ...updates };
+                // If the update contains nodes, edges, or viewport, it's a content change
+                if (updates.nodes !== undefined || updates.edges !== undefined || updates.viewport !== undefined) {
+                    tab.dirty = true;
+                }
+            }
+        },
+        markTabClean: (state, action) => {
+            const tabId = action.payload;
+            const tab = state.tabs.find((t) => t.id === tabId);
+            if (tab) {
+                tab.dirty = false;
             }
         },
         setTabNodesAndEdges: (state, action) => {
@@ -61,6 +70,7 @@ export const {
     renameTab,
     updateTabState,
     setTabNodesAndEdges,
+    markTabClean,
 } = blockDiagramSlice.actions;
 
 export default blockDiagramSlice.reducer;

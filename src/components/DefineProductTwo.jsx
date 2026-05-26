@@ -22,7 +22,7 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
+//       const url = `https://eureka.innotrat.in/product/:productID/definitionNewNew`;
 
 //       const response = await axios.post(url, formData);
 
@@ -80,7 +80,7 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
+//       const url = `https://eureka.innotrat.in/product/:productID/definitionNewNew`;
 
 //       const payload = {
 //         productID,
@@ -159,7 +159,7 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
+//       const url = `https://eureka.innotrat.in/product/:productID/definitionNewNew`;
 
 //       const payload = {
 //         productID,
@@ -234,6 +234,7 @@ import {
 } from "@chakra-ui/react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import { productAPIBase } from "../utilities";
 
 const DefineProductTwo = () => {
   const location = useLocation();
@@ -279,7 +280,7 @@ const DefineProductTwo = () => {
       // Validate JSON format before submitting
       const parsedComponents = JSON.parse(components);
 
-      const url = `https://eureka.innotrat.in/product/:productID/definitionNew`;
+      const url = `${productAPIBase}/product/${productID}/definitionNew`;
       const payload = {
         productID,
         productName,

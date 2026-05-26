@@ -16,6 +16,19 @@ import '@dytesdk/ui-kit/dist/collection/components/dyte-camera-toggle/dyte-camer
 import '@dytesdk/ui-kit/dist/collection/components/dyte-screen-share-toggle/dyte-screen-share-toggle.css';
 import '@dytesdk/ui-kit/dist/collection/components/dyte-leave-button/dyte-leave-button.css';
 import '@dytesdk/ui-kit/dist/collection/components/dyte-setup-screen/dyte-setup-screen.css';
+import { createTheme, ThemeProvider as MUIThemeProvider, StyledEngineProvider } from '@mui/material/styles';
+
+const muiTheme = createTheme({
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+    },
+  },
+});
 const router = createBrowserRouter([
   {
     path: "/*",
@@ -41,7 +54,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           onScriptLoadError={(err) => console.error('Google OAuth script failed to load:', err)}
         >
           <ChakraProvider theme={theme}>
-            <RouterProvider router={router} />
+            <StyledEngineProvider injectFirst>
+              <MUIThemeProvider theme={muiTheme}>
+                <RouterProvider router={router} />
+              </MUIThemeProvider>
+            </StyledEngineProvider>
           </ChakraProvider>
         </GoogleOAuthProvider>
       </PersistGate>

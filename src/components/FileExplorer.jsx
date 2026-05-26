@@ -11,9 +11,20 @@ import {
   useColorModeValue,
   HStack,
   Spacer,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  useToast,
 } from "@chakra-ui/react";
 import {
   File,
+  FileCode,
+  FileJson,
+  FileText,
+  FileImage,
   Folder,
   FolderOpen,
   Plus,
@@ -23,11 +34,12 @@ import {
   FolderPlus,
   FilePlus,
   MoreVertical,
-  Pencil
+  Pencil,
+  Lock
 } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { getUserInfo } from "../utilities";
+import { getUserInfo, baseURL } from "../utilities";
 import { useProject } from "../ProjectContext";
 import CreateNewProjectModal from "./MenuSidebar/CreateNewProjectModal";
 import CreateItemModal from "./MenuSidebar/CreateItemModal";
@@ -68,12 +80,20 @@ const FileExplorer = ({ variant }) => {
     setActiveProductName,
   } = useProject();
 
-  const textColor = useColorModeValue("gray.700", "gray.200");
-  const iconColor = useColorModeValue("gray.500", "gray.400");
+  const textColor = useColorModeValue("gray.800", "gray.100");
+  const iconColor = useColorModeValue("gray.600", "gray.300");
+  const actionIconColor = useColorModeValue("gray.500", "gray.400");
   const hoverBg = useColorModeValue("gray.100", "whiteAlpha.100");
   const activeBg = useColorModeValue("blue.50", "whiteAlpha.200");
   const activeBorder = useColorModeValue("blue.200", "blue.500");
   const borderColor = useColorModeValue("gray.100", "gray.700");
+  const cancelRef = React.useRef();
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const { 
+    isOpen: isDeleteAlertOpen, 
+    onOpen: onDeleteAlertOpen, 
+    onClose: onDeleteAlertClose 
+  } = useDisclosure();
 
   // Fetch user info and file system on mount
   useEffect(() => {
@@ -85,6 +105,19 @@ const FileExplorer = ({ variant }) => {
       setError("User not logged in");
     }
   }, []);
+
+  useEffect(() => {
+    const handleRefreshEvent = () => {
+      if (user?.userId) {
+        loadFileSystem(user.userId);
+      } else {
+        const userInfo = getUserInfo();
+        if (userInfo) loadFileSystem(userInfo.userId);
+      }
+    };
+    window.addEventListener('file-system-refresh', handleRefreshEvent);
+    return () => window.removeEventListener('file-system-refresh', handleRefreshEvent);
+  }, [user]);
 
   const loadFileSystem = async (userId) => {
     setIsLoading(true);
@@ -113,6 +146,43 @@ const FileExplorer = ({ variant }) => {
     }
   };
 
+  const isProtected = (node, parent) => {
+    if (!node) return false;
+    const protectedFiles = ["system_diagram.json"];
+    const protectedFolders = ["BlockDiagram", "Flowchart"];
+    
+    // Protect core diagram files inside their dedicated folders
+    if (node.type === "file" && protectedFiles.includes(node.name)) {
+      if (parent && protectedFolders.includes(parent.name)) return true;
+    }
+    
+    // Optional: Protect the folders themselves if they contain specialized content
+    // if (node.type === "folder" && protectedFolders.includes(node.name)) return true;
+    
+    return false;
+  };
+
+  const getFileIcon = (name) => {
+    const ext = name.split('.').pop().toLowerCase();
+    switch (ext) {
+      case 'c':
+      case 'cpp':
+      case 'h':
+        return <FileCode size={13} color="#3b82f6" />;
+      case 'json':
+        return <FileJson size={13} color="#f59e0b" />;
+      case 'txt':
+      case 'md':
+        return <FileText size={13} color="#6b7280" />;
+      case 'png':
+      case 'jpg':
+      case 'svg':
+        return <FileImage size={13} color="#ec4899" />;
+      default:
+        return <File size={13} />;
+    }
+  };
+
   const isActiveProjectInFolder = (node, activeId, activeName) => {
     if (!node) return false;
     // Check current node
@@ -136,36 +206,70 @@ const FileExplorer = ({ variant }) => {
       }));
   };
 
-  const handleFolderDelete = async (node) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
+  const [isDeleting, setIsDeleting] = useState(false);
+  const toast = useToast();
+
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
+    const { node } = itemToDelete;
     const id = node._id;
+    
+    setIsDeleting(true);
     try {
       await axios.delete(
-        "https://eureka.innotrat.in/api/v1/deleteFileAndFolder",
+        `${baseURL}/api/v1/deleteFileAndFolder`,
         { data: { fileId: id } }
       );
 
-      console.log("Deleting item:", node.name, id, "Active:", activeProjectName, activeProjectId);
-
-      // Check if the deleted item or any of its children is the active project
+      console.log("Deleting item:", node.name, id);
+      
+      // Close modal IMMEDIATELY after successful API call
+      onDeleteAlertClose();
+      
       if (isActiveProjectInFolder(node, activeProjectId, activeProjectName)) {
-        console.log("Clearing active project state (recursive match found)");
         setActiveProjectId(null);
         setActiveProjectName(null);
         setActiveProductId(null);
         setActiveProductName(null);
       }
 
-      // Optimistic update: Remove from local state immediately
       setFileSystem((prev) => ({
         ...prev,
         children: deleteNodeFromTree(prev.children, id),
       }));
 
+      toast({
+        title: "Successfully deleted.",
+        description: `${node.name} has been removed.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+        position: "bottom-right",
+      });
     } catch (error) {
-      console.error("Error deleting folder:", error);
-      handleRefresh(); // Sync on error
+      console.error("Error deleting item:", error);
+      onDeleteAlertClose(); // Also close on error to avoid sticking
+      toast({
+        title: "Deletion failed.",
+        description: error.response?.data?.message || "An error occurred while deleting the item.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "bottom-right",
+      });
+      handleRefresh();
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleFolderDelete = (node, parent) => {
+    if (isProtected(node, parent)) {
+      alert("This is a system-protected file and cannot be deleted.");
+      return;
+    }
+    setItemToDelete({ node, parent });
+    onDeleteAlertOpen();
   };
 
   const toggleFolder = (folder) => {
@@ -196,215 +300,317 @@ const FileExplorer = ({ variant }) => {
     setFileSystem(updatedFileSystem);
   };
 
-  const handleFileClick = (file) => {
+   const handleFileClick = (file, project) => {
+    if (project && activeProjectId !== project._id) {
+      setActiveProjectId(project._id);
+      setActiveProjectName(project.name);
+      setActiveProductId(project.productId);
+      setActiveProductName(project.name);
+
+      try {
+        localStorage.setItem("activeProjectId", project._id);
+      } catch (err) {
+        console.warn("Failed to save to localStorage:", err);
+      }
+    }
+
     const lowerName = file.name.toLowerCase();
-    if (lowerName === "simulation.c" || lowerName.includes("simulation")) {
-      navigate("/simulation");
-    } else if (lowerName.includes("flowchart") || lowerName.includes("flow chart")) {
-      navigate("/FlowchartTest");
-    } else if (lowerName.includes("block diagram")) {
-      navigate("/BlockDiagram");
-    } else if (lowerName.includes("block programming")) {
-      navigate("/blockprogramming");
+    const filePath = file.path || "";
+    const lowerPath = filePath.toLowerCase();
+
+    console.log("[FileExplorer] Clicking file:", { name: file.name, path: filePath, lowerPath });
+
+    // Context-aware navigation based on path and filename
+    const isSimulation = lowerName.includes("simulation") || lowerPath.includes("simulation/") || lowerPath.endsWith("simulation");
+    const isFlowchart = lowerName.includes("flowchart") || lowerName.includes("flow chart") || lowerName.includes("flow_chart") || lowerPath.includes("flowchart/") || lowerPath.includes("/flowchart");
+    const isBlockDiagram = lowerName.includes("block diagram") || lowerName.includes("block_diagram") || lowerName.includes("blockdiagram") || lowerPath.includes("blockdiagram/") || lowerPath.includes("/blockdiagram");
+    const isBlockProgramming = lowerName.includes("block programming") || lowerName.includes("block_programming") || lowerName.includes("blockprogramming") || lowerPath.includes("blockprogramming/") || lowerPath.includes("/blockprogramming");
+
+    if (isSimulation) {
+      navigate("/simulation", { state: { filePath, fileContent: file.content } });
+    } else if (isFlowchart) {
+      navigate("/FlowchartTest", { state: { filePath, fileContent: file.content } });
+    } else if (isBlockDiagram) {
+      navigate("/BlockDiagram", { state: { filePath, fileContent: file.content } });
+    } else if (isBlockProgramming) {
+      navigate("/blockprogramming", { state: { filePath, fileContent: file.content } });
     } else {
-      navigate("/editor");
+      navigate("/editor", { state: { filePath, fileContent: file.content } });
     }
   };
 
-  const renderFileSystem = (node) => (
-    <VStack align="start" spacing={0} key={node._id || node.name} width="100%">
-      {node.type === "folder" ? (
-        <>
+  const FileNode = React.memo(({ 
+    node, 
+    parent,
+    currentProject, 
+    activeProjectId, 
+    activeBg, 
+    activeBorder, 
+    hoverBg, 
+    iconColor, 
+    actionIconColor,
+    textColor, 
+    toggleFolder, 
+    handleFileClick, 
+    openCreateModal, 
+    openRenameModal, 
+    handleFolderDelete, 
+    isProtected,
+    getFileIcon,
+    borderColor, 
+    renderFileSystem 
+  }) => {
+    const isNodeProtected = isProtected(node, parent);
+    return (
+      <VStack align="start" spacing={0} key={node._id || node.name} width="100%">
+        {node.type === "folder" ? (
+          <>
+            <Box
+              display="flex"
+              alignItems="center"
+              width="100%"
+              px={2}
+              py={0.5}
+              minH="28px"
+              borderRadius="md"
+              bg={node._id === activeProjectId ? activeBg : "transparent"}
+              position="relative"
+              _hover={{
+                bg: hoverBg,
+                "& .action-buttons": { opacity: 1, visibility: "visible" }
+              }}
+              cursor="pointer"
+              onClick={() => toggleFolder(node)}
+              transition="all 0.2s"
+              role="group"
+            >
+              {node._id === activeProjectId && (
+                <Box
+                  position="absolute"
+                  left={0}
+                  top="4px"
+                  bottom="4px"
+                  width="3px"
+                  bg={activeBorder}
+                  borderRightRadius="full"
+                  zIndex={2}
+                />
+              )}
+              <Box mr={1.5} display="flex" alignItems="center">
+                {node.isOpen ? (
+                  <ChevronDown size={12} color={iconColor} />
+                ) : (
+                  <ChevronRight size={12} color={iconColor} />
+                )}
+              </Box>
+
+              <Box mr={1.5} color="#f59e0b">
+                {node.isOpen ? <FolderOpen size={14} /> : <Folder size={14} />}
+              </Box>
+
+              <Tooltip label={node.name} placement="top-start" openDelay={500} hasArrow>
+                <Text
+                  color={textColor}
+                  fontSize="12px"
+                  lineHeight="1.2"
+                  fontWeight={node._id === activeProjectId ? "600" : "500"}
+                  flex="1"
+                  wordBreak="break-word"
+                >
+                  {node.name}
+                </Text>
+              </Tooltip>
+              <HStack
+                className="action-buttons"
+                spacing={0}
+                opacity={0}
+                visibility="hidden"
+                transition="all 0.2s"
+              >
+                <Tooltip label="New Folder" hasArrow>
+                  <IconButton
+                    aria-label="New Folder"
+                    icon={<FolderPlus size={14} />}
+                    size="xs"
+                    width="22px"
+                    height="22px"
+                    variant="ghost"
+                    color="blue.500"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openCreateModal(node, "folder");
+                    }}
+                    _hover={{ color: "blue.600", bg: "blue.50" }}
+                  />
+                </Tooltip>
+                <Tooltip label="New File" hasArrow>
+                  <IconButton
+                    aria-label="New File"
+                    icon={<FilePlus size={14} />}
+                    size="xs"
+                    width="22px"
+                    height="22px"
+                    variant="ghost"
+                    color="green.500"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openCreateModal(node, "file");
+                    }}
+                    _hover={{ color: "green.600", bg: "green.50" }}
+                  />
+                </Tooltip>
+                <Tooltip label={isNodeProtected ? "Protected" : "Rename"} hasArrow>
+                  <IconButton
+                    aria-label="Rename"
+                    icon={isNodeProtected ? <Lock size={14} /> : <Pencil size={14} />}
+                    size="xs"
+                    width="22px"
+                    height="22px"
+                    variant="ghost"
+                    color={isNodeProtected ? actionIconColor : "orange.500"}
+                    isDisabled={isNodeProtected}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openRenameModal(node);
+                    }}
+                    _hover={{ color: "orange.600", bg: "orange.50" }}
+                  />
+                </Tooltip>
+                <Tooltip label={isNodeProtected ? "Protected" : "Delete"} hasArrow>
+                  <IconButton
+                    aria-label="Delete"
+                    icon={isNodeProtected ? <Lock size={14} /> : <Trash2 size={14} />}
+                    size="xs"
+                    width="22px"
+                    height="22px"
+                    variant="ghost"
+                    color={isNodeProtected ? actionIconColor : "red.500"}
+                    isDisabled={isNodeProtected}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFolderDelete(node, parent);
+                    }}
+                    _hover={{ color: "red.600", bg: "red.50" }}
+                  />
+                </Tooltip>
+              </HStack>
+            </Box>
+
+            <Collapse in={node.isOpen} animateOpacity style={{ width: "100%" }}>
+              <Box pl={3} borderLeft="1px solid" borderColor={borderColor} ml={3}>
+                {node.children.map((child) => renderFileSystem(child, currentProject, node))}
+              </Box>
+            </Collapse>
+          </>
+        ) : (
           <Box
             display="flex"
             alignItems="center"
-            width="100%"
             px={2}
-            py={1.5}
+            py={0.5}
+            minH="28px"
             borderRadius="md"
-            bg={
-              node._id === activeProjectId
-                ? activeBg
-                : "transparent"
-            }
-            borderLeftWidth="3px"
-            borderLeftColor={
-              node._id === activeProjectId
-                ? activeBorder
-                : "transparent"
-            }
+            cursor="pointer"
+            width="100%"
             _hover={{
               bg: hoverBg,
-              "& .action-buttons": { opacity: 1, visibility: "visible" }
+              "& .file-actions": { opacity: 1, visibility: "visible" }
             }}
-            cursor="pointer"
-            onClick={() => toggleFolder(node)}
             transition="all 0.2s"
             role="group"
+            onClick={() => handleFileClick(node, currentProject)}
           >
-            <Box mr={2} display="flex" alignItems="center">
-              {node.isOpen ? (
-                <ChevronDown size={14} color={iconColor} />
-              ) : (
-                <ChevronRight size={14} color={iconColor} />
-              )}
+            <Box mr={1.5} ml={3.5} color={iconColor}>
+              {getFileIcon(node.name)}
             </Box>
 
-            <Box mr={2} color="#f59e0b">
-              {node.isOpen ? <FolderOpen size={16} /> : <Folder size={16} />}
-            </Box>
-
-            <Text
-              color={textColor}
-              fontSize="sm"
-              fontWeight={node._id === activeProjectId ? "600" : "500"}
-              noOfLines={1}
-              flex="1"
-            >
-              {node.name}
-            </Text>
+            <Tooltip label={node.name} placement="top-start" openDelay={500} hasArrow>
+              <Text color={textColor} fontSize="12px" lineHeight="1.2" flex="1" wordBreak="break-word">
+                {node.name}
+              </Text>
+            </Tooltip>
 
             <HStack
-              className="action-buttons"
+              className="file-actions"
               spacing={0}
               opacity={0}
               visibility="hidden"
               transition="all 0.2s"
             >
-              <Tooltip label="New Folder" hasArrow>
-                <IconButton
-                  aria-label="New Folder"
-                  icon={<FolderPlus size={14} />}
-                  size="xs"
-                  variant="ghost"
-                  color={iconColor}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openCreateModal(node, "folder");
-                  }}
-                  _hover={{ color: "blue.500", bg: "blue.50" }}
-                />
-              </Tooltip>
-              <Tooltip label="New File" hasArrow>
-                <IconButton
-                  aria-label="New File"
-                  icon={<FilePlus size={14} />}
-                  size="xs"
-                  variant="ghost"
-                  color={iconColor}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openCreateModal(node, "file");
-                  }}
-                  _hover={{ color: "green.500", bg: "green.50" }}
-                />
-              </Tooltip>
-              <Tooltip label="Rename" hasArrow>
+              <Tooltip label={isNodeProtected ? "Protected" : "Rename"} hasArrow>
                 <IconButton
                   aria-label="Rename"
-                  icon={<Pencil size={14} />}
+                  icon={isNodeProtected ? <Lock size={14} /> : <Pencil size={14} />}
                   size="xs"
+                  width="22px"
+                  height="22px"
                   variant="ghost"
-                  color={iconColor}
+                  color={isNodeProtected ? actionIconColor : "orange.500"}
+                  isDisabled={isNodeProtected}
                   onClick={(e) => {
                     e.stopPropagation();
                     openRenameModal(node);
                   }}
-                  _hover={{ color: "orange.500", bg: "orange.50" }}
+                  _hover={{ color: "orange.600", bg: "orange.50" }}
                 />
               </Tooltip>
-              <Tooltip label="Delete" hasArrow>
+              <Tooltip label={isNodeProtected ? "Protected" : "Delete File"} hasArrow>
                 <IconButton
-                  aria-label="Delete"
-                  icon={<Trash2 size={14} />}
+                  aria-label="Delete File"
+                  icon={isNodeProtected ? <Lock size={14} /> : <Trash2 size={14} />}
                   size="xs"
+                  width="22px"
+                  height="22px"
                   variant="ghost"
-                  color={iconColor}
+                  color={isNodeProtected ? actionIconColor : "red.500"}
+                  isDisabled={isNodeProtected}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleFolderDelete(node);
+                    handleFolderDelete(node, parent);
                   }}
-                  _hover={{ color: "red.500", bg: "red.50" }}
+                  _hover={{ color: "red.600", bg: "red.50" }}
                 />
               </Tooltip>
             </HStack>
           </Box>
+        )}
+      </VStack>
+    );
+  });
 
-          <Collapse in={node.isOpen} animateOpacity style={{ width: "100%" }}>
-            <Box pl={4} borderLeft="1px solid" borderColor={borderColor} ml={3.5}>
-              {node.children.map((child) => renderFileSystem(child))}
-            </Box>
-          </Collapse>
-        </>
-      ) : (
-        <Box
-          display="flex"
-          alignItems="center"
-          px={2}
-          py={1.5}
-          borderRadius="md"
-          cursor="pointer"
-          width="100%"
-          _hover={{
-            bg: hoverBg,
-            "& .file-actions": { opacity: 1, visibility: "visible" }
-          }}
-          transition="all 0.2s"
-          role="group"
-          onClick={() => handleFileClick(node)}
-        >
-          <Box mr={2} ml={5} color={iconColor}>
-            <File size={15} />
-          </Box>
+  const renderFileSystem = (node, topLevelProject = null, parent = null) => {
+    const isTopLevel = fileSystem.children?.some(c => c._id === node._id);
+    const currentProject = isTopLevel ? node : topLevelProject;
 
-          <Text color={textColor} fontSize="sm" flex="1" noOfLines={1}>
-            {node.name}
-          </Text>
-
-          <HStack
-            className="file-actions"
-            spacing={0}
-            opacity={0}
-            visibility="hidden"
-            transition="all 0.2s"
-          >
-            <Tooltip label="Rename" hasArrow>
-              <IconButton
-                aria-label="Rename"
-                icon={<Pencil size={14} />}
-                size="xs"
-                variant="ghost"
-                color={iconColor}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openRenameModal(node);
-                }}
-                _hover={{ color: "orange.500", bg: "orange.50" }}
-              />
-            </Tooltip>
-            <Tooltip label="Delete File" hasArrow>
-              <IconButton
-                aria-label="Delete File"
-                icon={<Trash2 size={14} />}
-                size="xs"
-                variant="ghost"
-                color={iconColor}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleFolderDelete(node);
-                }}
-                _hover={{ color: "red.500", bg: "red.50" }}
-              />
-            </Tooltip>
-          </HStack>
-        </Box>
-      )}
-    </VStack>
-  );
+    return (
+      <FileNode
+        key={node._id || node.name}
+        node={node}
+        parent={parent}
+        currentProject={currentProject}
+        activeProjectId={activeProjectId}
+        activeBg={activeBg}
+        activeBorder={activeBorder}
+        hoverBg={hoverBg}
+        iconColor={iconColor}
+        actionIconColor={actionIconColor}
+        textColor={textColor}
+        toggleFolder={toggleFolder}
+        handleFileClick={handleFileClick}
+        openCreateModal={openCreateModal}
+        openRenameModal={openRenameModal}
+        handleFolderDelete={handleFolderDelete}
+        isProtected={isProtected}
+        getFileIcon={getFileIcon}
+        borderColor={borderColor}
+        renderFileSystem={renderFileSystem}
+      />
+    );
+  };
 
   return (
     <Box width="100%" height="100%" display="flex" flexDirection="column" bg={useColorModeValue("white", "gray.900")}>
-      <Box mb={4} px={1}>
+      <Box mb={2} px={1}>
         <Button
           leftIcon={<Plus size={16} />}
           size="sm"
@@ -467,6 +673,35 @@ const FileExplorer = ({ variant }) => {
         item={renameItem}
         onSuccess={handleRefresh}
       />
+
+      <AlertDialog
+        isOpen={isDeleteAlertOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onDeleteAlertClose}
+        isCentered
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Item
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Are you sure you want to delete <strong>{itemToDelete?.node?.name}</strong>? 
+              This action cannot be undone.
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onDeleteAlertClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="red" onClick={confirmDelete} ml={3} isLoading={isDeleting}>
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 };

@@ -7,7 +7,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Box, Center, Heading, Text, Button } from "@chakra-ui/react";
 import Ellipse521 from "../../../images/Ellipse 521.svg";
 import Footer from "../../Footer";
-import { baseURL } from "../../../utilities";
+import { baseURL, productAPIBase } from "../../../utilities";
 
 const EditProductDefinition = () => {
   const location = useLocation();
@@ -43,6 +43,9 @@ const EditProductDefinition = () => {
   const convertDataToAPIFormat = async (values) => {
     const formattedComponents = {};
     values.components.forEach((component) => {
+      // Skip components with no name (empty placeholder rows)
+      if (!component.componentName || !component.componentName.trim()) return;
+
       formattedComponents[component.componentName] = {
         ...component,
         type: component.componentType.toLowerCase(),
@@ -69,11 +72,29 @@ const EditProductDefinition = () => {
     console.log("Result data:", resultData);
 
     try {
-      const response = await axios.patch(
-        `${baseURL}/product/${values.productID}/components`,
-        resultData.components
-      );
-      console.log("Product definition successfully updated:", response.data);
+      // Submit each component
+      for (const [componentName, componentData] of Object.entries(formattedComponents)) {
+        if (!componentName || !componentName.trim()) continue;
+
+        const payload = {
+          componentID: componentData.componentID || "",
+          type: componentData.type,
+          parameters: componentData.parameters || {},
+          note: componentData.note || "",
+          urls: Array.isArray(componentData.urls) ? componentData.urls : [],
+        };
+
+        let url = `${productAPIBase}/product/${values.productID}/definitionNew/${componentName}`;
+        try {
+          console.log(`[EditProductDefinition] Updating component "${componentName}" via local API: ${url}`);
+          await axios.put(url, payload, { timeout: 4000 });
+        } catch (localError) {
+          console.warn(`[EditProductDefinition] Local update failed/timed out for "${componentName}", falling back to Eureka...`);
+          // Use definitionNew for fallback as requested
+          url = `${baseURL}/product/${values.productID}/definitionNew/${componentName}`;
+          await axios.put(url, payload);
+        }
+      }
 
       // Navigate to block diagram with state
       navigate("/blockdiagram", {
@@ -85,18 +106,30 @@ const EditProductDefinition = () => {
     } catch (error) {
       console.error("Error sending data to the server:", error);
       alert("Error submitting form. Please try again.");
-      throw error; // Re-throw to be caught by the form submission handler
+      throw error;
     }
   };
 
   //   fetches and updates the form
 
   const fetchProductDefinition = async (productID) => {
+    console.log("[EditProductDefinition] Fetching definition for ID:", productID);
     try {
-      const response = await axios.get(
-        `${baseURL}/product/${productID}/definitionNew`
-      );
+      let response;
+      const localUrl = `${productAPIBase}/product/${productID}/definitionNew`;
 
+      try {
+        console.log(`[EditProductDefinition] Attempting local fetch: ${localUrl}`);
+        response = await axios.get(localUrl, { timeout: 4000 });
+      } catch (localError) {
+        console.warn("[EditProductDefinition] Local fetch failed/timed out, trying Eureka fallback...");
+        // Use definitionNew for fallback as requested
+        const fallbackUrl = `${baseURL}/product/${productID}/definitionNew`;
+        console.log(`[EditProductDefinition] Attempting fallback fetch: ${fallbackUrl}`);
+        response = await axios.get(fallbackUrl);
+      }
+
+      console.log("[EditProductDefinition] Received Data:", response.data);
       const convertedComponents = convertDataFromApi(response.data);
 
       setInitialValues((prevValues) => ({
@@ -104,48 +137,81 @@ const EditProductDefinition = () => {
         components: convertedComponents,
       }));
     } catch (error) {
-      console.log("Error fetching product definition:", error);
+      console.error("[EditProductDefinition] Error fetching product definition (All servers failed):", error);
     }
   };
 
-  const convertDataFromApi = (apiData) => {
+  const convertDataFromApi = (apiDataRaw) => {
+    // Support both { ... } and { data: { ... } } structures
+    const apiData = apiDataRaw?.data || apiDataRaw;
     if (!apiData || !apiData.components) return [];
 
     return Object.keys(apiData.components).map((componentName) => {
       const component = apiData.components[componentName];
 
-      // Try to find a match in electronicComponents for type normalization
+      // 1. Determine Component Type
       let componentType = component.type || "";
       const match = electronicComponents.find(
         (c) => c.type.toLowerCase() === componentType.toLowerCase().trim()
       );
       if (match) {
         componentType = match.type;
-      } else {
-        if (componentType) {
-          componentType = componentType.charAt(0).toUpperCase() + componentType.slice(1);
-        }
+      } else if (componentType) {
+        componentType = componentType.charAt(0).toUpperCase() + componentType.slice(1);
+      }
+
+      // 2. Initialize formatted component
+      // Note/URLs may live inside the component OR at the top-level product (fallback)
+      // Check both lowercase and capitalized variants, and common alternatives
+      let componentNote = component.note || component.Note || component.notes || component.Notes || apiData.note || apiData.Note || "";
+
+      let componentUrls = [];
+      if (Array.isArray(component.urls) && component.urls.length > 0) {
+        componentUrls = component.urls;
+      } else if (Array.isArray(component.Urls) && component.Urls.length > 0) {
+        componentUrls = component.Urls;
+      } else if (component.urls && typeof component.urls === "string") {
+        componentUrls = [component.urls];
+      } else if (component.url && typeof component.url === "string") {
+        componentUrls = [component.url];
+      } else if (Array.isArray(apiData.urls) && apiData.urls.length > 0) {
+        componentUrls = apiData.urls;
+      } else if (Array.isArray(apiData.Urls) && apiData.Urls.length > 0) {
+        componentUrls = apiData.Urls;
       }
 
       let formattedComponent = {
-        componentID: component.componentID || "",
+        componentID: component.componentID || component.id || "",
         componentType,
         componentName,
-        note: component.note || "",
-        urls: Array.isArray(component.urls) ? component.urls : (component.urls ? [component.urls] : []),
+        note: componentNote,
+        urls: componentUrls,
       };
 
-      // Ensure 'unit' is always an array if present
-      if (component.unit) {
-        formattedComponent.unit = Array.isArray(component.unit)
-          ? component.unit
-          : [component.unit];
+      // 3. Extract parameters (min, max, unit)
+      let params = component.parameters || {};
+      
+      if (Object.keys(params).length === 0) {
+        Object.keys(component).forEach(key => {
+          if (typeof component[key] === 'object' && component[key] !== null && !Array.isArray(component[key])) {
+            if (component[key].min !== undefined || component[key].max !== undefined || component[key].unit !== undefined) {
+              params = { ...params, ...component[key] };
+            }
+          }
+        });
       }
 
-      // Only add min/max if they exist
-      if (component.min !== undefined && component.max !== undefined) {
-        formattedComponent.min = component.min;
-        formattedComponent.max = component.max;
+      const unitValue = params.unit || component.unit;
+      if (unitValue) {
+        formattedComponent.unit = Array.isArray(unitValue) ? unitValue : [unitValue];
+      }
+
+      const minVal = params.min !== undefined ? params.min : component.min;
+      const maxVal = params.max !== undefined ? params.max : component.max;
+
+      if (minVal !== undefined && maxVal !== undefined) {
+        formattedComponent.min = minVal;
+        formattedComponent.max = maxVal;
       }
 
       return formattedComponent;

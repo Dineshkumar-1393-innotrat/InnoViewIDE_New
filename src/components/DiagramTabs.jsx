@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Plus, ExternalLink, Loader2, X } from 'lucide-react';
+import { Plus, Save, Loader2, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   setActiveTab as setFlowchartActiveTab,
@@ -21,10 +21,18 @@ import {
 } from '../store/slices/blockProgrammingSlice';
 import { WorkspaceTabsContext } from '../hooks/useWorkspaceTabs';
 import { useContext } from 'react';
+import axios from 'axios';
+import { useProject } from '../ProjectContext';
+import { getUserInfo } from '../utilities';
+import { ensureProjectFolder } from '../utils/workspaceStorage';
+import { useToast } from '@chakra-ui/react';
 import './DiagramTabs.css';
 
-const DiagramTabs = ({ title = 'Tabs', kind }) => {
+const DiagramTabs = ({ title = 'Tabs', kind, onSaveJSON }) => {
   const dispatch = useDispatch();
+  const toast = useToast();
+  const projectContext = useProject() || {}; // Use project context safely
+  const { activeProjectId } = projectContext;
 
   // Try to get state from Redux based on 'kind'
   const flowchartState = useSelector(state => state.flowchart);
@@ -62,10 +70,60 @@ const DiagramTabs = ({ title = 'Tabs', kind }) => {
     }
   };
 
-  const createTab = () => {
+  const createTab = async () => {
     if (reduxTabs) {
       const newId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-      const newTab = { id: newId, name: `Tab ${tabs.length + 1}`, state: { nodes: [], edges: [] }, dirty: true };
+      let newTab = { id: newId, name: `Tab ${tabs.length + 1}`, state: { nodes: [], edges: [] }, dirty: true };
+
+      try {
+        let folderName = 'misc';
+        let extension = '.json';
+        let baseFileName = 'misc';
+        if (kind === 'flowchart') {
+          folderName = 'Flowchart'; // Use capitalized folder names for consistency
+          baseFileName = 'flowchart';
+        } else if (kind === 'blockDiagram') {
+          folderName = 'BlockDiagram';
+          baseFileName = 'blockdiagram';
+        } else if (kind === 'blockProgramming') {
+          folderName = 'BlockProgramming';
+          baseFileName = 'blockprogramming';
+        }
+
+        const userInfo = getUserInfo();
+        if (userInfo && userInfo.userId && activeProjectId) {
+          console.log(`[DiagramTabs] Ensuring parent folder exists for module: ${folderName}`);
+          const folderId = await ensureProjectFolder({
+            userId: userInfo.userId,
+            projectId: activeProjectId,
+            folderName
+          });
+
+          if (!folderId) {
+             throw new Error("Failed to resolve parent folder ID");
+          }
+
+          const formattedTabName = newTab.name.replace(/\s+/g, '');
+          const fileName = `${baseFileName}_${formattedTabName}${extension}`;
+
+          console.log(`[DiagramTabs] Creating individual diagram file: ${fileName} in folder: ${folderName}`);
+          const { data } = await axios.post("https://eureka.innotrat.in/api/v1/createFileAndFolder", {
+            parentId: folderId,
+            name: fileName,
+            type: "file",
+            userId: userInfo.userId
+          });
+
+          if (data && data.success && data.file && data.file._id) {
+            newTab.fileId = data.file._id;
+            newTab.folderId = folderId; // Store folderId for reference
+            window.dispatchEvent(new Event('file-system-refresh'));
+          }
+        }
+      } catch (err) {
+        console.error("Error creating file for new tab:", err);
+      }
+
       if (kind === 'flowchart') dispatch(addFlowchartTab(newTab));
       else if (kind === 'blockDiagram') dispatch(addBlockDiagramTab(newTab));
       else if (kind === 'blockProgramming') dispatch(addBlockProgrammingTab(newTab));
@@ -74,7 +132,19 @@ const DiagramTabs = ({ title = 'Tabs', kind }) => {
     }
   };
 
-  const closeTab = (id) => {
+  const closeTab = async (id) => {
+    const tabToClose = tabs.find(t => t.id === id);
+    if (tabToClose && tabToClose.fileId) {
+      try {
+        await axios.delete("https://eureka.innotrat.in/api/v1/deleteFileAndFolder", {
+          data: { fileId: tabToClose.fileId }
+        });
+        window.dispatchEvent(new Event('file-system-refresh'));
+      } catch (err) {
+        console.error("Error deleting file for closed tab:", err);
+      }
+    }
+
     if (reduxTabs) {
       if (kind === 'flowchart') dispatch(closeFlowchartTab(id));
       else if (kind === 'blockDiagram') dispatch(closeBlockDiagramTab(id));
@@ -110,6 +180,23 @@ const DiagramTabs = ({ title = 'Tabs', kind }) => {
 
   return (
     <div className="diagram-tabs">
+      <div className="diagram-tabs__actions">
+        <button type="button" className="diagram-tabs__action" onClick={createTab} title="Add tab">
+          <Plus size={16} />
+        </button>
+        <button
+          type="button"
+          className="diagram-tabs__action"
+          onClick={async () => {
+            await saveActiveTabNow();
+            if (onSaveJSON) onSaveJSON();
+          }}
+          title="Save"
+          disabled={!activeTabId}
+        >
+          <Save size={16} />
+        </button>
+      </div>
       <div className="diagram-tabs__list" role="tablist" aria-label={title}>
         {tabs.map((tab) => {
           if (!tab) return null;
@@ -138,6 +225,7 @@ const DiagramTabs = ({ title = 'Tabs', kind }) => {
                 }}
               >
                 {tab.name}
+                {tab.dirty && <span className="diagram-tabs__dirty-dot" title="Unsaved changes" />}
               </span>
               <button
                 type="button"
@@ -153,20 +241,6 @@ const DiagramTabs = ({ title = 'Tabs', kind }) => {
             </div>
           );
         })}
-      </div>
-      <div className="diagram-tabs__actions">
-        <button type="button" className="diagram-tabs__action" onClick={createTab} title="Add tab">
-          <Plus size={16} />
-        </button>
-        <button
-          type="button"
-          className="diagram-tabs__action"
-          onClick={saveActiveTabNow}
-          title="Save tab now"
-          disabled={!activeTabId}
-        >
-          <ExternalLink size={16} />
-        </button>
       </div>
     </div>
   );

@@ -90,7 +90,7 @@
   height: fit-content;
   width: auto;
   position: fixed;
-  top: 75px;
+  top: 60px;
   right: 0px;
   display: flex;
   justify-content: flex-end;
@@ -137,8 +137,8 @@
 
 .main-content {
   display: flex;
-  height: calc(100vh - 70px);
-  padding-top: 70px;
+  height: calc(100vh - 60px);
+  padding-top: 60px;
 }
 
 .sidebar {
@@ -242,8 +242,7 @@
 
 .canvas-placeholder {
   height: 100%;
-  border: 2px dashed var(--symbol-dark);
-  border-radius: 0.25rem;
+  border: none;
   transition: border-color 0.3s;
 }
 
@@ -295,8 +294,8 @@
   overflow-y: auto;
   box-sizing: border-box;
   padding: 0px !important;
-  width: 300px;
-  flex: 0 0 300px;
+  width: 240px;
+  flex: 0 0 240px;
 }
 
 .symbol-grid {
@@ -335,8 +334,6 @@
 }
 
 .canvas-placeholder {
-  border: 2px solid #ddd;
-  padding: 20px;
   position: relative;
   height: 500px;
 }
