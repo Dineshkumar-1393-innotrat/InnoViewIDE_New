@@ -38,6 +38,7 @@ import Ellipse521 from "../images/Ellipse 521.svg";
 import { Link as ChakraLink } from "@chakra-ui/react";
 import { onboardingSteps } from "../data/onboardingSteps";
 import { GoogleLogin } from "@react-oauth/google";
+import { handleGoogleAuth } from "../services/authService";
 
 const Home = () => {
   const [show, setShow] = useState(false);
@@ -113,7 +114,7 @@ const Home = () => {
 
     try {
       const response = await fetch(
-        "/api/v1/auth/signin",
+        "https://eureka.innotrat.in/api/v1/auth/signin",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -291,28 +292,20 @@ const Home = () => {
                   <GoogleLogin
                     onSuccess={async (credentialResponse) => {
                       try {
-                        const response = await fetch("/auth/google", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            token: credentialResponse.credential,
-                          }),
-                        });
-
-                        // Safely parse response body
-                        const text = await response.text();
-                        let data;
+                        const token = credentialResponse.credential;
+                        let userInfo;
                         try {
-                          data = JSON.parse(text);
-                        } catch {
-                          throw new Error(
-                            `Server error ${response.status}: ${response.statusText}`
-                          );
+                          const base64Url = token.split('.')[1];
+                          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                          const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                          }).join(''));
+                          userInfo = JSON.parse(jsonPayload);
+                        } catch (e) {
+                          throw new Error("Invalid token received from Google");
                         }
 
-                        if (!response.ok) {
-                          throw new Error(data?.message || `Request failed with status ${response.status}`);
-                        }
+                        const data = await handleGoogleAuth(userInfo, token);
 
                         if (data.status === "success") {
                           sessionStorage.setItem("token", data.token);
@@ -351,7 +344,7 @@ const Home = () => {
                   />
                 </Box>
                 <Text textAlign="center" fontSize="xs" color="whiteAlpha.500" mt={4}>
-                  InnoIDE_V1Rev1.2_26-05-2026 (C) Innotrat Labs 2026
+                  InnoIDE_V1Rev1.3_29-05-2026 (C) Innotrat Labs 2026
                 </Text>
               </VStack>
             </Box>

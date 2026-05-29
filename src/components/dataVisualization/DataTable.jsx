@@ -94,13 +94,12 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
   useEffect(() => {
     if (!selectedProduct || !selectedDevice) return; // Ensure both product and device are selected
 
-    const interval = 5000;
-    const intervalId = setInterval(async () => {
-      const payload = {
-        productID: selectedProduct,
-        deviceID: selectedDevice,
-      };
+    const payload = {
+      productID: selectedProduct,
+      deviceID: selectedDevice,
+    };
 
+    const fetchDeviceData = async () => {
       // 1. Optional: Trigger data generation (Simulation)
       try {
         await axios.post(
@@ -116,7 +115,7 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
       try {
         const response = await axios.post(
           `${productAPIBase}/data`,
-          payload
+          { productID: selectedProduct }
         );
 
         if (response.data && response.data.data) {
@@ -131,7 +130,14 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
           alert(`Data Fetch Error: ${errorMessage}`);
         }
       }
-    }, interval);
+    };
+
+    // Call immediately upon device selection
+    fetchDeviceData();
+
+    // Then set up the interval to poll every 5 seconds
+    const interval = 5000;
+    const intervalId = setInterval(fetchDeviceData, interval);
 
     return () => clearInterval(intervalId); // Clear interval on unmount
   }, [selectedProduct, selectedDevice]);
@@ -144,14 +150,16 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
         <Heading size="xl">{selectedName}</Heading>
       </Center>
       {console.log("device id", selectedDevice, tableData)}
-      {tableData.length > 0 ? (
+      {!selectedProduct || !selectedDevice ? (
+        <p>Please select a product and a device to view data.</p>
+      ) : tableData.length > 0 ? (
         <SensorTable
           data={tableData}
           deviceID={selectedDevice}
           productName="Fire Sensor"
         />
       ) : (
-        <p>No data available for the selected device.</p>
+        <p>No data available for the selected device. Make sure it is running in the Simulation screen.</p>
       )}
     </div>
   );

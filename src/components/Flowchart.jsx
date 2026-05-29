@@ -435,8 +435,7 @@ const Flowchart = () => {
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="flowchart-container">
+    <div className="flowchart-container" style={{ backgroundColor: "#ffffff" }}>
         <Navbarone />
         <div className="top-controls">
           <button className="control-button">
@@ -669,7 +668,6 @@ const Flowchart = () => {
         </div>
         {/* <Footer /> */}
       </div>
-    </DndProvider>
   );
 };
 

@@ -913,15 +913,12 @@ const CreateProductDefinition = ({
                                 className="form-select"
                                 name={`components[${index}].componentType`}
                                 onChange={(e) => {
-                                  formik.handleChange(e);
-                                  helperMethod.replace(index, {
-                                    ...component,
-                                    componentType: e.target.value,
-                                    componentName: "",
-                                    unit: undefined,
-                                    min: undefined,
-                                    max: undefined,
-                                  });
+                                  const val = e.target.value;
+                                  formik.setFieldValue(`components[${index}].componentType`, val);
+                                  formik.setFieldValue(`components[${index}].componentName`, "");
+                                  formik.setFieldValue(`components[${index}].unit`, undefined);
+                                  formik.setFieldValue(`components[${index}].min`, undefined);
+                                  formik.setFieldValue(`components[${index}].max`, undefined);
                                 }}
                               >
                                 <option value="" disabled>
@@ -952,29 +949,16 @@ const CreateProductDefinition = ({
                                   className="form-select"
                                   name={`components[${index}].componentName`}
                                   onChange={(e) => {
-                                    formik.handleChange(e);
-                                    const selectedComponent =
-                                      electronicComponents
-                                        .find(
-                                          (cat) =>
-                                            cat.type === component.componentType
-                                        )
-                                        ?.components.find(
-                                          (comp) => comp.name === e.target.value
-                                        );
+                                    const val = e.target.value;
+                                    formik.setFieldValue(`components[${index}].componentName`, val);
+                                    
+                                    const selectedComponent = electronicComponents
+                                      .find((cat) => cat.type.toLowerCase() === component.componentType?.toLowerCase()?.trim())
+                                      ?.components.find((comp) => comp.name === val);
 
-                                    helperMethod.replace(index, {
-                                      ...component,
-                                      componentName: e.target.value,
-                                      unit:
-                                        selectedComponent?.unit || undefined,
-                                      min: selectedComponent?.unit
-                                        ? ""
-                                        : undefined,
-                                      max: selectedComponent?.unit
-                                        ? ""
-                                        : undefined,
-                                    });
+                                    formik.setFieldValue(`components[${index}].unit`, selectedComponent?.unit || undefined);
+                                    formik.setFieldValue(`components[${index}].min`, selectedComponent?.unit ? "" : undefined);
+                                    formik.setFieldValue(`components[${index}].max`, selectedComponent?.unit ? "" : undefined);
                                   }}
                                 >
                                   <option value="" disabled>
@@ -983,8 +967,8 @@ const CreateProductDefinition = ({
                                   {electronicComponents
                                     .find(
                                       (category) =>
-                                        category.type ===
-                                        component.componentType
+                                        category.type.toLowerCase() ===
+                                        component.componentType?.toLowerCase()?.trim()
                                     )
                                     ?.components.map((comp, idx) => (
                                       <option key={idx} value={comp.name}>

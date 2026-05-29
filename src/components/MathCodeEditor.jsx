@@ -820,6 +820,7 @@ ${expr}
                         w="6px"
                         bg="transparent"
                         cursor="col-resize"
+                        className="sidebar-resizer"
                         onMouseDown={startResizing}
                         zIndex={10}
                     />
@@ -866,8 +867,11 @@ ${expr}
                                                     overflow="hidden"
                                                     gap={1}
                                                 >
-                                                    <Text noOfLines={1} onDoubleClick={() => handleRenameTab(tab.id)} title="Double-click to rename" fontSize="xs">
+                                                    <Text noOfLines={1} onDoubleClick={() => handleRenameTab(tab.id)} title="Double-click to rename" fontSize="xs" display="flex" alignItems="center" gap="4px">
                                                         {tab.name}
+                                                        {tab.dirty && (
+                                                            <Box as="span" w="6px" h="6px" borderRadius="50%" bg={isActive ? "#fca5a5" : "#ef4444"} display="inline-block" flexShrink={0} />
+                                                        )}
                                                     </Text>
                                                     <IconButton
                                                         icon={<CloseIcon fontSize="6px" />}
@@ -986,7 +990,38 @@ ${expr}
                                 borderColor={colorMode === "dark" ? "rgba(148,163,184,0.14)" : "rgba(15,23,42,0.1)"}
                                 bg={colorMode === "dark" ? "rgba(11,18,32,0.78)" : "rgba(15,23,42,0.02)"}
                                 overflow="hidden"
+                                position="relative"
                             >
+                                {(!activeTabContent || activeTabContent.trim() === "") && (
+                                    <Box
+                                        position="absolute"
+                                        top="50%"
+                                        left="50%"
+                                        transform="translate(-50%, -50%)"
+                                        zIndex={10}
+                                        pointerEvents="none"
+                                        textAlign="center"
+                                        width="100%"
+                                        animation="blink-canvas 2s ease-in-out infinite"
+                                    >
+                                        <style>{`
+                                            @keyframes blink-canvas {
+                                                0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                                                50% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.98); }
+                                            }
+                                        `}</style>
+                                        <Text
+                                            fontWeight="bold"
+                                            fontSize={{ base: "xl", md: "2xl", lg: "4xl" }}
+                                            color={colorMode === "dark" ? "rgba(153, 219, 248, 0.15)" : "rgba(7, 52, 148, 0.1)"}
+                                            letterSpacing="widest"
+                                            textTransform="uppercase"
+                                            userSelect="none"
+                                        >
+                                            Advanced MathCode Workspace
+                                        </Text>
+                                    </Box>
+                                )}
                                 <Editor
                                     options={{
                                         minimap: { enabled: false },

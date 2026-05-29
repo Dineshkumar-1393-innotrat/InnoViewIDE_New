@@ -1,987 +1,4 @@
-// import React, { useState, useEffect, useRef } from 'react';
-// import { DndProvider, useDrag, useDrop } from 'react-dnd';
-// import { HTML5Backend } from 'react-dnd-html5-backend';
-// import { Rnd } from 'react-rnd';
-// import { Maximize, ZoomIn, ZoomOut, ArrowLeft, ArrowRight } from 'lucide-react';
-// import { FiTrash } from 'react-icons/fi';
-// import { InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
-// import { FaSearch } from 'react-icons/fa';
-// import { useNavigate } from 'react-router-dom';
 
-// // Import all your existing SVG icons
-// import SoundAndVibrationsSensor from '../images/sound and vibrarions sensor.svg';
-// import ServoMotors from '../images/servo motors.svg';
-// import RGBLights from '../images/rgb lights.svg';
-// import PowerSupply from '../images/powersupply.svg';
-// import OpticalSensor from '../images/optical sensor.svg';
-// import OledDisplays from '../images/oled displays.svg';
-// import MotionSensor from '../images/motion sensor.svg';
-// import Microcontroller from '../images/microcontroller 1.svg';
-// import EnvironmentalSensor from '../images/environmental sensor.svg';
-// import ElectricalAndMagneticsSensor from '../images/electrical and magnetics  sensor.svg';
-// import DistanceAndRangeSensor from '../images/distance and range sensor.svg';
-// import Connectors from '../images/connectors.svg';
-// import ChemicalSensor from '../images/chemaical sensor.svg';
-// import Buzzer from '../images/buzzer.svg';
-// import Amplifier from '../images/amplifier.svg';
-// import ActuatorsRelay from '../images/actuators relay.svg';
-// import Wire from '../images/wire.svg';
-// import VibrationsMotors from '../images/vibrations motors.svg';
-// import TouchAndForceSensor from '../images/touch and force sensor.svg';
-// import TemperatureSensor from '../images/temperature sensor.svg';
-// import SimulationPopup from './SimulationPopup'; // Import the popup component
-// import BlackWire from '../images/blackwire.svg';
-// import GreenWire from '../images/greenwire.svg';
-// import RedWire from '../images/redwire.svg';
-// import Connectorone from "../images/connectorzoneone.svg";
-// import Connectortwo from "../images/connectorzonetwo.svg";
-// import Connectorthree from "../images/connectorzonethree.svg";
-// import Connectorfour from "../images/connectorzonefour.svg";
-// import Connectorfive from "../images/connectorzonefive.svg";
-// import SimulationOne from './SimulationOne';
-// import Phsensor from "../images/phsensor.svg";
-// import Moisturesensor from "../images/moisturesensor.svg"
-// import Lightsensor from "../images/lightsensor.svg"
-// import Irsensor from "../images/irsensor.svg"
-// import Heartbeatsensor from "../images/heartbeatsensor.svg"
-// import Gassensor from "../images/gassensor.svg";
-// import Airqualitysensor from "../images/airqualitysensor.svg";
-// import Airqualitysensorone from "../images/airqualitysensorone.svg";
-// import Accelerometer from "../images/accelerometer.svg";
-// import Accelerometerone from "../images/accelerometerone.svg";
-// import Bluelight from "../images/bluelight.svg";
-// import Redlight from "../images/redlight.svg";
-// import Greenlight from "../images/greenlight.svg";
-
-// // ... (rest of your imports)
-
-// import Navbar from './Navbar';
-// import Footer from './Footer';
-// import './Flowchart.css';
-// import Output from './Output';
-// import { Box, Text } from '@chakra-ui/react';
-
-// // Your existing symbols array
-// const symbols = [
-//   {
-//     category: "SENSORS ▼",
-//     items: [
-//       { type: "svg", src: SoundAndVibrationsSensor, name: "Sound and Vibrations Sensor" },
-//       { type: "svg", src: OpticalSensor, name: "Optical Sensor" },
-//       { type: "svg", src: EnvironmentalSensor, name: "Environmental Sensor" },
-//       { type: "svg", src: ElectricalAndMagneticsSensor, name: "Electrical and Magnetics Sensor" },
-//       { type: "svg", src: DistanceAndRangeSensor, name: "Distance and Range Sensor" },
-//       { type: "svg", src: ChemicalSensor, name: "Chemical Sensor" },
-//       { type: "svg", src: MotionSensor, name: "Motion Sensor" },
-//       { type: "svg", src: TouchAndForceSensor, name: "Touch and Force Sensor" },
-//       { type: "svg", src: TemperatureSensor, name: "Temperature Sensor" },
-//       { type: "svg", src: Phsensor, name: "pH Sensor" },
-//   { type: "svg", src: Moisturesensor, name: "Moisture Sensor" },
-//   { type: "svg", src: Lightsensor, name: "Light Sensor" },
-//   { type: "svg", src: Irsensor, name: "IR Sensor" },
-//   { type: "svg", src: Heartbeatsensor, name: "Heartbeat Sensor" },
-//   { type: "svg", src: Gassensor, name: "Gas Sensor" },
-//   { type: "svg", src: Airqualitysensor, name: "Air Quality Sensor" },
-//   { type: "svg", src: Airqualitysensorone, name: "Air Quality Sensor" },
-//   { type: "svg", src: Accelerometer, name: "Accelerometer" },
-//   { type: "svg", src: Accelerometerone, name: "Accelerometer" }
-//     ],
-//   },
-//   {
-//     category: "ACTUATORS ▼",
-//     items: [
-//       { type: "svg", src: ServoMotors, name: "Servo Motors" },
-//       { type: "svg", src: VibrationsMotors, name: "Vibrations Motors" },
-//       { type: "svg", src: ActuatorsRelay, name: " Relay" },
-//     ],
-//   },
-//   {
-//     category: "DISPLAY AND INDICATORS ▼",
-//     items: [
-//       { type: "svg", src: OledDisplays, name: "OLED Displays" },
-//       // { type: "svg", src: RGBLights, name: "RGB Lights" },
-//       { type: "svg", src: Buzzer, name: "Buzzer" },
-//       { type: "svg", src: Redlight, name: "Redlight" },
-//       { type: "svg", src: Greenlight , name: "Green Light " },
-//       { type: "svg", src: Bluelight , name: "Blue Light " },
-//     ],
-//   },
-//   {
-//     category: "POWER ▼",
-//     items: [
-//       { type: "svg", src: PowerSupply, name: "Power Supply" },
-//     ],
-//   },
-//   {
-//     category: "CONNECTORS ▼",
-//     items: [
-//       { type: "svg", src: Connectors, name: "Connectors" },
-//       { type: "svg", src: Wire, name: "Wire" },
-//       { type: "svg", src: RedWire, name: "RedWire" },
-//       { type: "svg", src: GreenWire, name: "GreenWire" },
-//       { type: "svg", src: BlackWire, name: "BlackWire" },
-//       { type: "svg", src: Connectorone, name: "Connector Zone1" },
-//       { type: "svg", src: Connectortwo, name: "Connector Zone2" },
-//       { type: "svg", src: Connectorthree, name: "Connector Zone3" },
-//       { type: "svg", src: Connectorfour, name: "Connector Zone4" },
-//       { type: "svg", src: Connectorfive, name: "Connector Zone5" },
-
-//     ],
-//   },
-//   {
-//     category: "AMPLIFIERS ▼",
-//     items: [
-//       { type: "svg", src: Amplifier, name: "Amplifier" },
-//     ],
-//   },
-//   {
-//     category: "MICROCONTROLLERS ▼",
-//     items: [
-//       { type: "svg", src: Microcontroller, name: "Microcontroller" },
-//     ],
-//   },
-// ];
-
-// // const BlockDiagram = () => {
-// //   const [openCategories, setOpenCategories] = useState({});
-// //   const [droppedItems, setDroppedItems] = useState([]);
-// //   const [activeSymbol, setActiveSymbol] = useState(null);
-// //   const [contextMenu, setContextMenu] = useState(null);
-// //   const contextMenuRef = useRef(null);
-// //   const navigate = useNavigate();
-
-// //   // Custom hook for handling clicks outside elements
-// //   const useClickOutside = (ref, handler) => {
-// //     useEffect(() => {
-// //       const listener = (event) => {
-// //         if (!ref.current || ref.current.contains(event.target)) {
-// //           return;
-// //         }
-// //         handler(event);
-// //       };
-// //       document.addEventListener('mousedown', listener);
-// //       return () => {
-// //         document.removeEventListener('mousedown', listener);
-// //       };
-// //     }, [ref, handler]);
-// //   };
-
-// //   // Use the hook for context menu
-// //   useClickOutside(contextMenuRef, () => setContextMenu(null));
-
-// //   const toggleCategory = (category) => {
-// //     setOpenCategories((prev) => ({
-// //       ...prev,
-// //       [category]: !prev[category],
-// //     }));
-// //   };
-
-// //   const handleContextMenu = (e, index) => {
-// //     e.preventDefault();
-// //     e.stopPropagation();
-// //     setContextMenu({
-// //       x: e.clientX,
-// //       y: e.clientY,
-// //       symbolIndex: index
-// //     });
-// //   };
-
-// //   const handleDelete = () => {
-// //     if (contextMenu) {
-// //       setDroppedItems(items => items.filter((_, index) => index !== contextMenu.symbolIndex));
-// //       setContextMenu(null);
-// //       setActiveSymbol(null);
-// //       alert('Symbol deleted successfully!');
-// //     }
-// //   };
-
-// //   // SymbolItem component
-// //   const SymbolItem = ({ symbol }) => {
-// //     const [, drag] = useDrag(() => ({
-// //       type: "symbol",
-// //       item: { symbol },
-// //     }));
-
-// //     return (
-// //       <button
-// //         ref={drag}
-// //         className="symbol-button"
-// //         style={{
-// //           cursor: "grab",
-// //           height: "140px",
-// //           width: "140px",
-// //           display: "flex",
-// //           flexDirection: "column",
-// //           alignItems: "center",
-// //           justifyContent: "center"
-// //         }}
-// //       >
-// //         {symbol.type === "unicode" ? (
-// //           symbol.symbol
-// //         ) : (
-// //           <img src={symbol.src} alt="SVG Symbol" className="svg-icon" />
-// //         )}
-// //         <div style={{
-// //           marginTop: "4px",
-// //           fontSize: "18px",
-// //           color: "white"
-// //         }}>
-// //           {symbol.name}
-// //         </div>
-// //       </button>
-// //     );
-// //   };
-
-// //   // Canvas component
-// //   const Canvas = () => {
-// //     const [, drop] = useDrop(() => ({
-// //       accept: "symbol",
-// //       drop: (item, monitor) => {
-// //         const offset = monitor.getClientOffset();
-// //         if (item && item.symbol && offset) {
-// //           const newSymbol = {
-// //             symbol: item.symbol,
-// //             x: offset.x - 100,
-// //             y: offset.y - 100,
-// //             width: 120,
-// //             height: 120,
-// //           };
-// //           setDroppedItems(prev => [...prev, newSymbol]);
-// //           setActiveSymbol(droppedItems.length);
-// //         }
-// //       },
-// //     }));
-
-// //     return (
-// //       <div
-// //         ref={drop}
-// //         className="canvas-placeholder"
-// //         // style={{ position: "relative", height: "500px", border: "none",background: 'linear-gradient(to bottom right, #f5f5f5, #ffffff)' }}
-// //         style={{ position: "relative", height: "900px", border: "none",background: "white" }}
-// //         onClick={() => setActiveSymbol(null)}
-// //       >
-// //         {droppedItems.map((item, index) => (
-// //           <Rnd
-// //             key={index}
-// //             default={{
-// //               x: item.x,
-// //               y: item.y,
-// //               width: item.width,
-// //               height: item.height,
-// //             }}
-// //             style={{
-// //               border: activeSymbol === index ? '2px solid #4299e1' : 'none',
-// //               borderRadius: '4px',
-// //               transition: 'border 0.2s ease',
-// //               boxShadow: activeSymbol === index ? '0 0 10px rgba(66, 153, 225, 0.3)' : 'none'
-// //             }}
-// //             onMouseDown={(e) => {
-// //               e.stopPropagation();
-// //               setActiveSymbol(index);
-// //             }}
-// //             onDragStart={() => setActiveSymbol(index)}
-// //             onResizeStart={() => setActiveSymbol(index)}
-// //             onContextMenu={(e) => handleContextMenu(e, index)}
-// //             onDragStop={(e, d) => {
-// //               setDroppedItems(prev =>
-// //                 prev.map((item, i) =>
-// //                   i === index ? { ...item, x: d.x, y: d.y } : item
-// //                 )
-// //               );
-// //             }}
-// //             onResizeStop={(e, direction, ref, delta, position) => {
-// //               setDroppedItems(prev =>
-// //                 prev.map((item, i) =>
-// //                   i === index
-// //                     ? {
-// //                         ...item,
-// //                         width: ref.offsetWidth,
-// //                         height: ref.offsetHeight,
-// //                         ...position,
-// //                       }
-// //                     : item
-// //                 )
-// //               );
-// //             }}
-// //           >
-// //             <div
-// //               style={{
-// //                 width: '100%',
-// //                 height: '100%',
-// //                 cursor: 'move',
-// //                 position: 'relative'
-// //               }}
-// //             >
-// //               {item.symbol.type === "unicode" ? (
-// //                 <div style={{ fontSize: "24px" }}>{item.symbol.symbol}</div>
-// //               ) : (
-// //                 <img
-// //                   src={item.symbol.src}
-// //                   alt="SVG Element"
-// //                   style={{
-// //                     width: "100%",
-// //                     height: "100%",
-// //                     pointerEvents: 'none'
-// //                   }}
-// //                 />
-// //               )}
-// //               {activeSymbol === index && (
-// //                 <div
-// //                   style={{
-// //                     position: 'absolute',
-// //                     top: -25,
-// //                     left: '50%',
-// //                     transform: 'translateX(-50%)',
-// //                     backgroundColor: '#4299e1',
-// //                     color: 'white',
-// //                     padding: '2px 8px',
-// //                     borderRadius: '3px',
-// //                     fontSize: '12px',
-// //                     whiteSpace: 'nowrap',
-// //                     zIndex: 1000
-// //                   }}
-// //                 >
-// //                   {item.symbol.name}
-// //                 </div>
-// //               )}
-// //             </div>
-// //           </Rnd>
-// //         ))}
-
-// //         {contextMenu && (
-// //           <div
-// //             ref={contextMenuRef}
-// //             style={{
-// //               position: 'fixed',
-// //               top: contextMenu.y,
-// //               left: contextMenu.x,
-// //               backgroundColor: 'white',
-// //               border: '1px solid #ccc',
-// //               borderRadius: '4px',
-// //               padding: '8px',
-// //               boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-// //               zIndex: 1000
-// //             }}
-// //           >
-// //             <button
-// //               onClick={handleDelete}
-// //               style={{
-// //                 display: 'flex',
-// //                 alignItems: 'center',
-// //                 gap: '4px',
-// //                 backgroundColor: '#f44336',
-// //                 color: 'white',
-// //                 border: 'none',
-// //                 padding: '8px 16px',
-// //                 borderRadius: '4px',
-// //                 cursor: 'pointer',
-// //                 transition: 'background-color 0.2s ease'
-// //               }}
-// //             >
-// //               <FiTrash size={16} />
-// //               Delete
-// //             </button>
-// //           </div>
-// //         )}
-// //       </div>
-// //     );
-// //   };
-
-// //   return (
-// //     <DndProvider backend={HTML5Backend}>
-// //       <div className="flowchart-container">
-// //         <Navbar />
-// //         <div className="top-controls">
-// //           <button className="control-button">
-// //             <FiTrash size={25} />
-// //           </button>
-// //           <button className="control-button">
-// //             <Maximize size={25} />
-// //           </button>
-// //           <button className="control-button">
-// //             <ZoomIn size={25} />
-// //           </button>
-// //           <button className="control-button">
-// //             <ZoomOut size={25} />
-// //           </button>
-// //           <button className="control-button">
-// //             <ArrowLeft size={25} />
-// //           </button>
-// //           <button className="control-button">
-// //             <ArrowRight size={25} />
-// //           </button>
-// //           <SimulationPopup>
-// //             <button className="control-button">Code</button>
-// //           </SimulationPopup>
-// //         </div>
-
-// //         <div className="main-content">
-// //           <div className="sidebar">
-// //             <div className="symbol-grid">
-// //               <div
-// //                 className="top-buttons"
-// //                 style={{
-// //                   display: 'flex',
-// //                   flexDirection: 'row',
-// //                   gap: '10px',
-// //                   alignItems: 'center',
-// //                   marginBottom: '20px',
-// //                 }}
-// //               >
-// //               <InputGroup size="sm">
-// //                 <InputLeftElement pointerEvents="none">
-// //                   <FaSearch color="gray.400" />
-// //                 </InputLeftElement>
-// //                 <Input
-// //                   type="text"
-// //                   placeholder="Search..."
-// //                   borderRadius="md"
-// //                   borderColor="gray.300"
-// //                 />
-// //               </InputGroup>
-// //             </div>
-// //             </div>
-// //             <div className="symbol-grid">
-// //               {symbols.map((section, sectionIndex) => (
-// //                 <div key={sectionIndex} className="symbol-section">
-// //                   <h3
-// //                     onClick={() => toggleCategory(section.category)}
-// //                     style={{ cursor: "pointer" }}
-// //                   >
-// //                     {section.category}
-// //                   </h3>
-// //                   {openCategories[section.category] && (
-// //                     <div className="symbol-items" style={{ borderLeft: 'none' }}>
-// //                       {section.items.map((symbol, symbolIndex) => (
-// //                         <SymbolItem key={symbolIndex} symbol={symbol} />
-// //                       ))}
-// //                     </div>
-// //                   )}
-// //                 </div>
-// //               ))}
-// //             </div>
-// //           </div>
-// //           <div className="main-area">
-// //             <Canvas />
-// //           </div>
-// //         </div>
-
-// //         {/* <div style={{
-// //           position: 'absolute',
-// //           bottom: 0,
-// //           left: '320px',
-// //           right: 0,
-// //           backgroundColor: '#1e1e2f',
-// //           // backgroundColor: 'white',
-// //           color: '#e0e0e0',
-// //           padding: '20px',
-// //           // borderTop: '2px solid #3c3c4f',
-// //           display: 'flex',
-// //           flexDirection: 'column',
-// //           alignItems: 'flex-start',
-// //           justifyContent: 'center',
-// //           height: '200px',
-// //           fontFamily: 'monospace',
-// //           overflowY: 'auto',
-// //           boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)',
-// //         }}>
-// //           <p style={{ fontSize: '16px', opacity: 0.8, margin: 0 }}>
-// //             Simulation Output:
-// //           </p>
-// //           <pre style={{
-// //             marginTop: '10px',
-// //             padding: '10px',
-// //          background: 'linear-gradient(to bottom right, rgb(226, 232, 240),rgb(226, 232, 240))',
-// //             color: 'black',
-// //             width: '100%',
-// //             height: '100%',
-// //             borderRadius: '4px',
-// //             overflow: 'auto',
-// //             border: '1px solidrgba(60, 60, 79, 0)',
-// //           }}>
-// //             "Explore your simulation results here"
-// //           </pre>
-// //         </div> */}
-
-// //         {/* <div style={{ display: 'flex', flexDirection: 'column', minHeight: '73vh' }}>
-// //           <div style={{ flex: '1' }}></div>
-// //           // <Footer />
-// //         </div> */}
-// //                {/* <Footer /> */}
-// // <Output />
-// //       </div>
-// //     </DndProvider>
-// //   );
-// // };
-
-// // export default BlockDiagram;
-
-// new code by dibyanshu and was the final code
-
-// const BlockDiagram = () => {
-//   const [tabs, setTabs] = useState([{ id: 1, name: "Simulation", symbols: [] }]);
-//   const [activeTab, setActiveTab] = useState(1);
-//   const [openCategories, setOpenCategories] = useState({}); // Moved here
-//   const MAX_TABS = 5;
-//   const navigate = useNavigate();
-
-//   const addNewTab = () => {
-//     if (tabs.length >= MAX_TABS) {
-//       alert("Maximum of 5 tabs allowed.");
-//       return;
-//     }
-//     const newTabId = tabs.length + 1;
-//     const newTab = { id: newTabId, name: `Simulation ${newTabId}`, symbols: [] };
-//     setTabs([...tabs, newTab]);
-//     setActiveTab(newTabId);
-//   };
-
-//   const handleTabClick = (tabId) => setActiveTab(tabId);
-
-//   const closeTab = (tabId, event) => {
-//     event.stopPropagation();
-//     const newTabs = tabs.filter((tab) => tab.id !== tabId);
-//     if (newTabs.length > 0) {
-//       if (activeTab === tabId) {
-//         setActiveTab(newTabs[newTabs.length - 1].id);
-//       }
-//     } else {
-//       const newTab = { id: 1, name: "Simulation", symbols: [] };
-//       setTabs([newTab]);
-//       setActiveTab(1);
-//     }
-//     setTabs(newTabs);
-//   };
-
-//   const toggleCategory = (category) => {
-//     setOpenCategories((prev) => ({
-//       ...prev,
-//       [category]: !prev[category],
-//     }));
-//   };
-
-//   const SymbolItem = ({ symbol }) => {
-//     const [, drag] = useDrag(() => ({
-//       type: "symbol",
-//       item: { symbol },
-//     }));
-
-//     return (
-//             <button
-//         ref={drag}
-//         className="symbol-button"
-//         style={{
-//           cursor: "grab",
-//           height: "140px",
-//           width: "140px",
-//           display: "flex",
-//           flexDirection: "column",
-//           alignItems: "center",
-//           justifyContent: "center"
-//         }}
-//       >
-//   {symbol.type === "unicode" ? (
-//     symbol.symbol
-//   ) : (
-//     <img src={symbol.src} alt="SVG Symbol" className="svg-icon" />
-//   )}
-//   <div style={{
-//     marginTop: "4px",
-//     fontSize: "18px",
-//     color: "white"
-//   }}>
-//     {symbol.name}
-//   </div>
-// </button>
-
-//     );
-//   };
-
-// // start
-// // Add this custom hook to handle click outside
-// const useClickOutside = (ref, handler) => {
-//   useEffect(() => {
-//     const listener = (event) => {
-//       if (!ref.current || ref.current.contains(event.target)) {
-//         return;
-//       }
-//       handler(event);
-//     };
-//     document.addEventListener('mousedown', listener);
-//     document.addEventListener('touchstart', listener);
-//     return () => {
-//       document.removeEventListener('mousedown', listener);
-//       document.removeEventListener('touchstart', listener);
-//     };
-//   }, [ref, handler]);
-// };
-
-// // end
-
-// const Canvas = () => {
-//   const [contextMenu, setContextMenu] = useState(null);
-//   const [activeSymbol, setActiveSymbol] = useState(null);
-//   const contextMenuRef = useRef(null);
-
-//   useClickOutside(contextMenuRef, () => setContextMenu(null));
-
-//   const [, drop] = useDrop(() => ({
-//     accept: "symbol",
-//     drop: (item, monitor) => {
-//       const offset = monitor.getClientOffset();
-//       if (item && item.symbol && offset) {
-//         const newSymbol = {
-//           symbol: item.symbol,
-//           x: offset.x - 100,
-//           y: offset.y - 100,
-//           width: 120,
-//           height: 120,
-//           id: Date.now() + Math.random(), // Add unique ID
-//         };
-//         dispatch(addDroppedItem(newSymbol));
-//         setActiveSymbol(droppedItems.length);
-//       }
-//     },
-//   }));
-
-//   const activeTabSymbols = tabs.find((tab) => tab.id === activeTab)?.symbols || [];
-
-//   const handleContextMenu = (e, index) => {
-//     e.preventDefault();
-//     setContextMenu({
-//       x: e.clientX,
-//       y: e.clientY,
-//       symbolIndex: index
-//     });
-//   };
-
-//   const handleDelete = () => {
-//     if (contextMenu) {
-//       setTabs((prevTabs) =>
-//         prevTabs.map((tab) =>
-//           tab.id === activeTab
-//             ? {
-//                 ...tab,
-//                 symbols: tab.symbols.filter(
-//                   (_, index) => index !== contextMenu.symbolIndex
-//                 ),
-//               }
-//             : tab
-//         )
-//       );
-//       setContextMenu(null);
-//       alert("Symbol deleted successfully!");
-//     }
-//   };
-
-//   return (
-//     <div
-//       ref={drop}
-//       className="canvas-placeholder"
-//       style={{ position: "relative", height: "750px", border: "none",background: "white" }}
-//       onClick={() => setActiveSymbol(null)} // Clear active symbol when clicking canvas
-//     >
-//       {activeTabSymbols.map((item, index) => (
-//         <Rnd
-//           key={index}
-//           default={{
-//             x: item.x,
-//             y: item.y,
-//             width: item.width,
-//             height: item.height,
-//           }}
-//           style={{
-//             border: activeSymbol === index ? '2px solid #4299e1' : 'none',
-//             borderRadius: '4px',
-//             transition: 'border 0.2s ease',
-//             boxShadow: activeSymbol === index ? '0 0 10px rgba(66, 153, 225, 0.3)' : 'none'
-//           }}
-//           onMouseDown={(e) => {
-//             e.stopPropagation();
-//             setActiveSymbol(index);
-//           }}
-//           onContextMenu={(e) => handleContextMenu(e, index)}
-//           onDragStart={() => setActiveSymbol(index)}
-//           onResizeStart={() => setActiveSymbol(index)}
-//           onDragStop={(e, d) => {
-//             setTabs((prevTabs) =>
-//               prevTabs.map((tab) =>
-//                 tab.id === activeTab
-//                   ? {
-//                       ...tab,
-//                       symbols: tab.symbols.map((symbol, i) =>
-//                         i === index ? { ...symbol, x: d.x, y: d.y } : symbol
-//                       ),
-//                     }
-//                   : tab
-//               )
-//             );
-//           }}
-//           onResizeStop={(e, direction, ref, delta, position) => {
-//             setTabs((prevTabs) =>
-//               prevTabs.map((tab) =>
-//                 tab.id === activeTab
-//                   ? {
-//                       ...tab,
-//                       symbols: tab.symbols.map((symbol, i) =>
-//                         i === index
-//                           ? {
-//                               ...symbol,
-//                               width: ref.offsetWidth,
-//                               height: ref.offsetHeight,
-//                               ...position,
-//                             }
-//                           : symbol
-//                       ),
-//                     }
-//                   : tab
-//               )
-//             );
-//           }}
-//         >
-//           <div
-//             style={{
-//               width: '100%',
-//               height: '100%',
-//               cursor: 'move',
-//               position: 'relative'
-//             }}
-//           >
-//             {item.symbol.type === "unicode" ? (
-//               <div style={{ fontSize: "24px" }}>{item.symbol.symbol}</div>
-//             ) : (
-//               <img
-//                 src={item.symbol.src}
-//                 alt="SVG Element"
-//                 style={{
-//                   width: "100%",
-//                   height: "100%",
-//                   pointerEvents: 'none', // Prevents image from interfering with drag
-//                   // filter: 'brightness(0)' // Makes the SVG black
-//                 }}
-//               />
-//             )}
-//           </div>
-//         </Rnd>
-//       ))}
-
-//         {/* Spark effects */}
-//         {sparkEffects.map((spark) => (
-//           <div
-//             key={spark.id}
-//             style={{
-//               position: "absolute",
-//               left: spark.x,
-//               top: spark.y,
-//               width: "60px",
-//               height: "60px",
-//               transform: "translate(-50%, -50%)",
-//               pointerEvents: "none",
-//               zIndex: 9999,
-//             }}
-//           >
-//             {/* Spark animation */}
-//             <div
-//               style={{
-//                 position: "absolute",
-//                 width: "100%",
-//                 height: "100%",
-//                 borderRadius: "50%",
-//                 background: "radial-gradient(circle, #FFD700 0%, #FFA500 30%, transparent 70%)",
-//                 animation: "sparkPulse 0.5s ease-out",
-//               }}
-//             />
-//             <div
-//               style={{
-//                 position: "absolute",
-//                 width: "100%",
-//                 height: "100%",
-//                 borderRadius: "50%",
-//                 background: "radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,215,0,0.5) 40%, transparent 70%)",
-//                 animation: "sparkExpand 0.5s ease-out",
-//               }}
-//             />
-//             {/* Lightning bolt emoji */}
-//             <div
-//               style={{
-//                 position: "absolute",
-//                 top: "50%",
-//                 left: "50%",
-//                 transform: "translate(-50%, -50%)",
-//                 fontSize: "32px",
-//                 animation: "sparkRotate 0.5s ease-out",
-//               }}
-//             >
-//               ⚡
-//             </div>
-//           </div>
-//         ))}
-
-//       {contextMenu && (
-//         <div
-//           ref={contextMenuRef}
-//           style={{
-//             position: 'fixed',
-//             top: contextMenu.y,
-//             left: contextMenu.x,
-//             backgroundColor: 'white',
-//             border: '1px solid #ccc',
-//             borderRadius: '4px',
-//             padding: '8px',
-//             boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-//             zIndex: 1000
-//           }}
-//         >
-//           <button
-//             onClick={handleDelete}
-//             style={{
-//               backgroundColor: 'red',
-//               color: 'white',
-//               border: 'none',
-//               padding: '8px 16px',
-//               borderRadius: '4px',
-//               cursor: 'pointer'
-//             }}
-//           >
-//             Delete
-//           </button>
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
-
-//   return (
-//     <DndProvider backend={HTML5Backend}>
-//       <div className="flowchart-container">
-//         <Navbar />
-//         <div className="top-controls">
-//           <div><SimulationOne/></div>
-//         {/* <button className="control-button">
-//   <FiTrash size={25} />
-// </button>
-//           <button className="control-button">
-//             <Maximize size={25} />
-//           </button>
-//           <button className="control-button">
-//             <ZoomIn size={25} />
-//           </button>
-//           <button className="control-button">
-//             <ZoomOut size={25} />
-//           </button>
-//           <button className="control-button">
-//             <ArrowLeft size={25} />
-//           </button>
-//           <button className="control-button">
-//             <ArrowRight size={25} />
-//           </button> */}
-//           <SimulationPopup >
-//              <button className="control-button">Code</button>
-//           </SimulationPopup>
-//               </div>
-
-//         <div className="main-content">
-//           <div className="sidebar">
-//             <div className="symbol-grid">
-//               {/* start  */}
-//               <div
-//                 className="top-buttons"
-//                 style={{
-//                   display: 'flex',
-//                   flexDirection: 'row',
-//                   gap: '10px',
-//                   alignItems: 'center',
-//                   marginBottom: '20px',
-//                 }}
-//               >
-
-//               </div>
-
-// <div style={{
-//   display: 'flex',
-//   alignItems: 'center',
-//   padding: '10px 14px', // Increased padding for better spacing
-
-// }}>
-// {/* SEARCH BOX OPEN  */}
-// <InputGroup size="sm">
-//       <InputLeftElement pointerEvents="none" children={<FaSearch color="gray.400" />} />
-//       <Input
-//         type="text"
-//         placeholder="Search..."
-//         borderRadius="md"
-//         borderColor="gray.300"
-//       />
-//     </InputGroup>
-// {/* SEARCH BOX CLOSE  */}
-// </div>
-
-//               {/* end  */}
-//               {symbols.map((section, sectionIndex) => (
-//                 <div key={sectionIndex} className="symbol-section">
-//                   <h3
-//                     onClick={() => toggleCategory(section.category)}
-//                     style={{ cursor: 'pointer' }}
-//                   >
-//                     {section.category}
-//                   </h3>
-//                   {openCategories[section.category] && (
-//                     <div className="symbol-items" style={{ borderLeft: '1px solid white' }}>
-//                     {section.items.map((symbol, symbolIndex) => (
-//                         <SymbolItem key={symbolIndex} symbol={symbol} />
-//                       ))}
-//                     </div>
-//                   )}
-//                 </div>
-//               ))}
-//             </div>
-//           </div>
-//           <div className="main-area">
-//             <div
-//               style={{
-//                 display: 'flex',
-//                 alignItems: 'center',
-//                 backgroundColor: '#0f0a19',
-//                 padding: '8px',
-//                 borderRadius: '4px',
-//                 marginBottom: '10px',
-//                 overflowX: 'auto'
-//               }}
-//             >
-//               {tabs.map((tab) => (
-//                 <div
-//                   key={tab.id}
-//                   onClick={() => handleTabClick(tab.id)}
-//                   style={{
-//                     display: 'flex',
-//                     alignItems: 'center',
-//                     backgroundColor: activeTab === tab.id ? '#2d3748' : '#4A5568',
-//                     color: 'white',
-//                     padding: '6px 12px',
-//                     borderRadius: '4px',
-//                     marginRight: '8px',
-//                     cursor: 'pointer',
-//                     fontSize: '14px',
-//                     minWidth: 'fit-content'
-//                   }}
-//                 >
-//                   <span style={{ marginRight: '8px' }}>{tab.name}</span>
-
-//                 </div>
-//               ))}
-
-//             </div>
-//             <Canvas />
-//           </div>
-//         </div>
-//       </div>
-//     </DndProvider>
-//   );
-// };
-
-// export default BlockDiagram;
-
-// Simulation code given by siva
 
 import React, {
   useState,
@@ -1009,16 +26,36 @@ const DiagramLoader = () => (
 );
 
 const DiagramEmptyState = () => (
-  <div className="diagram-empty-state">
-    <div className="empty-state-content">
-      <div className="empty-state-icon">
-        <Monitor size={32} />
-      </div>
-      <h3 className="empty-state-title">No Simulation Found</h3>
-      <p className="empty-state-description">
-        This project doesn't have a simulation design yet.
-        Start by dragging components from the palette on the left.
-      </p>
+  <div
+    style={{
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      zIndex: 10,
+      pointerEvents: "none",
+      textAlign: "center",
+      width: "100%",
+      animation: "blink-canvas 2s ease-in-out infinite",
+    }}
+  >
+    <style>{`
+      @keyframes blink-canvas {
+        0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.98); }
+      }
+    `}</style>
+    <div
+      style={{
+        fontWeight: "bold",
+        fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
+        color: "rgba(7, 52, 148, 0.15)",
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        userSelect: "none",
+      }}
+    >
+      PLEASE DRAG THE COMPONENTS
     </div>
   </div>
 );
@@ -1119,6 +156,12 @@ import {
   useDisclosure,
   IconButton,
   Flex,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
 } from "@chakra-ui/react";
 import { ToggleSwitch } from "./Toggle/Toggle";
 import { baseURL } from "../utilities";
@@ -1191,21 +234,7 @@ const symbolsData = [
     category: "POWER ▼",
     items: [{ type: "svg", src: PowerSupply, name: "Power Supply" }],
   },
-  // {
-  //   category: "CONNECTORS ▼",
-  //   items: [
-  //     // { type: "svg", src: Connectors, name: "Connectors" },
-  //     { type: "svg", src: Wire, name: "Wire" },
-  //     { type: "svg", src: RedWire, name: "RedWire" },
-  //     { type: "svg", src: GreenWire, name: "GreenWire" },
-  //     { type: "svg", src: BlackWire, name: "BlackWire" },
-  //     { type: "svg", src: Connectorone, name: "Connector Zone1" },
-  //     { type: "svg", src: Connectortwo, name: "Connector Zone2" },
-  //     { type: "svg", src: Connectorthree, name: "Connector Zone3" },
-  //     { type: "svg", src: Connectorfour, name: "Connector Zone4" },
-  //     { type: "svg", src: Connectorfive, name: "Connector Zone5" },
-  //   ],
-  // },
+  
   {
     category: "AMPLIFIERS ▼",
     items: [{ type: "svg", src: Amplifier, name: "Amplifier" }],
@@ -1647,8 +676,8 @@ const BlockDiagram = () => {
     return { x: bestX, y: bestY, snapped };
   };
   // Check if two components are close enough to be considered "connected"
-  // This uses the distance between nearest edges for more accurate side-joining
-  const checkProximity = (item1, item2, threshold = 60) => {
+  // Increased threshold to make joining much easier
+  const checkProximity = (item1, item2, threshold = 150) => {
     // Calculate the distance between the closest points of the two bounding boxes
     const dx = Math.max(item2.x - (item1.x + item1.width), 0, item1.x - (item2.x + item2.width));
     const dy = Math.max(item2.y - (item1.y + item1.height), 0, item1.y - (item2.y + item2.height));
@@ -1690,6 +719,83 @@ const BlockDiagram = () => {
         // Check if connection exists in Redux state (passed via props/selector)
         // connections is array of strings (connectionKeys)
         const exists = connections.includes(connectionKey);
+
+        // If the target or dragged item is a Microcontroller, snap it automatically
+        if (item.symbol.name === "Microcontroller" || movedItem.symbol.name === "Microcontroller") {
+          const mcItem = item.symbol.name === "Microcontroller" ? item : movedItem;
+          const otherItem = item.symbol.name === "Microcontroller" ? movedItem : item;
+
+          // Determine which zone (Z1-Z6) is closest to otherItem's center
+          const ox = otherItem.x + otherItem.width / 2;
+          const oy = otherItem.y + otherItem.height / 2;
+
+          const zones = [
+            { id: "Z1", x: mcItem.x + mcItem.width / 2, y: mcItem.y },
+            { id: "Z2", x: mcItem.x + mcItem.width, y: mcItem.y + mcItem.height * 0.25 },
+            { id: "Z3", x: mcItem.x + mcItem.width, y: mcItem.y + mcItem.height * 0.75 },
+            { id: "Z4", x: mcItem.x + mcItem.width / 2, y: mcItem.y + mcItem.height },
+            { id: "Z5", x: mcItem.x, y: mcItem.y + mcItem.height * 0.75 },
+            { id: "Z6", x: mcItem.x, y: mcItem.y + mcItem.height * 0.25 },
+          ];
+
+          let closestZone = zones[0];
+          let minDistance = Infinity;
+          zones.forEach(z => {
+            const dist = Math.sqrt(Math.pow(z.x - ox, 2) + Math.pow(z.y - oy, 2));
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestZone = z;
+            }
+          });
+
+          // Snap the other component using hexagon tiling math to close the gap
+          let finalX = mcItem.x;
+          let finalY = mcItem.y;
+          const w = mcItem.width;
+          const h = mcItem.height;
+
+          if (closestZone.id === "Z1") {
+            finalY -= h;
+          } else if (closestZone.id === "Z2") {
+            finalX += w * 0.75;
+            finalY -= h * 0.5;
+          } else if (closestZone.id === "Z3") {
+            finalX += w * 0.75;
+            finalY += h * 0.5;
+          } else if (closestZone.id === "Z4") {
+            finalY += h;
+          } else if (closestZone.id === "Z5") {
+            finalX -= w * 0.75;
+            finalY += h * 0.5;
+          } else if (closestZone.id === "Z6") {
+            finalX -= w * 0.75;
+            finalY -= h * 0.5;
+          }
+
+          finalX += (w - otherItem.width) / 2;
+          finalY += (h - otherItem.height) / 2;
+
+          dispatch(updateSymbolInTab({
+            tabId: activeTabId,
+            symbolId: otherItem.id,
+            updates: { x: finalX, y: finalY }
+          }));
+
+          if (!exists) {
+            dispatch(addConnectionToTab({ tabId: activeTabId, connection: connectionKey }));
+            
+            // Optional spark effect
+            const sparkId = Date.now();
+            setSparkEffects((prev) => [
+              ...prev,
+              { id: sparkId, x: closestZone.x, y: closestZone.y },
+            ]);
+            setTimeout(() => {
+              setSparkEffects((prev) => prev.filter((spark) => spark.id !== sparkId));
+            }, 500);
+          }
+          return; // Stop processing further connections for this component
+        }
 
         if (!exists) {
           console.log("🎉 New connection! Dispatching addConnection...");
@@ -1814,6 +920,8 @@ const BlockDiagram = () => {
   };
 
   const Canvas = () => {
+    const [dragPositions, setDragPositions] = useState({});
+
     const [, drop] = useDrop(
       () => ({
         accept: "symbol",
@@ -1913,6 +1021,47 @@ const BlockDiagram = () => {
 
     const handleSelect = (index) => {
       setActiveSymbol(index);
+    };
+
+    const hasConnection = (itemId) => {
+      return connections.some(conn => conn.includes(String(itemId)));
+    };
+
+    const getOccupiedZones = (mcItemId) => {
+      const mcConns = connections.filter(conn => conn.includes(String(mcItemId)));
+      const mcItem = droppedItems.find(i => String(i.id) === String(mcItemId));
+      if (!mcItem || mcConns.length === 0) return [];
+
+      const occupied = [];
+      mcConns.forEach(conn => {
+        const otherId = conn.split('-').find(id => id !== String(mcItemId));
+        const otherItem = droppedItems.find(i => String(i.id) === otherId);
+        if (!otherItem) return;
+
+        const ox = otherItem.x + otherItem.width / 2;
+        const oy = otherItem.y + otherItem.height / 2;
+
+        const zones = [
+          { id: "Z1", x: mcItem.x + mcItem.width / 2, y: mcItem.y },
+          { id: "Z2", x: mcItem.x + mcItem.width, y: mcItem.y + mcItem.height * 0.25 },
+          { id: "Z3", x: mcItem.x + mcItem.width, y: mcItem.y + mcItem.height * 0.75 },
+          { id: "Z4", x: mcItem.x + mcItem.width / 2, y: mcItem.y + mcItem.height },
+          { id: "Z5", x: mcItem.x, y: mcItem.y + mcItem.height * 0.75 },
+          { id: "Z6", x: mcItem.x, y: mcItem.y + mcItem.height * 0.25 },
+        ];
+
+        let closestZone = zones[0];
+        let minDistance = Infinity;
+        zones.forEach(z => {
+          const dist = Math.sqrt(Math.pow(z.x - ox, 2) + Math.pow(z.y - oy, 2));
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestZone = z;
+          }
+        });
+        occupied.push(closestZone.id);
+      });
+      return occupied;
     };
 
     return (
@@ -2026,7 +1175,10 @@ const BlockDiagram = () => {
           {droppedItems.map((item, index) => (
             <Rnd
               key={index}
-              position={{ x: item.x, y: item.y }}
+              position={{ 
+                x: dragPositions[item.id]?.x ?? item.x, 
+                y: dragPositions[item.id]?.y ?? item.y 
+              }}
               size={{ width: item.width, height: item.height }}
               enableResizing={activeSymbol === index}
               disableDragging={false}
@@ -2038,24 +1190,31 @@ const BlockDiagram = () => {
                 e.stopPropagation();
                 handleSelect(index);
               }}
+              onDrag={(e, d) => {
+                // Update local state during drag for smooth controlled movement
+                setDragPositions(prev => ({
+                  ...prev,
+                  [item.id]: { x: d.x, y: d.y }
+                }));
+              }}
               onResizeStop={(e, dir, ref, delta, position) =>
                 handleResizeStop(index, dir, ref, delta, position)
               }
               onDragStop={(e, d) => {
                 const item = droppedItems[index];
                 if (item) {
-                  // Calculate snapped position
-                  const currentItem = { ...item, x: d.x, y: d.y };
-                  const {
-                    x: snappedX,
-                    y: snappedY,
-                    snapped,
-                  } = calculateSnapPosition(currentItem, droppedItems);
-
-                  const finalX = snapped ? snappedX : d.x;
-                  const finalY = snapped ? snappedY : d.y;
+                  // Disable magnetic snapping per user request for easier DnD
+                  const finalX = d.x;
+                  const finalY = d.y;
 
                   const updatedItem = { ...item, x: finalX, y: finalY };
+
+                  // Clear local drag state
+                  setDragPositions(prev => {
+                    const newState = { ...prev };
+                    delete newState[item.id];
+                    return newState;
+                  });
 
                   dispatch(
                     updateSymbolInTab({
@@ -2072,7 +1231,6 @@ const BlockDiagram = () => {
               style={{
                 transform: `rotate(${rotatingItem?.index === index ? rotatingItem.rotation : item.rotation}deg)`,
                 transformOrigin: "center",
-                border: activeSymbol === index ? "2px dashed blue" : "none",
                 position: "absolute",
                 cursor: "move",
               }}
@@ -2081,6 +1239,30 @@ const BlockDiagram = () => {
               <div
                 style={{ position: "relative", width: "100%", height: "100%" }}
               >
+                {activeSymbol === index && (
+                  <svg
+                    width="100%"
+                    height="100%"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      pointerEvents: "none",
+                      zIndex: 10,
+                    }}
+                  >
+                    <polygon
+                      points="50,0 100,25 100,75 50,100 0,75 0,25"
+                      fill="none"
+                      stroke="blue"
+                      strokeWidth="2"
+                      strokeDasharray="5,5"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                )}
                 <Tooltip
                   label={item.symbol.name}
                   placement="top"
@@ -2103,6 +1285,18 @@ const BlockDiagram = () => {
                     }}
                   />
                 </Tooltip>
+
+                {item.symbol.name === "Microcontroller" && !hasConnection(item.id) && (
+                  <>
+                    <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z1</div>
+                    <div style={{ position: 'absolute', top: '25%', right: 0, transform: 'translate(50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z2</div>
+                    <div style={{ position: 'absolute', top: '75%', right: 0, transform: 'translate(50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z3</div>
+                    <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translate(-50%, 50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z4</div>
+                    <div style={{ position: 'absolute', top: '75%', left: 0, transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z5</div>
+                    <div style={{ position: 'absolute', top: '25%', left: 0, transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z6</div>
+                  </>
+                )}
+
                 {activeSymbol === index && (
                   <div
                     className="rotate-handle"
@@ -2381,8 +1575,7 @@ const BlockDiagram = () => {
 );
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="flowchart-container" style={{ backgroundColor: "#ffffff" }}>
+    <div className="flowchart-container" style={{ backgroundColor: "#ffffff" }}>
         <EditorNavbar activeTab="Simulation" onTabChange={handleTabChange} />
         <div
           className="top-controls"
@@ -2482,6 +1675,7 @@ const BlockDiagram = () => {
             w="6px"
             bg="transparent"
             cursor="col-resize"
+            className="sidebar-resizer"
             onMouseDown={startResizing}
             zIndex={10}
           />
@@ -2594,7 +1788,12 @@ const BlockDiagram = () => {
                         onDoubleClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <span style={{ marginRight: '8px', flex: 1 }}>{tab.name}</span>
+                      <span style={{ marginRight: '8px', flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {tab.name}
+                        {tab.dirty && (
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: activeTabId === tab.id ? '#fca5a5' : '#ef4444', display: 'inline-block', flexShrink: 0 }} />
+                        )}
+                      </span>
                     )}
 
                     {!editingTabId && (
@@ -2625,7 +1824,6 @@ const BlockDiagram = () => {
           </div>
         </div>
       </div>
-    </DndProvider>
   );
 };
 

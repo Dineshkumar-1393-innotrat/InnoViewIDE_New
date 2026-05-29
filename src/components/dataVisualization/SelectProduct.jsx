@@ -4,7 +4,7 @@ import { Box, Heading, Menu, MenuButton, MenuList, MenuItem, Button as ChakraBut
 import { Select, Center } from "@chakra-ui/react";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import DataTable from "./DataTable";
-import { baseURL } from "../../utilities";
+import { baseURL, productAPIBase } from "../../utilities";
 import { useProject } from "../../ProjectContext";
 import { Button } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
@@ -45,49 +45,88 @@ const SelectProduct = () => {
     // Fetch product data from API
     const fetchData = async () => {
       try {
-        const response = await axios.get(
-          `${baseURL}/getProductIds/${user?.userId}`
-        );
+        const endpoints = [
+          `${baseURL}/getProductIds/${user?.userId}`,
+          `${baseURL}/api/v1/getProductIds/${user?.userId}`,
+          `${baseURL}/api/v2/getProductIds/${user?.userId}`,
+          `${productAPIBase}/getProductIds/${user?.userId}`,
+          `${productAPIBase}/api/v1/getProductIds/${user?.userId}`,
+          `${productAPIBase}/api/v2/getProductIds/${user?.userId}`,
+          `${productAPIBase}/products/${user?.userId}`,
+          `${productAPIBase}/product/all/${user?.userId}`,
+          `${baseURL}/product/all/${user?.userId}`
+        ];
 
-        if (response.data?.data && Array.isArray(response.data.data)) {
-          const productsList = response.data.data;
+        let productsList = [];
+        for (const url of endpoints) {
+          try {
+            console.log(`[SelectProduct] Fetching products from: ${url}`);
+            const response = await axios.get(url);
+
+            if (response.data?.data && Array.isArray(response.data.data)) {
+              productsList = response.data.data;
+            } else if (Array.isArray(response.data)) {
+              productsList = response.data;
+            } else if (response.data?.products && Array.isArray(response.data.products)) {
+              productsList = response.data.products;
+            }
+
+            if (productsList.length > 0) {
+              break; // Found products, stop trying
+            }
+          } catch (e) {
+            console.log(`[SelectProduct] Endpoint failed: ${url}`);
+          }
+        }
+
+        if (productsList.length > 0) {
           setProducts(productsList);
 
           // Fetch devices for each product immediately after getting products
-          const devicePromises = productsList.map((product) =>
-            axios
-              .post(`${baseURL}/devices/running`, {
-                productID: product.productId,
-              })
-              .then((res) => {
-                console.log(`API Response for ${product.productId}:`, res.data);
+          const devicePromises = productsList.map(async (product) => {
+            const pId = product.productId || product.productID || product._id || product.id;
+            
+            const deviceEndpoints = [
+              { method: 'get', url: `${baseURL}/product/${pId}/devices` },
+              { method: 'get', url: `${productAPIBase}/product/${pId}/devices` },
+              { method: 'post', url: `${baseURL}/devices/running`, data: { productID: pId } },
+              { method: 'post', url: `${productAPIBase}/devices/running`, data: { productID: pId } }
+            ];
 
-                // Handle different response structures
-                let devices = [];
+            let devices = [];
+            for (const endpoint of deviceEndpoints) {
+              try {
+                const res = endpoint.method === 'post' 
+                  ? await axios.post(endpoint.url, endpoint.data)
+                  : await axios.get(endpoint.url);
+                  
+                console.log(`API Response for devices on ${endpoint.url}:`, res.data);
+                
+                let foundDevices = [];
                 if (Array.isArray(res.data)) {
-                  devices = res.data;
+                  foundDevices = res.data;
                 } else if (res.data?.runningDevices && Array.isArray(res.data.runningDevices)) {
-                  // API returns { status, runningDevicesCount, runningDevices: [{deviceID, active}] }
-                  devices = res.data.runningDevices;
+                  foundDevices = res.data.runningDevices;
                 } else if (res.data?.devices && Array.isArray(res.data.devices)) {
-                  devices = res.data.devices;
+                  foundDevices = res.data.devices;
                 } else if (res.data?.data && Array.isArray(res.data.data)) {
-                  devices = res.data.data;
+                  foundDevices = res.data.data;
                 }
 
-                return {
-                  productID: product.productId,
-                  runningDevices: devices.map((d) => (typeof d === 'string' ? d : d.deviceID)) || [],
-                };
-              })
-              .catch((error) => {
-                console.error(
-                  `Error fetching devices for ${product.productId}:`,
-                  error
-                );
-                return { productID: product.productId, runningDevices: [] };
-              })
-          );
+                if (foundDevices.length > 0) {
+                  devices = foundDevices;
+                  break; // Found devices, stop trying
+                }
+              } catch (e) {
+                console.log(`[SelectProduct] Device endpoint failed: ${endpoint.url}`);
+              }
+            }
+
+            return {
+              productID: pId,
+              runningDevices: devices.map((d) => (typeof d === 'string' ? d : d.deviceID || d.deviceId || d.id)) || [],
+            };
+          });
 
           const deviceResults = await Promise.allSettled(devicePromises);
           const finalRunningDevices = deviceResults.map((r) =>
@@ -114,10 +153,10 @@ const SelectProduct = () => {
   // Auto-select product based on activeProductId
   useEffect(() => {
     if (activeProductId && products.length > 0 && !selectedProduct) {
-      const found = products.find((p) => p.productId === activeProductId);
+      const found = products.find((p) => (p.productId || p.productID || p._id || p.id) === activeProductId);
       if (found) {
         setSelectedProduct(activeProductId);
-        setSelectedProductName(found.productName);
+        setSelectedProductName(found.productName || found.ProductName || found.name);
       }
     }
   }, [activeProductId, products, selectedProduct]);
@@ -136,16 +175,16 @@ const SelectProduct = () => {
   if (error) return <p>Error: {error}</p>;
 
   const handleProductChange = (e) => {
-    const productID = e.target.value;
-    setSelectedProduct(productID);
+    const pID = e.target.value;
+    setSelectedProduct(pID);
 
-    const product = products.find((product) => product.productId === productID); // Ensure consistency
+    const product = products.find((p) => (p.productId || p.productID || p._id || p.id) === pID); // Ensure consistency
 
     if (product) {
-      console.log("Product Found:", product.productName); // Debugging
-      setSelectedProductName(product.productName);
+      console.log("Product Found:", product.productName || product.ProductName || product.name); // Debugging
+      setSelectedProductName(product.productName || product.ProductName || product.name);
     } else {
-      console.log("No matching product found for ID:", productID);
+      console.log("No matching product found for ID:", pID);
     }
 
     // Logic for available devices is now handled by useEffect
@@ -180,32 +219,36 @@ const SelectProduct = () => {
             color={selectedProduct ? "inherit" : "gray.400"}
           >
             {selectedProduct
-              ? products.find((p) => p.productId === selectedProduct)?.productName || "Select Product"
+              ? products.find((p) => (p.productId || p.productID || p._id || p.id) === selectedProduct)?.productName || products.find((p) => (p.productId || p.productID || p._id || p.id) === selectedProduct)?.ProductName || products.find((p) => (p.productId || p.productID || p._id || p.id) === selectedProduct)?.name || "Select Product"
               : "Select Product"}
           </MenuButton>
           <MenuList maxH="250px" overflowY="auto" zIndex={9999}>
-            {products.map((product) => (
-              <MenuItem
-                key={product.productId}
-                value={product.productId}
-                onClick={() =>
-                  handleProductChange({ target: { value: product.productId } })
-                }
-                bg={selectedProduct === product.productId ? "blue.50" : undefined}
-                fontWeight={selectedProduct === product.productId ? "semibold" : "normal"}
-              >
-                {product.productName}
-              </MenuItem>
-            ))}
+            {products.map((product) => {
+              const pId = product.productId || product.productID || product._id || product.id;
+              const pName = product.productName || product.ProductName || product.name;
+              return (
+                <MenuItem
+                  key={pId}
+                  value={pId}
+                  onClick={() =>
+                    handleProductChange({ target: { value: pId } })
+                  }
+                  bg={selectedProduct === pId ? "blue.50" : undefined}
+                  fontWeight={selectedProduct === pId ? "semibold" : "normal"}
+                >
+                  {pName}
+                </MenuItem>
+              );
+            })}
           </MenuList>
         </Menu>
 
-        {/* Running Devices Dropdown - Only shows when a product is selected */}
+        {/* Devices Dropdown - Only shows when a product is selected */}
         {selectedProduct && (
           <>
             {availableDevices.length > 0 ? (
               <Select
-                placeholder="Select Running Device"
+                placeholder="Select Device"
                 onChange={handleDeviceChange}
                 minW="180px"
                 size={"sm"}

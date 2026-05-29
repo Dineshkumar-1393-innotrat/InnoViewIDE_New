@@ -231,6 +231,10 @@ const FileExplorer = ({ variant }) => {
         setActiveProjectName(null);
         setActiveProductId(null);
         setActiveProductName(null);
+        localStorage.removeItem("activeProjectId");
+        localStorage.removeItem("activeProjectName");
+        localStorage.removeItem("activeProductId");
+        localStorage.removeItem("activeProductName");
       }
 
       setFileSystem((prev) => ({

@@ -2488,6 +2488,7 @@ import {
   addTab,
   closeTab,
   updateTabState,
+  markTabClean,
 } from '../store/slices/blockProgrammingSlice';
 import { NodeResizer } from '@reactflow/node-resizer';
 import 'reactflow/dist/style.css';
@@ -2715,7 +2716,7 @@ function BlockProgrammingCanvas() {
   const [isExplorerVisible, setIsExplorerVisible] = useState('blocks');
 
   // Execution state
-  const [showExecutionControl, setShowExecutionControl] = useState(true);
+  const [showExecutionControl, setShowExecutionControl] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [activeNodeId, setActiveNodeId] = useState(null);
   const [executionLogs, setExecutionLogs] = useState([]);
@@ -2758,6 +2759,21 @@ function BlockProgrammingCanvas() {
   useEffect(() => { edgesRef.current = edges; }, [edges]);
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   useEffect(() => { activeTabIdRef.current = activeTabId; }, [activeTabId]);
+
+  // Default tab fallback
+  useEffect(() => {
+    if (tabs.length === 0) {
+      console.log("[BlockProgramming] No tabs found, creating default");
+      const defaultTab = {
+        id: `tab-${Date.now()}`,
+        name: "Main Logic",
+        state: createBlockProgrammingState(),
+        dirty: true,
+      };
+      dispatch(addTab(defaultTab));
+      dispatch(setActiveTab(defaultTab.id));
+    }
+  }, [tabs.length, dispatch]);
 
   // Base snapshot utility
   const pushSnapshot = useCallback(() => {
@@ -3374,6 +3390,9 @@ function BlockProgrammingCanvas() {
       edges: edgesRef.current,
       viewport: rf.getViewport(),
     };
+    if (activeTabIdRef.current) {
+      dispatch(markTabClean(activeTabIdRef.current));
+    }
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -3381,7 +3400,7 @@ function BlockProgrammingCanvas() {
     link.download = 'block-programming.json';
     link.click();
     URL.revokeObjectURL(url);
-  }, [rf]);
+  }, [rf, dispatch]);
 
   const loadDiagram = useCallback(() => {
     const input = document.createElement('input');
@@ -3778,6 +3797,7 @@ return (
             w="6px"
             bg="transparent"
             cursor="col-resize"
+            className="sidebar-resizer"
             onMouseDown={startResizing}
             zIndex={10}
           />
@@ -3796,13 +3816,42 @@ return (
               mr={2}
               verticalAlign="middle"
             />
-            <DiagramTabs title="Block Programming Workspace" kind="blockProgramming" />
+            <DiagramTabs title="Block Programming Workspace" kind="blockProgramming" onSaveJSON={saveDiagram} />
           </div>
           <div className="canvas-frame" onDrop={onDrop} onDragOver={onDragOver}>
             <div
               className="rf-wrapper"
               ref={reactFlowWrapper}
+              style={{ position: 'relative', width: '100%', height: '100%' }}
             >
+              {nodes.length === 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 10,
+                    pointerEvents: "none",
+                    textAlign: "center",
+                    width: "100%",
+                    animation: "blink-canvas 2s ease-in-out infinite",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: "bold",
+                      fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
+                      color: "rgba(7, 52, 148, 0.15)",
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      userSelect: "none",
+                    }}
+                  >
+                    DRAG BLOCKS HERE TO START PROGRAMMING
+                  </div>
+                </div>
+              )}
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -3830,6 +3879,10 @@ return (
                   }
                   .rf-wrapper .react-flow__pane {
                     cursor: crosshair;
+                  }
+                  @keyframes blink-canvas {
+                    0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                    50% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.98); }
                   }
                 `}</style>
                 <Background className="export-ignore" gap={16} size={1} />

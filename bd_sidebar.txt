@@ -1,70 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactFlow, {
-  Background,
-  Controls,
-  ControlButton,
-  MiniMap,
-  Handle,
-  Position,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  applyNodeChanges,
-  applyEdgeChanges,
-  ConnectionLineType,
-  MarkerType,
-  ReactFlowProvider,
-  useReactFlow,
-  BaseEdge,
-  EdgeLabelRenderer,
-  getSmoothStepPath,
-  ConnectionMode,
-  getRectOfNodes,
-  getTransformForBounds,
-} from 'reactflow';
-import { useDispatch, useSelector } from 'react-redux';
-import {
-  setTabs,
-  setActiveTab,
-  addTab,
-  closeTab,
-  updateTabState,
-  markTabClean,
-} from '../store/slices/blockDiagramSlice';
-import { NodeResizer } from '@reactflow/node-resizer';
-import { toPng } from 'html-to-image';
-import 'reactflow/dist/style.css';
-import '@reactflow/node-resizer/dist/style.css';
-import './BlockDiagramTest.css';
-import FileExplorer from './FileExplorer';
-import EnhancedFileExplorer from './EnhancedFileExplorer';
-import ProjectFileExplorer from './ProjectFileExplorer';
-import CreateProjectIntegration from './CreateProjectIntegration';
-import './FileExplorer.css';
-import EditorNavbar from './EditorNavbar';
-import DiagramTabs from './DiagramTabs';
-import MobileMenuButton from './MobileMenuButton';
-import { useResponsiveSidebar } from '../hooks/useResponsiveSidebar';
-import { useResizableSidebar } from '../hooks/useResizableSidebar';
-import { saveAssetToScreenFolder } from '../utils/screenFileManager';
-import { canvasIntegration, ReactFlowCanvasHandler } from '../utils/canvasIntegration';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Settings, ArrowLeftRight, RotateCcw, RotateCw } from 'lucide-react';
-import hexBg from '../assets/hex_bg.png';
-import { useProject } from '../ProjectContext';
-import PropertiesPanel from './PropertiesPanel';
-import { saveProjectFile, sanitizeSegment, ensureProjectFolder } from '../utils/workspaceStorage';
-import { projectManager } from '../utils/projectManager';
-import projectFileManager from '../utils/projectFileManager';
-import { useCanvasFileIntegration } from '../hooks/useCanvasFileIntegration';
-import CreateProductButton from './shared/CreateProductButton';
-
-import { useToast } from '@chakra-ui/react';
-import { Loader2, Monitor, CheckCircle } from 'lucide-react';
-
-// --- Gold Standard Transition Components ---
-const DiagramLoader = () => (
-  <div className="diagram-loader-overlay">
+<div className="diagram-loader-overlay">
     <div className="diagram-spinner" />
     <span className="diagram-loader-text">Switching Project...</span>
   </div>
@@ -2876,9 +2810,9 @@ function DiagramEditor() {
               <FileExplorer variant="diagram" />
             ) : (
               <div className="palette-frame">
-                {/* <div className="palette-header">
+                <div className="palette-header">
                   <div className="palette-title">Shapes</div>
-                </div> */}
+                </div>
                 <div className="palette-search">
                   <input
                     type="text"
@@ -3061,24 +2995,3 @@ function DiagramEditor() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function BlockDiagramWorkspace() {
-  return (
-    <DiagramEditor />
-  );
-}
-
-function App() {
-  return (
-    <ReactFlowProvider>
-      <BlockDiagramWorkspace />
-    </ReactFlowProvider>
-  );
-}
-
-export default App;
-

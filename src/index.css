@@ -66,3 +66,17 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Global Sidebar Resizer Styles */
+.sidebar-resizer {
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-resizer:hover, .sidebar-resizer:active {
+  background-color: #3182ce !important; /* Blue color on hover/resize */
+}
+
+@keyframes blink-canvas {
+  0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.98); }
+}

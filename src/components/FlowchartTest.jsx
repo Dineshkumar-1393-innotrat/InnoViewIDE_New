@@ -63,16 +63,36 @@ const DiagramLoader = () => (
 );
 
 const DiagramEmptyState = () => (
-  <div className="diagram-empty-state">
-    <div className="empty-state-content">
-      <div className="empty-state-icon">
-        <Monitor size={32} />
-      </div>
-      <h3 className="empty-state-title">No Diagram Found</h3>
-      <p className="empty-state-description">
-        This project doesn't have a flowchart yet.
-        Start by dragging shapes from the palette on the left.
-      </p>
+  <div
+    style={{
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      zIndex: 10,
+      pointerEvents: "none",
+      textAlign: "center",
+      width: "100%",
+      animation: "blink-canvas 2s ease-in-out infinite",
+    }}
+  >
+    <style>{`
+      @keyframes blink-canvas {
+        0%, 100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        50% { opacity: 0.3; transform: translate(-50%, -50%) scale(0.98); }
+      }
+    `}</style>
+    <div
+      style={{
+        fontWeight: "bold",
+        fontSize: "clamp(1.5rem, 4vw, 2.5rem)",
+        color: "rgba(7, 52, 148, 0.15)",
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        userSelect: "none",
+      }}
+    >
+      Please Drag The Shapes
     </div>
   </div>
 );
@@ -3755,7 +3775,7 @@ function GenericShapeNode({ id, data, selected }) {
       <svg
         viewBox={shape.icon.viewBox}
         preserveAspectRatio="none"
-        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+        style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }}
       >
         <path
           d={shape.icon.path}
@@ -4698,13 +4718,13 @@ function DiagramEditor() {
         console.log("[Flowchart] Hydrating Redux tabs from central data:", data.length, "tabs");
         hydratingRef.current = true;
         dispatch(setTabs(data));
-        
+
         // Set active tab if it's not set
         const firstTabId = data[0].id;
         if (!activeTabId || !data.find(t => t.id === activeTabId)) {
           dispatch(setActiveTab(firstTabId));
         }
-        
+
         setTimeout(() => hydratingRef.current = false, 100);
       }
     }
@@ -4813,7 +4833,7 @@ function DiagramEditor() {
               rf.fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
               // Reset the ref after viewing to allow future syncs if needed
               setTimeout(() => {
-                  lastLoadedFilePathRef.current = null;
+                lastLoadedFilePathRef.current = null;
               }, 1000);
             }
           }, 50);
@@ -5405,7 +5425,7 @@ function DiagramEditor() {
         initialWidth = 100;
         initialHeight = 50;
       }
-      
+
       if (type === "decision" || type === "ellipse") {
         initialWidth = 60;
         initialHeight = 60;
@@ -5668,12 +5688,12 @@ function DiagramEditor() {
     try {
       // 1. Save to the specialized Flowchart backend API
       // Update Redux tabs state first to ensure consistency
-      const latestTabs = tabs.map(t => 
-        t.id === activeTabId 
-          ? { ...t, state: payloadContent } 
+      const latestTabs = tabs.map(t =>
+        t.id === activeTabId
+          ? { ...t, state: payloadContent }
           : t
       );
-      
+
       await saveDiagramData(payloadContent, 'flowchart');
 
       // 2. Save to the individual project file
@@ -5876,10 +5896,10 @@ function DiagramEditor() {
               name: strippedFileName,
               fileId: filePath,
               state: {
-              nodes: diagramState?.nodes || [],
-              edges: diagramState?.edges || [],
-              viewport: diagramState?.viewport || null,
-            },
+                nodes: diagramState?.nodes || [],
+                edges: diagramState?.edges || [],
+                viewport: diagramState?.viewport || null,
+              },
               dirty: false,
             })
           );
@@ -5887,10 +5907,10 @@ function DiagramEditor() {
 
         // Force viewport update on next tick
         if (parsedContent.viewport && rf) {
-            setTimeout(() => {
-                rf.setViewport(parsedContent.viewport);
-                rf.fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
-            }, 100);
+          setTimeout(() => {
+            rf.setViewport(parsedContent.viewport);
+            rf.fitView({ padding: 0.2, duration: 400, maxZoom: 1 });
+          }, 100);
         }
 
         // Load file using canvas integration (for backend sync if needed)
@@ -6257,7 +6277,7 @@ function DiagramEditor() {
       />
       <div className="content">
         {/* Left palette */}
-        <div 
+        <div
           className="sidebarr fc-sidebar-scope"
           style={{ width: sidebarWidth, minWidth: sidebarWidth, maxWidth: sidebarWidth, flex: `0 0 ${sidebarWidth}px` }}
         >
@@ -6283,9 +6303,9 @@ function DiagramEditor() {
               <FileExplorer variant="diagram" />
             ) : (
               <div className="palette-frame">
-                <div className="palette-header">
+                {/* <div className="palette-header">
                   <div className="palette-title">Shapes</div>
-                </div>
+                </div> */}
                 <div className="palette-search">
                   <input
                     type="text"
@@ -6362,6 +6382,7 @@ function DiagramEditor() {
             cursor: 'col-resize',
             zIndex: 10,
           }}
+          className="sidebar-resizer"
           onMouseDown={startResizing}
         />
 

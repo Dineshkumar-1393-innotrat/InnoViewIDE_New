@@ -85,7 +85,10 @@ const DefineProductButton = ({
     }
   };
 
-  // Always render the button to allow users to create/view products
+  // Always render the button to allow users to create/view products IF a project is active
+  if (!activeProjectId) {
+    return null;
+  }
 
   return (
     <Box

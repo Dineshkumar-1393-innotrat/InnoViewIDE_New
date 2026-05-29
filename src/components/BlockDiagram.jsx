@@ -692,8 +692,7 @@ const BlockDiagram = () => {
   };
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="flowchart-container">
+    <div className="flowchart-container" style={{ backgroundColor: "#ffffff" }}>
         <Navbarone />
         <div className="top-controls">
           {/* <div>
@@ -1016,7 +1015,6 @@ const BlockDiagram = () => {
         </div>
         {/* <Footer /> */}
       </div>
-    </DndProvider>
   );
 };
 

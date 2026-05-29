@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
     Button, 
     Modal, 
@@ -23,14 +23,14 @@ const CreateProductButton = () => {
         activeProductId, 
         activeProductName, 
         activeProjectName,
-        activeProjectId,
-        setActiveProductId,
-        setActiveProductName
+        activeProjectId
     } = useProject();
 
     const [isModalOpen, setModalOpen] = useState(false);
     const [isProductDefined, setIsProductDefined] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
+
+
 
     // Synchronize local state with backend when activeProductId or activeProjectId changes
     useEffect(() => {
@@ -72,9 +72,13 @@ const CreateProductButton = () => {
         
         // Notify other components (legacy support for storage listeners)
         window.dispatchEvent(new Event("storage"));
-        // Custom event to refresh sidebar filesystem
         window.dispatchEvent(new Event("innoide:refresh-filesystem"));
     }, [activeProductId]);
+
+    // If there is no active project, we shouldn't show any product-related buttons.
+    if (!activeProjectId) {
+        return null;
+    }
 
     // 1. Loading State: Show a consistent loading pill while checking definition
     if (activeProductId && isProductDefined === null) {

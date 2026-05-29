@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://eureka.innotrat.in/api/v1/auth';
+const API_BASE_URL = '/api/v1/auth';
 
 export const signup = async (userData) => {
   const response = await fetch(`${API_BASE_URL}/signup`, {
@@ -35,7 +35,7 @@ export const signin = async (credentials) => {
 
 export const handleGoogleAuth = async (userInfo, accessToken) => {
   try {
-    const response = await fetch('https://eureka.innotrat.in/api/v1/auth/google-signin', {
+    const response = await fetch('/api/v1/auth/google-signin', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

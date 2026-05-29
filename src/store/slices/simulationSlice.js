@@ -43,6 +43,7 @@ const simulationSlice = createSlice({
             const tab = state.tabs.find(t => t.id === tabId);
             if (tab) {
                 tab.symbols.push(symbol);
+                tab.dirty = true;
             }
         },
         updateSymbolInTab: (state, action) => {
@@ -52,6 +53,7 @@ const simulationSlice = createSlice({
                 const index = tab.symbols.findIndex(s => s.id === symbolId);
                 if (index !== -1) {
                     tab.symbols[index] = { ...tab.symbols[index], ...updates };
+                    tab.dirty = true;
                 }
             }
         },
@@ -60,6 +62,7 @@ const simulationSlice = createSlice({
             const tab = state.tabs.find(t => t.id === tabId);
             if (tab) {
                 tab.symbols = tab.symbols.filter(s => s.id !== symbolId);
+                tab.dirty = true;
             }
         },
         addConnectionToTab: (state, action) => {
@@ -67,6 +70,7 @@ const simulationSlice = createSlice({
             const tab = state.tabs.find(t => t.id === tabId);
             if (tab && !tab.connections.includes(connection)) {
                 tab.connections.push(connection);
+                tab.dirty = true;
             }
         },
         setTabSymbolsAndConnections: (state, action) => {

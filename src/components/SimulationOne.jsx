@@ -1157,7 +1157,35 @@ const DeviceControlButtons = () => {
         };
       }
 
-      // API check for stopped devices removed
+      // Check if there are any devices at all (including stopped)
+      try {
+        const allDevicesResponse = await fetch(
+          `${baseURL}/product/${productId}/devices`,
+          {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+
+        if (allDevicesResponse.ok) {
+          const allDevicesData = await allDevicesResponse.json();
+          // Extract devices array handling different possible API response structures
+          let devicesList = [];
+          if (Array.isArray(allDevicesData)) devicesList = allDevicesData;
+          else if (allDevicesData.devices) devicesList = allDevicesData.devices;
+          else if (allDevicesData.data) devicesList = allDevicesData.data;
+
+          if (devicesList && devicesList.length > 0) {
+            return {
+              needToCreateDevice: false,
+              existingDeviceId: typeof devicesList[0] === 'string' ? devicesList[0] : devicesList[0].deviceID || devicesList[0].id,
+              isDeviceRunning: false
+            };
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch all devices fallback:", err);
+      }
 
 
       // No devices found, need to create one
@@ -1174,7 +1202,7 @@ const DeviceControlButtons = () => {
   const controlDevices = async (action, productId, devId) => {
     try {
       const response = await fetch(
-        `${productAPIBase}/product/${productId}/devices/control`,
+        `${baseURL}/product/${productId}/devices/control`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

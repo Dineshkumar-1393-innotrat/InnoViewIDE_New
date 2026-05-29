@@ -1545,9 +1545,18 @@ export default function ProductDefinition({ onSuccess }) {
                     isDisabled={!comp.typeId && !comp.typeName}
                   >
                     {/* Render both hardcoded and dynamic options */}
-                    {COMPONENT_TYPES[comp.typeName] && COMPONENT_TYPES[comp.typeName].map((name) => (
-                      <option key={`hardcoded-${name}`} value={name}>{name}</option>
-                    ))}
+                    {(() => {
+                      if (!comp.typeName) return null;
+                      // Find matching key in COMPONENT_TYPES (ignoring case and trailing 's')
+                      const typeNameLower = comp.typeName.toLowerCase();
+                      const matchingKey = Object.keys(COMPONENT_TYPES).find(
+                        key => key.toLowerCase() === typeNameLower || key.toLowerCase() + 's' === typeNameLower
+                      );
+                      const options = matchingKey ? COMPONENT_TYPES[matchingKey] : [];
+                      return options.map((name) => (
+                        <option key={`hardcoded-${name}`} value={name}>{name}</option>
+                      ));
+                    })()}
                     {(componentNamesMap[comp.typeId] || []).map((c) => (
                       <option key={c._id} value={c._id}>
                         {c.name}
@@ -1967,7 +1976,7 @@ export default function ProductDefinition({ onSuccess }) {
                         )}
 
                         {/* 4. SWITCH COMPONENT TYPE Logic */}
-                        {(comp.typeName === "Switch" || comp.typeName === "switch") && (
+                        {(comp.typeName && (comp.typeName.toLowerCase() === "switch" || comp.typeName.toLowerCase() === "switches")) && (
                           <Box mt={2}>
                             <Text fontSize="sm" mb={1} fontWeight="medium">State (On/Off)</Text>
                             <HStack spacing={4}>
@@ -1992,7 +2001,7 @@ export default function ProductDefinition({ onSuccess }) {
                         )}
 
                         {/* 5. LED COMPONENT TYPE Logic */}
-                        {(comp.typeName === "LED" || comp.typeName === "Led" || comp.typeName === "led") && (
+                        {(comp.typeName && (comp.typeName.toLowerCase() === "led" || comp.typeName.toLowerCase() === "leds")) && (
                           <Box mt={2}>
                             <Text fontSize="sm" mb={1} fontWeight="medium">Color</Text>
                             <Select size="sm" value={param.color} onChange={(e) => updateParameter(compIndex, paramIndex, "color", e.target.value)} sx={inputStyles}>

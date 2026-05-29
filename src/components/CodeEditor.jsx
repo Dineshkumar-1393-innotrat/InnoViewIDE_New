@@ -30,6 +30,7 @@ import ProductDefinition from "./CreateProduct";
 import ProductEditModal from "./Product/ProductEdit/ProductEditModal";
 import { Editor } from "@monaco-editor/react";
 import { AddIcon, CloseIcon, ExternalLinkIcon } from "@chakra-ui/icons";
+import { Save } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import LanguageSelector from "./LanguageSelector";
 import { CODE_SNIPPETS, MONACO_LANGUAGE_MAP } from "../constants";
@@ -1001,6 +1002,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
             w="6px"
             bg="transparent"
             cursor="col-resize"
+            className="sidebar-resizer"
             onMouseDown={startResizing}
             _hover={{ bg: colorMode === "dark" ? "rgba(59,130,246,0.35)" : "rgba(37,99,235,0.25)" }}
             transition="background 0.2s"
@@ -1130,8 +1132,14 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                               title="Double-click to rename"
                               fontSize="xs"
                               userSelect="none"
+                              display="flex"
+                              alignItems="center"
+                              gap="4px"
                             >
                               {tab.name}
+                              {tab.dirty && (
+                                <Box as="span" w="6px" h="6px" borderRadius="50%" bg={isActive ? "#fca5a5" : "#ef4444"} display="inline-block" flexShrink={0} />
+                              )}
                             </Text>
                           )}
                         </Flex>
@@ -1165,6 +1173,32 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                     size="xs"
                     onClick={addNewTab}
                     aria-label="Add new tab"
+                    variant="outline"
+                    borderColor={
+                      colorMode === "dark"
+                        ? "rgba(148,163,184,0.4)"
+                        : "rgba(15,23,42,0.15)"
+                    }
+                    color={
+                      colorMode === "dark" ? "rgba(226,232,240,0.9)" : "#0f172a"
+                    }
+                    _hover={{ bg: "rgba(56,189,248,0.2)" }}
+                  />
+                  <IconButton
+                    icon={<Save size={14} />}
+                    size="xs"
+                    onClick={() => {
+                      saveEditorNow();
+                      toast({
+                        title: "Code Saved",
+                        description: "Your code has been saved successfully.",
+                        status: "success",
+                        duration: 2000,
+                        isClosable: true,
+                        position: "top-right"
+                      });
+                    }}
+                    aria-label="Save code"
                     variant="outline"
                     borderColor={
                       colorMode === "dark"

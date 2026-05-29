@@ -34,13 +34,23 @@ const blockProgrammingSlice = createSlice({
             }
         },
         updateTabState: (state, action) => {
-            const { tabId, nodes, edges, viewport, idSeed } = action.payload;
+            const { tabId, nodes, edges, viewport, idSeed, markDirty = true } = action.payload;
             const tab = state.tabs.find((t) => t.id === tabId);
             if (tab) {
                 if (nodes !== undefined) tab.state.nodes = nodes;
                 if (edges !== undefined) tab.state.edges = edges;
                 if (viewport !== undefined) tab.state.viewport = viewport;
                 if (idSeed !== undefined) tab.state.idSeed = idSeed;
+                if (markDirty) {
+                    tab.dirty = true;
+                }
+            }
+        },
+        markTabClean: (state, action) => {
+            const tabId = action.payload;
+            const tab = state.tabs.find((t) => t.id === tabId);
+            if (tab) {
+                tab.dirty = false;
             }
         },
     },
@@ -53,6 +63,7 @@ export const {
     closeTab,
     renameTab,
     updateTabState,
+    markTabClean,
 } = blockProgrammingSlice.actions;
 
 export default blockProgrammingSlice.reducer;

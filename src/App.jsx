@@ -120,6 +120,8 @@ import { MeetingProvider } from "./contexts/MeetingContext";
 import AutoSaveStatus from "./components/AutoSaveStatus";
 import AutoSaveDemo from "./components/AutoSaveDemo";
 import { autoSaveManager } from "./utils/autoSaveManager";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 import CodeEditor from "./components/CodeEditor";
 import Home from "./components/Home";
@@ -195,9 +197,10 @@ const App = () => {
         <WorkspaceStateProvider>
           <AuthProvider>
             <MeetingProvider>
-            <Box minH="100vh" display="flex" flexDirection="column" overflowX="hidden">
-              <Routes>
-                <Route path="/" element={<Home />} />
+              <DndProvider backend={HTML5Backend}>
+                <Box minH="100vh" display="flex" flexDirection="column" overflowX="hidden">
+                  <Routes>
+                    <Route path="/" element={<Home />} />
                 <Route path="/template" element={<Template />} />
 
                 <Route
@@ -252,6 +255,7 @@ const App = () => {
               <AutoSaveStatus position="corner" />
             )}
               {/* <Footer /> */}
+              </DndProvider>
             </MeetingProvider>
           </AuthProvider>
         </WorkspaceStateProvider>
