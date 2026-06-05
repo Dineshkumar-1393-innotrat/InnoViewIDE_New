@@ -80,9 +80,29 @@ export function ProjectProvider({ children }) {
         console.log("[ProjectContext] User identity updated from storage.");
       }
     };
+
+    const handleProjectDeleted = (e) => {
+      if (e.detail?.projectId && e.detail.projectId === activeProjectId) {
+        console.log("[ProjectContext] Active project deleted, resetting context state.");
+        setActiveProjectId(null);
+        setActiveProjectName(null);
+        setActiveProductId(null);
+        setActiveProductName(null);
+        setDiagramData({ 
+          blockDiagram: { data: [], id: null, version: 0 },
+          flowchart: { data: [], id: null, version: 0 },
+          simulation: { data: [], id: null, version: 0 }
+        });
+      }
+    };
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
+    window.addEventListener("project-deleted", handleProjectDeleted);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("project-deleted", handleProjectDeleted);
+    };
+  }, [activeProjectId]);
   const [isHydrated, setIsHydrated] = useState(true); // Initially true if we have a project
   const [isRestoring, setIsRestoring] = useState(false);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);

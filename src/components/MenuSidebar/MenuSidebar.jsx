@@ -311,6 +311,8 @@ const MenuSidebar = () => {
 
       alert("Folder deleted successfuly!");
 
+      window.dispatchEvent(new CustomEvent("project-deleted", { detail: { projectId: id } }));
+
       await fetchFileSystem(user.userId);
       // You can add state update logic here if needed
     } catch (error) {

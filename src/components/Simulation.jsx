@@ -62,7 +62,7 @@ const DiagramEmptyState = () => (
 
 // Import all your existing SVG icons
 import SoundAndVibrationsSensor from "../images/sound and vibrarions sensor.svg";
-import ServoMotors from "../images/servo motors.svg";
+import ServoMotors from "../images/servo motors.png";
 import RGBLights from "../images/rgb lights.svg";
 import PowerSupply from "../images/powersupply.svg";
 import OpticalSensor from "../images/optical sensor.svg";
@@ -208,7 +208,7 @@ const symbolsData = [
   {
     category: "ACTUATORS ▼",
     items: [
-      { type: "svg", src: ServoMotors, name: "Servo Motors" },
+      { type: "png", src: ServoMotors, name: "Servo Motors" },
       { type: "svg", src: VibrationsMotors, name: "Vibrations Motors" },
       { type: "svg", src: ActuatorsRelay, name: " Relay" },
       { type: "svg", src: powerButtonOff, name: "Power Button" },

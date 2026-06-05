@@ -200,17 +200,14 @@ const Home = () => {
 
   return (
     <>
-      <Box position="relative" width="100vw" height="100vh" overflow="hidden">
+      <Box position="relative" width="100vw" height="100vh" overflow="hidden" bg="gray.50">
         {/* Full-Screen Background Image */}
-        <Image src={loginImage} alt="Background" objectFit="cover" position="absolute" top={0} left={0} w="100%" h="100%" zIndex={0} />
-
-        {/* Dark Gradient Overlay */}
-        <Box position="absolute" top={0} left={0} w="100%" h="100%" bgGradient="linear(to-br, rgba(17, 24, 39, 0.7), rgba(17, 24, 39, 0.9))" zIndex={1} />
+        
 
         {/* Floating Glass Header */}
-        <Flex position="absolute" top={0} left={0} right={0} height={{ base: "70px", md: "80px" }} alignItems="center" justifyContent="space-between" padding={{ base: "0 20px", md: "0 40px" }} zIndex={10} bg="rgba(255, 255, 255, 0.03)" backdropFilter="blur(10px)" borderBottom="1px solid rgba(255, 255, 255, 0.05)">
-          <img src={Ellipse521} alt="Innoide" style={{ height: "40px", width: "auto", filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.5))" }} />
-          <HStack spacing={6} color="whiteAlpha.900" fontSize={{ base: "xs", md: "sm" }}>
+        <Flex position="absolute" top={0} left={0} right={0} height={{ base: "70px", md: "80px" }} alignItems="center" justifyContent="space-between" padding={{ base: "0 20px", md: "0 40px" }} zIndex={10} bg="white" backdropFilter="blur(10px)" borderBottom="1px solid" borderColor="gray.200">
+          <img src={Ellipse521} alt="Innoide" style={{ height: "40px", width: "auto", filter: "none" }} />
+          <HStack spacing={6} color="gray.700" fontSize={{ base: "xs", md: "sm" }}>
             <HStack spacing={2}>
               <FaCalendar opacity={0.8} />
               <Text fontWeight="medium" letterSpacing="wide" whiteSpace="nowrap">{formatDate(currentDateTime)}</Text>
@@ -226,41 +223,41 @@ const Home = () => {
         {/* Centered Glass Login Card */}
         <Flex position="relative" zIndex={10} width="100%" height="100%" align="center" justify="center" pt={{ base: "70px", md: "80px" }}>
           <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}>
-            <Box width={{ base: "90vw", sm: "350px", md: "380px" }} p={{ base: 6, md: 7 }} borderRadius="2xl" bg="rgba(255, 255, 255, 0.05)" backdropFilter="blur(20px)" border="1px solid rgba(255, 255, 255, 0.1)" boxShadow="0 25px 50px -12px rgba(0, 0, 0, 0.5)">
+            <Box width={{ base: "90vw", sm: "350px", md: "380px" }} p={{ base: 6, md: 7 }} borderRadius="2xl" bg="white" border="1px solid" borderColor="gray.100" boxShadow="xl">
               <VStack as="form" onSubmit={handleLogin} spacing={4} width="full" alignItems="stretch">
                 <Box width="full" mb={2} textAlign="center">
-                  <Heading as="h1" size="xl" color="white" fontWeight="extrabold" mb={2} letterSpacing="tight" textShadow="0 2px 10px rgba(0,0,0,0.3)">
+                  <Heading as="h1" size="xl" color="gray.800" fontWeight="extrabold" mb={2} letterSpacing="tight" >
                     Welcome Back
                   </Heading>
-                  <Text fontSize="sm" color="whiteAlpha.700" fontWeight="medium">
+                  <Text fontSize="sm" color="gray.600" fontWeight="medium">
                     Sign in to Innotrat Labs IDE
                   </Text>
                 </Box>
 
                 <FormControl id="mobileNumber" isRequired isInvalid={!!errors.mobileNumber}>
-                  <FormLabel fontSize="sm" fontWeight="semibold" color="whiteAlpha.900" mb={1}>
+                  <FormLabel fontSize="sm" fontWeight="semibold" color="gray.700" mb={1}>
                     Mobile Number
                   </FormLabel>
                   <Flex align="stretch">
-                    <Select id="countryCode" value={formData.countryCode} onChange={handleInputChange} width="100px" height="42px" fontSize="md" borderRightRadius="0" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA", zIndex: 1 }} sx={{ '> option': { background: '#1F2937', color: 'white' } }}>
+                    <Select id="countryCode" value={formData.countryCode} onChange={handleInputChange} width="100px" height="42px" fontSize="md" borderRightRadius="0" bg="white" color="gray.800" border="1px solid" borderColor="gray.200" _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA", zIndex: 1 }} sx={{ '> option': { background: 'white', color: 'black' } }}>
                       <option value="+91">+91</option>
                     </Select>
-                    <Input id="mobileNumber" type="tel" placeholder="Enter mobile number" height="42px" fontSize="md" flex={1} w="full" borderLeftRadius="0" borderLeft="none" pattern="[0-9]{10}" maxLength="10" value={formData.mobileNumber} onChange={handleInputChange} bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: "whiteAlpha.400" }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA", zIndex: 1 }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <Input id="mobileNumber" type="tel" placeholder="Enter mobile number" height="42px" fontSize="md" flex={1} w="full" borderLeftRadius="0" borderLeft="none" pattern="[0-9]{10}" maxLength="10" value={formData.mobileNumber} onChange={handleInputChange} bg="white" color="gray.800" border="1px solid" borderColor="gray.200" _placeholder={{ color: "gray.400" }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA", zIndex: 1 }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px white inset !important', WebkitTextFillColor: '#1A202C !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
                   </Flex>
                   {errors.mobileNumber && <FormErrorMessage>{errors.mobileNumber}</FormErrorMessage>}
                 </FormControl>
 
                 <FormControl id="password" isRequired isInvalid={!!errors.password}>
-                  <FormLabel fontSize="sm" fontWeight="semibold" color="whiteAlpha.900" mb={1}>
+                  <FormLabel fontSize="sm" fontWeight="semibold" color="gray.700" mb={1}>
                     Password
                   </FormLabel>
                   <InputGroup size="lg" width="100%">
                     <InputLeftElement pointerEvents="none" height="42px">
-                      <FaLock color="rgba(255,255,255,0.4)" />
+                      <FaLock color="gray.400" />
                     </InputLeftElement>
-                    <Input id="password" type={show ? "text" : "password"} placeholder="Enter your password" height="42px" fontSize="md" w="100%" borderRadius="lg" value={formData.password} onChange={handleInputChange} pl="10" pr="3rem" bg="rgba(0, 0, 0, 0.2)" color="white" border="1px solid rgba(255, 255, 255, 0.1)" _placeholder={{ color: "whiteAlpha.400" }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px #1F2937 inset !important', WebkitTextFillColor: 'white !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
+                    <Input id="password" type={show ? "text" : "password"} placeholder="Enter your password" height="42px" fontSize="md" w="100%" borderRadius="lg" value={formData.password} onChange={handleInputChange} pl="10" pr="3rem" bg="white" color="gray.800" border="1px solid" borderColor="gray.200" _placeholder={{ color: "gray.400" }} _focus={{ borderColor: "purple.400", boxShadow: "0 0 0 1px #9F7AEA" }} sx={{ '&:-webkit-autofill': { WebkitBoxShadow: '0 0 0 30px white inset !important', WebkitTextFillColor: '#1A202C !important', transition: 'background-color 5000s ease-in-out 0s' } }} />
                     <InputRightElement height="42px" width="3rem" right="0">
-                      <IconButton size="sm" onClick={() => setShow(!show)} icon={show ? <ViewOffIcon /> : <ViewIcon />} variant="ghost" color="whiteAlpha.600" _hover={{ color: "white", bg: "whiteAlpha.200" }} aria-label={show ? "Hide password" : "Show password"} />
+                      <IconButton size="sm" onClick={() => setShow(!show)} icon={show ? <ViewOffIcon /> : <ViewIcon />} variant="ghost" color="gray.500" _hover={{ color: "white", bg: "whiteAlpha.200" }} aria-label={show ? "Hide password" : "Show password"} />
                     </InputRightElement>
                   </InputGroup>
                   {errors.password && <FormErrorMessage>{errors.password}</FormErrorMessage>}
@@ -272,23 +269,23 @@ const Home = () => {
 
                 <VStack spacing={2} width="full" mt={2}>
                   <Flex justify="center" align="center">
-                    <Text fontSize="sm" color="whiteAlpha.700">Don't have an account?</Text>
+                    <Text fontSize="sm" color="gray.600">Don't have an account?</Text>
                     <ChakraLink color="purple.300" ml={2} fontSize="sm" fontWeight="bold" onClick={createAccount}>
                       Create an account
                     </ChakraLink>
                   </Flex>
-                  <ChakraLink color="whiteAlpha.600" fontSize="xs" fontWeight="semibold" onClick={handleForgotPassword} _hover={{ color: "white", textDecoration: "underline" }}>
+                  <ChakraLink color="gray.500" fontSize="xs" fontWeight="semibold" onClick={handleForgotPassword} _hover={{ color: "white", textDecoration: "underline" }}>
                     Forgot your password?
                   </ChakraLink>
                 </VStack>
 
                 <HStack width="full" my={2}>
-                  <Divider borderColor="whiteAlpha.200" />
-                  <Text px={3} fontSize="xs" fontWeight="bold" color="whiteAlpha.500" whiteSpace="nowrap">OR</Text>
-                  <Divider borderColor="whiteAlpha.200" />
+                  <Divider borderColor="gray.200" />
+                  <Text px={3} fontSize="xs" fontWeight="bold" color="gray.400" whiteSpace="nowrap">OR</Text>
+                  <Divider borderColor="gray.200" />
                 </HStack>
 
-                <Box width="full" display="flex" justifyContent="center" sx={{ '.nsm7Bb-HzV7m-LgbsSe': { backgroundColor: 'rgba(255,255,255,0.05) !important', color: 'white !important', border: '1px solid rgba(255,255,255,0.2) !important', borderRadius: '8px !important' }, '.nsm7Bb-HzV7m-LgbsSe:hover': { backgroundColor: 'rgba(255,255,255,0.1) !important' } }}>
+                <Box width="full" display="flex" justifyContent="center" sx={{ '.nsm7Bb-HzV7m-LgbsSe': { backgroundColor: 'white !important', color: '#3c4043 !important', border: '1px solid #E2E8F0 !important', borderRadius: '8px !important' }, '.nsm7Bb-HzV7m-LgbsSe:hover': { backgroundColor: '#F7FAFC !important' } }}>
                   <GoogleLogin
                     onSuccess={async (credentialResponse) => {
                       try {
@@ -343,7 +340,7 @@ const Home = () => {
                     }}
                   />
                 </Box>
-                <Text textAlign="center" fontSize="xs" color="whiteAlpha.500" mt={4}>
+                <Text textAlign="center" fontSize="xs" color="gray.400" mt={4}>
                   InnoIDE_V1Rev1.3_29-05-2026 (C) Innotrat Labs 2026
                 </Text>
               </VStack>
@@ -378,7 +375,7 @@ const Home = () => {
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
-                  <Flex height="100%" align="center" justify="center" bg="gray.900" color="white">
+                  <Flex height="100%" align="center" justify="center" bg="gray.900" color="gray.800">
                     <VStack>
                       <FaPlayCircle size={48} opacity={0.5} />
                       <Text>Preview: {onboardingSteps[onboardingStep].title}</Text>

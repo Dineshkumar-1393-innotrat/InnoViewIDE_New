@@ -1,4 +1,4 @@
-const API_BASE_URL = '/api/v1/auth';
+const API_BASE_URL = 'https://eureka.innotrat.in/api/v1/auth';
 
 export const signup = async (userData) => {
   const response = await fetch(`${API_BASE_URL}/signup`, {
@@ -13,7 +13,7 @@ export const signup = async (userData) => {
       password: userData.password
     })
   });
-  
+
   return response.json();
 };
 
@@ -34,30 +34,19 @@ export const signin = async (credentials) => {
 };
 
 export const handleGoogleAuth = async (userInfo, accessToken) => {
-  try {
-    const response = await fetch('/api/v1/auth/google-signin', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({
-        email: userInfo.email,
-        googleId: userInfo.sub,
-        name: userInfo.name,
-        picture: userInfo.picture,
-        token: accessToken
-      })
-    });
+  const response = await fetch(`${API_BASE_URL}/google`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      email: userInfo.email,
+      googleId: userInfo.sub,
+      name: userInfo.name,
+      picture: userInfo.picture,
+      token: accessToken
+    })
+  });
 
-    if (!response.ok) {
-      throw new Error('Authentication failed');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Auth service error:', error);
-    throw error;
-  }
+  return response.json();
 };

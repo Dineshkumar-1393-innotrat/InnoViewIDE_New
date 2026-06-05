@@ -1,22 +1,21 @@
 import { baseURL, getUserInfo } from "../utilities";
 
-const API_BASE_URL = 'eur/api/v1/github';
+const API_BASE_URL = 'http://192.168.0.25:5004/api/v1/github';
 
 // Fallback values for testing if user is not logged in or doesn't have github setup
-const DEFAULT_USER_ID = "6926c69500610847a79be7eb";
-const DEFAULT_TOKEN = "";
-const DEFAULT_OWNER = "";
+// const DEFAULT_USER_ID = "6926c69500610847a79be7eb";
+// const DEFAULT_TOKEN = "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";
+// const DEFAULT_OWNER = "srilakshmi415";
 
 /**
  * Extracts dynamic credentials from the active user's session data.
- * Falls back to the hardcoded defaults if values are missing.
  */
 const getDynamicCreds = () => {
   const userInfo = getUserInfo() || {};
   return {
-    userId: userInfo.userId || userInfo._id || DEFAULT_USER_ID,
-    githubToken: userInfo.githubToken || DEFAULT_TOKEN,
-    owner: userInfo.githubUsername || userInfo.owner || DEFAULT_OWNER
+    userId: userInfo.userId || userInfo._id || "",
+    githubToken: userInfo.githubToken || "",
+    owner: userInfo.githubUsername || userInfo.owner || ""
   };
 };
 

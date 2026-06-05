@@ -422,7 +422,7 @@ const EditorNavbar = ({
 
         {/* ✅ Menu Items */}
         <nav className={`editor-navbar__menu ${isMobileMenuOpen ? 'is-visible' : ''}`}>
-          <div className="editor-navbar__menu-group" ref={menuRefs.tools}>
+          <div className="editor-navbar__menu-group" ref={menuRefs.tools} style={{ display: 'none' }}>
             <button
               type="button"
               className={`editor-navbar__menu-item ${activeMenu === 'tools' ? 'is-open' : ''}`}
