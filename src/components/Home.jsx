@@ -202,7 +202,7 @@ const Home = () => {
     <>
       <Box position="relative" width="100vw" height="100vh" overflow="hidden" bg="gray.50">
         {/* Full-Screen Background Image */}
-        
+
 
         {/* Floating Glass Header */}
         <Flex position="absolute" top={0} left={0} right={0} height={{ base: "70px", md: "80px" }} alignItems="center" justifyContent="space-between" padding={{ base: "0 20px", md: "0 40px" }} zIndex={10} bg="white" backdropFilter="blur(10px)" borderBottom="1px solid" borderColor="gray.200">
@@ -341,7 +341,7 @@ const Home = () => {
                   />
                 </Box>
                 <Text textAlign="center" fontSize="xs" color="gray.400" mt={4}>
-                  InnoIDE_V1Rev1.3_29-05-2026 (C) Innotrat Labs 2026
+                  InnoIDE_V1Rev1.4_05-06-2026 (C) Innotrat Labs 2026
                 </Text>
               </VStack>
             </Box>
