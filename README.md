@@ -5,7 +5,7 @@
 1. V1Rev1_04_March_2025-Dibyanshu
 2. V1Rev1_11_March_2025-Jeeva
 3. V1Rev1_19_March_2025-Dibyanshu
-4. InnoIDE_V1.4_05-06-2026- Dinesh kumar
+4.InnoIDE_V1.5_09-06-2026- Dinesh kumar
 
 ## Terminal Demo
 A live demonstration of the terminal's new UI (light mode) and enhanced command-line capabilities (ls, cd, pwd, cat, clear).
