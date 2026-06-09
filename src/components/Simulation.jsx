@@ -621,71 +621,72 @@ const BlockDiagram = () => {
     }
   }; // Added missing closing brace for handleDelete
 
-  // Calculate the best snap position including edge-to-edge snapping
+  // --- Hexagonal tiling neighbour offsets (flat-top orientation) ---
+  // For a flat-top hexagon with bounding box W x H:
+  //   Right neighbour:       (+W*0.75,  0)
+  //   Left neighbour:        (-W*0.75,  0)
+  //   Upper-right neighbour: (+W*0.375, -H*0.5)
+  //   Lower-right neighbour: (+W*0.375, +H*0.5)
+  //   Upper-left neighbour:  (-W*0.375, -H*0.5)
+  //   Lower-left neighbour:  (-W*0.375, +H*0.5)
+  const getHexNeighbourOffsets = (w, h) => [
+    { dx:  w * 0.75,   dy:  0          }, // Right
+    { dx: -w * 0.75,   dy:  0          }, // Left
+    { dx:  w * 0.375,  dy: -h * 0.5   }, // Upper-right
+    { dx:  w * 0.375,  dy:  h * 0.5   }, // Lower-right
+    { dx: -w * 0.375,  dy: -h * 0.5   }, // Upper-left
+    { dx: -w * 0.375,  dy:  h * 0.5   }, // Lower-left
+  ];
+
+  // Calculate the best snap position using hexagonal tiling math
   const calculateSnapPosition = (movedItem, allItems) => {
     let bestX = movedItem.x;
     let bestY = movedItem.y;
     let snapped = false;
-    const SNAP_MARGIN = 30; // Closer threshold for final snap
+    const SNAP_MARGIN = 60; // Generous threshold so user doesn't need pixel-perfect placement
+
+    const movedCX = movedItem.x + movedItem.width / 2;
+    const movedCY = movedItem.y + movedItem.height / 2;
+
+    let bestDist = SNAP_MARGIN;
 
     allItems.forEach((item) => {
       if (item.id === movedItem.id) return;
 
-      // 1. Center alignment (existing center-to-center snapping)
-      const centerX1 = movedItem.x + movedItem.width / 2;
-      const centerY1 = movedItem.y + movedItem.height / 2;
-      const centerX2 = item.x + item.width / 2;
-      const centerY2 = item.y + item.height / 2;
+      const w = (movedItem.width + item.width) / 2; // average width for offsets
+      const h = (movedItem.height + item.height) / 2;
+      const itemCX = item.x + item.width / 2;
+      const itemCY = item.y + item.height / 2;
 
-      // Center-X alignment
-      if (Math.abs(centerX1 - centerX2) < SNAP_MARGIN) {
-        bestX = centerX2 - movedItem.width / 2;
-        snapped = true;
-      }
-      // Center-Y alignment
-      if (Math.abs(centerY1 - centerY2) < SNAP_MARGIN) {
-        bestY = centerY2 - movedItem.height / 2;
-        snapped = true;
-      }
-
-      // 2. Edge-to-Edge snapping (joining on sides) with small overlap for seamless feel
-      const OVERLAP = 15; // Adjustment for visual padding in hexagonal images
-
-      // Left of movedItem to Right of item
-      if (Math.abs(movedItem.x - (item.x + item.width - OVERLAP)) < SNAP_MARGIN) {
-        bestX = item.x + item.width - OVERLAP;
-        snapped = true;
-      }
-      // Right of movedItem to Left of item
-      if (Math.abs((movedItem.x + movedItem.width) - (item.x + OVERLAP)) < SNAP_MARGIN) {
-        bestX = item.x - movedItem.width + OVERLAP;
-        snapped = true;
-      }
-      // Top of movedItem to Bottom of item
-      if (Math.abs(movedItem.y - (item.y + item.height - OVERLAP)) < SNAP_MARGIN) {
-        bestY = item.y + item.height - OVERLAP;
-        snapped = true;
-      }
-      // Bottom of movedItem to Top of item
-      if (Math.abs((movedItem.y + movedItem.height) - (item.y + OVERLAP)) < SNAP_MARGIN) {
-        bestY = item.y - movedItem.height + OVERLAP;
-        snapped = true;
-      }
+      // Check all 6 hex neighbour slots of the stationary item
+      const offsets = getHexNeighbourOffsets(w, h);
+      offsets.forEach(({ dx, dy }) => {
+        const slotCX = itemCX + dx;
+        const slotCY = itemCY + dy;
+        const dist = Math.sqrt(
+          Math.pow(movedCX - slotCX, 2) + Math.pow(movedCY - slotCY, 2)
+        );
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestX = slotCX - movedItem.width / 2;
+          bestY = slotCY - movedItem.height / 2;
+          snapped = true;
+        }
+      });
     });
 
     return { x: bestX, y: bestY, snapped };
   };
-  // Check if two components are close enough to be considered "connected"
-  // Increased threshold to make joining much easier
-  const checkProximity = (item1, item2, threshold = 150) => {
-    // Calculate the distance between the closest points of the two bounding boxes
-    const dx = Math.max(item2.x - (item1.x + item1.width), 0, item1.x - (item2.x + item2.width));
-    const dy = Math.max(item2.y - (item1.y + item1.height), 0, item1.y - (item2.y + item2.height));
-
-    // Distance between rectangles
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    return distance <= threshold;
+  // Check proximity using center-to-center distance (works well with hex tiles)
+  const checkProximity = (item1, item2, threshold = 200) => {
+    const cx1 = item1.x + item1.width / 2;
+    const cy1 = item1.y + item1.height / 2;
+    const cx2 = item2.x + item2.width / 2;
+    const cy2 = item2.y + item2.height / 2;
+    const distance = Math.sqrt(Math.pow(cx2 - cx1, 2) + Math.pow(cy2 - cy1, 2));
+    // A connected hex pair has center distance ≈ 0.75*W; allow up to 1.5*W
+    const connectThreshold = Math.max(threshold, (item1.width + item2.width) * 0.75);
+    return distance <= connectThreshold;
   };
 
   // Handle connection detection and notification
@@ -795,6 +796,40 @@ const BlockDiagram = () => {
             }, 500);
           }
           return; // Stop processing further connections for this component
+        }
+
+        // --- Hexagonal side-by-side snap for ALL non-Microcontroller components ---
+        // Find the closest hex neighbour slot of the stationary item and snap movedItem there
+        const w = (movedItem.width + item.width) / 2;
+        const h = (movedItem.height + item.height) / 2;
+        const itemCX = item.x + item.width / 2;
+        const itemCY = item.y + item.height / 2;
+        const movedCX = movedItem.x + movedItem.width / 2;
+        const movedCY = movedItem.y + movedItem.height / 2;
+
+        const offsets = getHexNeighbourOffsets(w, h);
+        let closestSlot = null;
+        let minDist = Infinity;
+        offsets.forEach(({ dx, dy }) => {
+          const slotCX = itemCX + dx;
+          const slotCY = itemCY + dy;
+          const dist = Math.sqrt(
+            Math.pow(movedCX - slotCX, 2) + Math.pow(movedCY - slotCY, 2)
+          );
+          if (dist < minDist) {
+            minDist = dist;
+            closestSlot = { cx: slotCX, cy: slotCY };
+          }
+        });
+
+        if (closestSlot) {
+          const snapX = closestSlot.cx - movedItem.width / 2;
+          const snapY = closestSlot.cy - movedItem.height / 2;
+          dispatch(updateSymbolInTab({
+            tabId: activeTabId,
+            symbolId: movedItem.id,
+            updates: { x: snapX, y: snapY }
+          }));
         }
 
         if (!exists) {
@@ -1203,9 +1238,11 @@ const BlockDiagram = () => {
               onDragStop={(e, d) => {
                 const item = droppedItems[index];
                 if (item) {
-                  // Disable magnetic snapping per user request for easier DnD
-                  const finalX = d.x;
-                  const finalY = d.y;
+                  // First apply hex snap to get visually-attached position
+                  const rawItem = { ...item, x: d.x, y: d.y };
+                  const { x: snapX, y: snapY, snapped } = calculateSnapPosition(rawItem, droppedItems);
+                  const finalX = snapped ? snapX : d.x;
+                  const finalY = snapped ? snapY : d.y;
 
                   const updatedItem = { ...item, x: finalX, y: finalY };
 
@@ -1224,7 +1261,7 @@ const BlockDiagram = () => {
                     }),
                   );
 
-                  // Check for connections after drag (using final position)
+                  // Check for connections after drag (using snapped position)
                   handleConnectionDetection(updatedItem);
                 }
               }}
@@ -1244,7 +1281,7 @@ const BlockDiagram = () => {
                     width="100%"
                     height="100%"
                     viewBox="0 0 100 100"
-                    preserveAspectRatio="none"
+                    preserveAspectRatio="xMidYMid meet"
                     style={{
                       position: "absolute",
                       top: 0,
@@ -1254,7 +1291,7 @@ const BlockDiagram = () => {
                     }}
                   >
                     <polygon
-                      points="50,0 100,25 100,75 50,100 0,75 0,25"
+                      points="50,10 90,30 90,70 50,90 10,70 10,30"
                       fill="none"
                       stroke="blue"
                       strokeWidth="2"
