@@ -53,7 +53,10 @@ import FileExplorer from "./FileExplorer";
 import Debug from "./Debug";
 import Flash from "./Flash";
 import CreateProductButton from "./shared/CreateProductButton";
-// import MathWidgetButton from "./shared/MathWidgetButton";
+import WorkspaceHeader from "../features/workspace/runtime/components/WorkspaceHeader";
+import ProcessingTimeline from "../features/workspace/runtime/components/ProcessingTimeline";
+import TerminalPanel from "../features/workspace/terminal/components/TerminalPanel";
+import PreviewPanel from "../features/workspace/preview/components/PreviewPanel";
 
 // Component to handle FileExplorer and Flash panel layout
 const FileExplorerWithFlash = ({
@@ -226,6 +229,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
 
   const dispatch = useDispatch();
   const { tabs, activeTabId } = useSelector((state) => state.editor);
+  const { runtimeState } = useSelector((state) => state.workspace);
   const activeTab = useMemo(
     () => tabs.find((t) => t.id === activeTabId),
     [tabs, activeTabId],
@@ -1053,6 +1057,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               minH={0}
               overflow="hidden"
             >
+              {runtimeState !== "idle" && <WorkspaceHeader />}
               <Flex
                 align="center"
                 flexWrap="wrap"
@@ -1290,18 +1295,36 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                   `}
                 </style>
 
-                <Editor
-                  options={{
-                    minimap: { enabled: false },
-                  }}
-                  height="100%"
-                  width="100%"
-                  theme={editorTheme}
-                  language={monacoLanguage}
-                  value={activeTabContent}
-                  onMount={handleEditorDidMount}
-                  onChange={handleEditorChange}
-                />
+                {["starting", "running"].includes(runtimeState) ? (
+                  <Flex h="100%">
+                    <Box flex="1" h="100%">
+                      <Editor
+                        options={{ minimap: { enabled: false } }}
+                        height="100%"
+                        width="100%"
+                        theme={editorTheme}
+                        language={monacoLanguage}
+                        value={activeTabContent}
+                        onMount={handleEditorDidMount}
+                        onChange={handleEditorChange}
+                      />
+                    </Box>
+                    <PreviewPanel />
+                  </Flex>
+                ) : runtimeState !== "idle" && runtimeState !== "uploading" ? (
+                  <ProcessingTimeline />
+                ) : (
+                  <Editor
+                    options={{ minimap: { enabled: false } }}
+                    height="100%"
+                    width="100%"
+                    theme={editorTheme}
+                    language={monacoLanguage}
+                    value={activeTabContent}
+                    onMount={handleEditorDidMount}
+                    onChange={handleEditorChange}
+                  />
+                )}
               </Box>
             </Box>
             <Box
@@ -1326,16 +1349,20 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               flexDirection="column"
               overflow="hidden"
             >
-              <Output
-                ref={outputRef}
-                editorRef={editorRef}
-                language={language}
-                id="code-editor-output"
-                onFlashComplete={handleFlashComplete}
-                onFlashStart={handleFlashStart}
-                onExpand={() => setIsOutputExpanded(true)}
-                onCollapse={() => setIsOutputExpanded(false)}
-              />
+              {runtimeState !== "idle" ? (
+                <TerminalPanel />
+              ) : (
+                <Output
+                  ref={outputRef}
+                  editorRef={editorRef}
+                  language={language}
+                  id="code-editor-output"
+                  onFlashComplete={handleFlashComplete}
+                  onFlashStart={handleFlashStart}
+                  onExpand={() => setIsOutputExpanded(true)}
+                  onCollapse={() => setIsOutputExpanded(false)}
+                />
+              )}
             </Box>
           </Flex>
         </Flex>

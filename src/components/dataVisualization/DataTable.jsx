@@ -3,7 +3,7 @@ import "./SensorTable.css";
 
 import SensorTable from "./SensorTable";
 import axios from "axios";
-import { Heading, Center } from "@chakra-ui/react";
+import {} from "@chakra-ui/react";
 import { baseURL, productAPIBase } from "../../utilities";
 
 const data = [
@@ -100,31 +100,24 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
     };
 
     const fetchDeviceData = async () => {
-      // 1. Optional: Trigger data generation (Simulation)
-      try {
-        await axios.post(
-          `${productAPIBase}/generateNewProductData`,
-          payload
-        );
-      } catch (error) {
-        // Silently log failure for simulation endpoint to avoid annoying alerts
-        console.warn("Simulation data generation skipped or unavailable:", error.response?.status);
-      }
+      // Fire-and-forget: trigger data generation without blocking the data fetch
+      axios
+        .post(`${productAPIBase}/generateNewProductData`, payload, { timeout: 5000 })
+        .catch(() => {}); // silently ignore failures
 
-      // 2. Main: Fetch actual device data
+      // Fetch actual device data in parallel (don't wait for generate above)
       try {
         const response = await axios.post(
           `${productAPIBase}/data`,
-          { productID: selectedProduct }
+          { productID: selectedProduct },
+          { timeout: 8000 }
         );
 
         if (response.data && response.data.data) {
-          console.log("Data fetched successfully:", response.data.data);
           setDevicesData(response.data.data);
         }
       } catch (error) {
         console.error("Error fetching device data:", error.response);
-        // Only alert if it's a critical failure and we have a message
         const errorMessage = error.response?.data?.message;
         if (errorMessage && errorMessage !== "undefined") {
           alert(`Data Fetch Error: ${errorMessage}`);
@@ -142,14 +135,9 @@ const DataTable = ({ selectedProduct, selectedDevice, selectedName }) => {
     return () => clearInterval(intervalId); // Clear interval on unmount
   }, [selectedProduct, selectedDevice]);
 
-  console.log("tableData", tableData);
 
   return (
     <div className="data-table-container">
-      <Center>
-        <Heading size="xl">{selectedName}</Heading>
-      </Center>
-      {console.log("device id", selectedDevice, tableData)}
       {!selectedProduct || !selectedDevice ? (
         <p>Please select a product and a device to view data.</p>
       ) : tableData.length > 0 ? (

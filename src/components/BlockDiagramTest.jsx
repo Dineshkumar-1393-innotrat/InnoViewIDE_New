@@ -1651,7 +1651,10 @@ function DiagramEditor() {
 
   // Derive nodes and edges from active tab
   const nodes = activeTab?.state?.nodes || [];
-  const edges = activeTab?.state?.edges || [];
+  const rawEdges = activeTab?.state?.edges || [];
+  const edges = useMemo(() => {
+    return rawEdges.map((e) => (e.animated ? { ...e, animated: false } : e));
+  }, [rawEdges]);
 
   const setNodes = useCallback(
     (nds) => {
@@ -2031,9 +2034,10 @@ function DiagramEditor() {
         const next = addEdge(
           {
             ...params,
-            type: 'smoothstep',
-            animated: true,
+            type: 'editable',
+            animated: false,
             markerEnd: { type: MarkerType.ArrowClosed },
+            style: { strokeWidth: 2, stroke: '#000000' },
           },
           eds,
         );

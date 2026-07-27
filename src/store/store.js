@@ -12,6 +12,7 @@ import {
   createAutoSaveMiddleware,
   autoSaveEventMiddleware,
 } from "./middleware/autoSaveMiddleware";
+import workspaceReducer from "../features/workspace/store/workspaceSlice";
 import { autoSaveManager } from "../utils/autoSaveManager";
 
 const rootReducer = combineReducers({
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   blockProgramming: blockProgrammingReducer,
   editor: editorReducer,
   mathEditor: mathEditorReducer,
+  workspace: workspaceReducer,
 });
 
 const persistConfig = {

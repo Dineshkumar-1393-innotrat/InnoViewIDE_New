@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { getUserInfo, baseURL } from "../utilities";
 import { useProject } from "../ProjectContext";
 import CreateNewProjectModal from "./MenuSidebar/CreateNewProjectModal";
@@ -48,6 +49,7 @@ import {
   fetchFileSystem,
   buildTree,
 } from "./EmbeddedFileManagement/EmbeddedFileManagement";
+import UploadButton from "../features/workspace/upload/components/UploadButton";
 
 const FileExplorer = ({ variant }) => {
   const [fileSystem, setFileSystem] = useState({});
@@ -105,6 +107,14 @@ const FileExplorer = ({ variant }) => {
       setError("User not logged in");
     }
   }, []);
+
+  const { runtimeState, projectFiles } = useSelector((state) => state.workspace || {});
+
+  useEffect(() => {
+    if (runtimeState && runtimeState !== 'idle' && projectFiles && projectFiles.length > 0) {
+      setFileSystem(projectFiles);
+    }
+  }, [runtimeState, projectFiles]);
 
   useEffect(() => {
     const handleRefreshEvent = () => {
@@ -614,7 +624,7 @@ const FileExplorer = ({ variant }) => {
 
   return (
     <Box width="100%" height="100%" display="flex" flexDirection="column" bg={useColorModeValue("white", "gray.900")}>
-      <Box mb={2} px={1}>
+      <VStack spacing={2} mb={2} px={1}>
         <Button
           leftIcon={<Plus size={16} />}
           size="sm"
@@ -633,7 +643,8 @@ const FileExplorer = ({ variant }) => {
         >
           Create New Project
         </Button>
-      </Box>
+        <UploadButton />
+      </VStack>
 
       {error && (
         <Box px={2} py={2} mb={2} bg="red.50" color="red.500" borderRadius="md" fontSize="xs">
