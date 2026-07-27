@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API } from '@/config';
 import {
     Modal,
     ModalOverlay,
@@ -77,7 +78,7 @@ const CreateItemModal = ({
             }
 
             const { data } = await axios.post(
-                "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+                `${API.MAIN}/api/v1/createFileAndFolder`,
                 {
                     parentId: parentFolder._id,
                     name: finalName,

@@ -1,4 +1,5 @@
 // import React, { useState } from "react";
+import { API } from '@/config';
 // import {
 //   Box,
 //   Button,
@@ -31,7 +32,7 @@
 //   // Fetch product definition
 //   const getProductDefinition = async () => {
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       const response = await axios.get(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -43,7 +44,7 @@
 //   // Update product components
 //   const handleUpdateComponents = async () => {
 //     try {
-//       await axios.patch(`https://eureka.innotrat.in/product/${productID}/components`, {
+//       await axios.patch(`${API.MAIN}/product/${productID}/components`, {
 //         updates: updateData,
 //       });
 //       alert("Components updated successfully!");
@@ -57,7 +58,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       await axios.delete(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       alert("Product definition deleted successfully!");
 //       setProductDetails(null);
 //       onClose();
@@ -176,7 +177,7 @@
 //   // Fetch product definition
 //   const getProductDefinition = async () => {
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       const response = await axios.get(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -188,7 +189,7 @@
 //   // Update product components
 //   const handleUpdateComponents = async () => {
 //     try {
-//       await axios.patch(`https://eureka.innotrat.in/product/${productID}/components`, {
+//       await axios.patch(`${API.MAIN}/product/${productID}/components`, {
 //         updates: updateData,
 //       });
 //       alert("Components updated successfully!");
@@ -202,7 +203,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       await axios.delete(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       alert("Product definition deleted successfully!");
 //       setProductDetails(null);
 //       onClose();
@@ -331,7 +332,7 @@
 //   // Fetch product definition
 //   const getProductDefinition = async () => {
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       const response = await axios.get(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -441,7 +442,7 @@
 //     }
 
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       const response = await axios.get(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -584,7 +585,7 @@
 //     }
 
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       const response = await axios.get(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -596,7 +597,7 @@
 //   // Update product details
 //   const handleUpdateDetails = async () => {
 //     try {
-//       await axios.patch(`https://eureka.innotrat.in/product/${productID}/components`, {
+//       await axios.patch(`${API.MAIN}/product/${productID}/components`, {
 //         updates: updateData,
 //       });
 //       alert("Product details updated successfully!");
@@ -610,7 +611,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       await axios.delete(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       alert("Product definition deleted successfully!");
 //       setProductDetails(null);
 //       onClose();
@@ -795,7 +796,7 @@
 //     }
 
 //     try {
-//       const response = await axios.get(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       const response = await axios.get(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       setProductDetails(response.data);
 //       onOpen();
 //     } catch (error) {
@@ -813,7 +814,7 @@
 //   // Update product details
 //   const handleUpdateDetails = async () => {
 //     try {
-//       await axios.patch(`https://eureka.innotrat.in/product/${productID}/components`, {
+//       await axios.patch(`${API.MAIN}/product/${productID}/components`, {
 //         updates: updateData,
 //       });
 //       toast({
@@ -839,7 +840,7 @@
 //   // Delete product definition
 //   const handleDeleteDefinition = async () => {
 //     try {
-//       await axios.delete(`https://eureka.innotrat.in/product/:productID/definitionNewNew`);
+//       await axios.delete(`${API.MAIN}/product/:productID/definitionNewNew`);
 //       toast({
 //         title: "Success",
 //         description: "Product definition deleted successfully!",
@@ -1071,7 +1072,7 @@ const BlockDiagramOne = () => {
 
     try {
       const response = await axios.get(
-        `https://eureka.innotrat.in/product/:productID/definitionNewNew`
+        `${API.MAIN}/product/:productID/definitionNewNew`
       );
       setProductDetails(response.data);
       onOpen();
@@ -1092,7 +1093,7 @@ const BlockDiagramOne = () => {
   const handleUpdateDetails = async () => {
     try {
       await axios.patch(
-        `https://eureka.innotrat.in/product/${productID}/components`,
+        `${API.MAIN}/product/${productID}/components`,
         {
           updates: updateData,
         }
@@ -1121,7 +1122,7 @@ const BlockDiagramOne = () => {
   const handleDeleteDefinition = async () => {
     try {
       await axios.delete(
-        `https://eureka.innotrat.in/product/:productID/definitionNewNew`
+        `${API.MAIN}/product/:productID/definitionNewNew`
       );
       toast({
         title: "Success",

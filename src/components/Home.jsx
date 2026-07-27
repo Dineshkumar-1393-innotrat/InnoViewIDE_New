@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API } from '@/config';
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -114,7 +115,7 @@ const Home = () => {
 
     try {
       const response = await fetch(
-        "https://eureka.innotrat.in/api/v1/auth/signin",
+        `${API.MAIN}/api/v1/auth/signin`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

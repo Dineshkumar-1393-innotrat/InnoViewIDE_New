@@ -1,4 +1,5 @@
 // import React, { useState } from "react";
+import { API } from '@/config';
 // import {
 //   Box,
 //   Heading,
@@ -148,7 +149,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://eureka.innotrat.in/api/v1/auth/forgotPassword', {
+      const response = await fetch(`${API.MAIN}/api/v1/auth/forgotPassword`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -196,7 +197,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://eureka.innotrat.in/api/v1/auth/resetPassword', {
+      const response = await fetch(`${API.MAIN}/api/v1/auth/resetPassword`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 // import React, { useState } from "react";
+import { API } from '@/config';
 // import { Button, useToast } from "@chakra-ui/react";
 // import axios from "axios";
 // import { useNavigate } from "react-router-dom";
@@ -22,7 +23,7 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/:productID/definitionNewNew`;
+//       const url = `${API.MAIN}/product/:productID/definitionNewNew`;
 
 //       const response = await axios.post(url, formData);
 
@@ -80,7 +81,7 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/:productID/definitionNewNew`;
+//       const url = `${API.MAIN}/product/:productID/definitionNewNew`;
 
 //       const payload = {
 //         productID,
@@ -159,7 +160,7 @@
 //     }
 
 //     try {
-//       const url = `https://eureka.innotrat.in/product/:productID/definitionNewNew`;
+//       const url = `${API.MAIN}/product/:productID/definitionNewNew`;
 
 //       const payload = {
 //         productID,

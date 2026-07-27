@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API } from '@/config';
 
-const API_ROOT = 'https://eureka.innotrat.in/api/v1';
+const API_ROOT = `${API.MAIN}/api/v1`;
 
 export const sanitizeSegment = (value) => {
   return (value || '')

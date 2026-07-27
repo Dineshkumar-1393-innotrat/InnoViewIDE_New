@@ -1,4 +1,5 @@
 // import React, { useState } from 'react';
+import { API } from '@/config';
 // import {
 //   Button,
 //   HStack,
@@ -110,7 +111,7 @@
 //   const createDevices = async (productId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices`,
+//         `${API.MAIN}/product/${productId}/devices`,
 //         {
 //           method: 'POST',
 //           headers: { 'Content-Type': 'application/json' },
@@ -143,7 +144,7 @@
 //   const controlDevices = async (action, productId, devId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices/control`,
+//         `${API.MAIN}/product/${productId}/devices/control`,
 //         {
 //           method: 'POST',
 //           headers: { 'Content-Type': 'application/json' },
@@ -356,7 +357,7 @@
 //   const checkRunningDevices = async (productId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/devices/running?productId=${productId}`,
+//         `${API.MAIN}/devices/running?productId=${productId}`,
 //         {
 //           method: 'GET',
 //           headers: { 'Content-Type': 'application/json' },
@@ -392,7 +393,7 @@
 //       // No running devices, but we need to check if there are any devices at all
 //       // This is a new addition to check for stopped devices too
 //       const allDevicesResponse = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices`,
+//         `${API.MAIN}/product/${productId}/devices`,
 //         {
 //           method: 'GET',
 //           headers: { 'Content-Type': 'application/json' },
@@ -501,7 +502,7 @@
 //   const createDevices = async (productId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices`,
+//         `${API.MAIN}/product/${productId}/devices`,
 //         {
 //           method: 'POST',
 //           headers: { 'Content-Type': 'application/json' },
@@ -543,7 +544,7 @@
 //   const controlDevices = async (action, productId, devId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices/control`,
+//         `${API.MAIN}/product/${productId}/devices/control`,
 //         {
 //           method: 'POST',
 //           headers: { 'Content-Type': 'application/json' },
@@ -811,7 +812,7 @@
 //   const checkRunningDevices = async (productId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/devices/running?productId=${productId}`,
+//         `${API.MAIN}/devices/running?productId=${productId}`,
 //         {
 //           method: 'GET',
 //           headers: { 'Content-Type': 'application/json' },
@@ -839,7 +840,7 @@
 
 //       // No running devices, but we need to check if there are any devices at all
 //       const allDevicesResponse = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices`,
+//         `${API.MAIN}/product/${productId}/devices`,
 //         {
 //           method: 'GET',
 //           headers: { 'Content-Type': 'application/json' },
@@ -869,7 +870,7 @@
 //   const createDevices = async (productId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices`,
+//         `${API.MAIN}/product/${productId}/devices`,
 //         {
 //           method: 'POST',
 //           headers: { 'Content-Type': 'application/json' },
@@ -903,7 +904,7 @@
 //   const controlDevices = async (action, productId, devId) => {
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/product/${productId}/devices/control`,
+//         `${API.MAIN}/product/${productId}/devices/control`,
 //         {
 //           method: 'POST',
 //           headers: { 'Content-Type': 'application/json' },

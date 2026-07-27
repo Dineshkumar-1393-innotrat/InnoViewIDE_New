@@ -1,6 +1,7 @@
 import { baseURL, getUserInfo } from "../utilities";
+import { API } from '@/config';
 
-const API_BASE_URL = 'http://192.168.0.25:5004/api/v1/github';
+const API_BASE_URL = `${API.GITHUB}/api/v1/github`;
 
 // Fallback values for testing if user is not logged in or doesn't have github setup
 // const DEFAULT_USER_ID = "6926c69500610847a79be7eb";

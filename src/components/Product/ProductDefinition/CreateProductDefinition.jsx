@@ -1,4 +1,5 @@
 // // import "./CreateProductDefinition.css";
+import { API } from '@/config';
 // // import { electronicComponents } from "./electronicComponents";
 // // import { useEffect, useState } from "react";
 // // import { Formik, Field, Form, FieldArray, ErrorMessage } from "formik";
@@ -49,7 +50,7 @@
 
 // //     try {
 // //       const response = await axios.post(
-// //         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
+// //         `${API.MAIN}/product/:productID/definitionNewNew`,
 // //         resultData
 // //       );
 // //       console.log("Data successfully sent to the server:", response.data);
@@ -400,7 +401,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/${values.productID}/definition`,
+//         `${API.MAIN}/product/${values.productID}/definition`,
 //         resultData
 //       );
 //       console.log("Data successfully sent to the server:", response.data);

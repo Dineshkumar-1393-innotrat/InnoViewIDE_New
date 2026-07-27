@@ -1,4 +1,5 @@
 // import React, { useState } from "react";
+import { API } from '@/config';
 // import {
 //   Modal,
 //   ModalOverlay,
@@ -36,7 +37,7 @@
 //     }
 
 //     try {
-//       const response = await axios.post("https://eureka.innotrat.in/product", {
+//       const response = await axios.post(`${API.MAIN}/product`, {
 //         name: deviceName,
 //       });
 
@@ -76,7 +77,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
+//         `${API.MAIN}/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -219,7 +220,7 @@
 //     }
 
 //     try {
-//       const response = await axios.post("https://eureka.innotrat.in/product", {
+//       const response = await axios.post(`${API.MAIN}/product`, {
 //         name: deviceName,
 //       });
 
@@ -258,7 +259,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
+//         `${API.MAIN}/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -426,7 +427,7 @@
 //     }
 
 //     try {
-//       const response = await axios.post("https://eureka.innotrat.in/product", {
+//       const response = await axios.post(`${API.MAIN}/product`, {
 //         name: deviceName,
 //       });
 
@@ -465,7 +466,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
+//         `${API.MAIN}/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -640,7 +641,7 @@
 //     }
 
 //     try {
-//       const response = await axios.post("https://eureka.innotrat.in/product", {
+//       const response = await axios.post(`${API.MAIN}/product`, {
 //         name: deviceName,
 //         userId, // Send userId along with product creation request
 //       });
@@ -680,7 +681,7 @@
 
 //     try {
 //       const response = await axios.post(
-//         `https://eureka.innotrat.in/product/:productID/definitionNewNew`,
+//         `${API.MAIN}/product/:productID/definitionNewNew`,
 //         {
 //           productID,
 //           productName: deviceName,
@@ -873,7 +874,7 @@ const DefineProductOne = () => {
     }
 
     try {
-      const response = await axios.post("https://eureka.innotrat.in/product", {
+      const response = await axios.post(`${API.MAIN}/product`, {
         name: deviceName,
         userId,
       });

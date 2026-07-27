@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API } from '@/config';
 import {
     Box,
     VStack,
@@ -48,7 +49,7 @@ const VariableOnlyForm = ({ onSubmit }) => {
                 variableName: variables.trim()
             };
 
-            const resp = await axios.post('https://eureka.innotrat.in/api/v2/parameterVariables', payload);
+            const resp = await axios.post(`${API.MAIN}/api/v2/parameterVariables`, payload);
 
             toast({
                 title: "Variable Added",

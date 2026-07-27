@@ -1,4 +1,5 @@
 // import axios from "axios";
+import { API as CONFIG_API } from '@/config';
 // import { LANGUAGE_VERSIONS } from "./constants";
 
 // const API = axios.create({
@@ -42,7 +43,7 @@ export const executeCode = async (language, sourceCode, stdin = "") => {
 
 export const submitCodeToDevice = async (code, language) => {
   try {
-    const response = await axios.post("https://admin.innotrat.in/submit-code", {
+    const response = await axios.post(`${CONFIG_API.ADMIN}/submit-code`, {
       code,
       language
     });

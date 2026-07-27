@@ -20,6 +20,7 @@ import {
   FormErrorMessage,
 } from "@chakra-ui/react";
 import { useState, useEffect } from "react";
+import { API } from '@/config';
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 
 import {
@@ -140,7 +141,7 @@ export default function ProductDefinition({ onSuccess }) {
 
   //   try {
   //     const res = await axios.post(
-  //       "https://eureka.innotrat.in/api/v2/componentParameters",
+  //       `${API.MAIN}/api/v2/componentParameters`,
   //       payload
   //     );
 
@@ -180,7 +181,7 @@ export default function ProductDefinition({ onSuccess }) {
   //   try {
   //     // 🔹 1. First API – parameterVariables
   //     // const variableRes = await fetch(
-  //     //   "https://eureka.innotrat.in/api/v2/parameterVariables",
+  //     //   `${API.MAIN}/api/v2/parameterVariables`,
   //     //   {
   //     //     method: "POST",
   //     //     headers: {
@@ -205,7 +206,7 @@ export default function ProductDefinition({ onSuccess }) {
   //     console.log("Payload:", payload);
 
   //     const res = await axios.post(
-  //       "https://eureka.innotrat.in/api/v2/componentParameters",
+  //       `${API.MAIN}/api/v2/componentParameters`,
   //       payload
   //     );
 
@@ -245,7 +246,7 @@ export default function ProductDefinition({ onSuccess }) {
     try {
       // 🔹 POST API
       await axios.post(
-        "https://eureka.innotrat.in/api/v2/componentParameters",
+        `${API.MAIN}/api/v2/componentParameters`,
         {
           componentId: selectedComponentId,
           parameterName: [newSpecificParam.trim()],
@@ -275,7 +276,7 @@ export default function ProductDefinition({ onSuccess }) {
 
     try {
       const res = await fetch(
-        `https://eureka.innotrat.in/api/v2/componentParameters/${componentId}`
+        `${API.MAIN}/api/v2/componentParameters/${componentId}`
       );
 
       if (!res.ok) {
@@ -300,7 +301,7 @@ export default function ProductDefinition({ onSuccess }) {
   const fetchVariables = async () => {
     try {
       const res = await fetch(
-        "https://eureka.innotrat.in/api/v2/parameterVariables"
+        `${API.MAIN}/api/v2/parameterVariables`
       );
       const result = await res.json();
 
@@ -367,7 +368,7 @@ export default function ProductDefinition({ onSuccess }) {
 
     try {
       const res = await axios.get(
-        `https://eureka.innotrat.in/api/v2/componentNames/${typeId}`
+        `${API.MAIN}/api/v2/componentNames/${typeId}`
       );
       setComponentNamesMap((prev) => ({
         ...prev,
@@ -393,7 +394,7 @@ export default function ProductDefinition({ onSuccess }) {
 
     try {
       await axios.post(
-        "https://eureka.innotrat.in/api/v2/componentNames",
+        `${API.MAIN}/api/v2/componentNames`,
         {
           typeId: typeId,
           name,
@@ -402,7 +403,7 @@ export default function ProductDefinition({ onSuccess }) {
 
       // force re-fetch
       const res = await axios.get(
-        `https://eureka.innotrat.in/api/v2/componentNames/${typeId}`
+        `${API.MAIN}/api/v2/componentNames/${typeId}`
       );
       console.log("Component Names GET response:", res.data);
 
@@ -813,7 +814,7 @@ export default function ProductDefinition({ onSuccess }) {
     try {
       saveToLocal("pendingProductNew", payload);
 
-      const url = "https://eureka.innotrat.in/productNew";
+      const url = `${API.MAIN}/productNew`;
       const resp = await axios.post(url, payload);
       console.log(resp, "productID----");
 
@@ -1135,9 +1136,9 @@ export default function ProductDefinition({ onSuccess }) {
 
     try {
       // 1. Submit Devices
-      // const devUrl = `https://eureka.innotrat.in/product/${productId}/devicesNew`;
+      // const devUrl = `${API.MAIN}/product/${productId}/devicesNew`;
       // Ensure you are using backticks (`) and ${} to insert the variable
-      const devUrl = `https://eureka.innotrat.in/product/${productId}/devicesNew`;
+      const devUrl = `${API.MAIN}/product/${productId}/devicesNew`;
       const devResp = await axios.post(devUrl, devicePayload);
 
       console.log("📥 Devices Response:", devResp.data);
@@ -1182,7 +1183,7 @@ export default function ProductDefinition({ onSuccess }) {
 
     try {
       const resp = await axios.get(
-        "https://eureka.innotrat.in/api/v2/componentTypes"
+        `${API.MAIN}/api/v2/componentTypes`
       );
 
       const list = Array.isArray(resp?.data?.data)
@@ -1220,7 +1221,7 @@ export default function ProductDefinition({ onSuccess }) {
       const token = localStorage.getItem("token");
 
       const res = await fetch(
-        "https://eureka.innotrat.in/api/v2/componentTypes",
+        `${API.MAIN}/api/v2/componentTypes`,
         {
           method: "POST",
           headers: {
@@ -2214,7 +2215,7 @@ export default function ProductDefinition({ onSuccess }) {
 
                 try {
                   const res = await fetch(
-                    "https://eureka.innotrat.in/api/v2/parameterVariables",
+                    `${API.MAIN}/api/v2/parameterVariables`,
                     {
                       method: "POST",
                       headers: {
@@ -2253,7 +2254,7 @@ export default function ProductDefinition({ onSuccess }) {
                 try {
                   // 🔹 POST API
                   await fetch(
-                    "https://eureka.innotrat.in/api/v2/parameterVariables",
+                    `${API.MAIN}/api/v2/parameterVariables`,
                     {
                       method: "POST",
                       headers: {

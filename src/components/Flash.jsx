@@ -1,4 +1,5 @@
 // import React, { useState, useEffect, useCallback, useRef } from "react";
+import { API } from '@/config';
 // import {
 //   VStack,
 //   HStack,
@@ -212,7 +213,7 @@
 //       // Call submit-code API before flashing
 //       addFlashLog("Submitting code to server...");
 //       try {
-//         const response = await fetch('https://admin.innotrat.in/submit-code', {
+//         const response = await fetch(`${API.ADMIN}/submit-code`, {
 //           method: 'POST',
 //           headers: {
 //             'Content-Type': 'application/json',

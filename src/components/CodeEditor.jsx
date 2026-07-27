@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { API } from '@/config';
 import {
   Box,
   Button,
@@ -551,7 +552,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
         if (code.trim()) {
           // Submit code to API before flashing
           try {
-            const res = await fetch("https://admin.innotrat.in/submit-code", {
+            const res = await fetch(`${API.ADMIN}/submit-code`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ code }),

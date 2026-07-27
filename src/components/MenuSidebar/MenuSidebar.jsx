@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { API } from '@/config';
 import {
   Box,
   VStack,
@@ -175,12 +176,12 @@ const MenuSidebar = () => {
 
     try {
       const { data } = await axios.get(
-        `https://eureka.innotrat.in/api/v1/rootStatus/${userId}`
+        `${API.MAIN}/api/v1/rootStatus/${userId}`
       );
 
       if (!data.isRootCreated) {
         await axios.post(
-          `https://eureka.innotrat.in/api/v1/filesystem/createRoot`,
+          `${API.MAIN}/api/v1/filesystem/createRoot`,
           {
             userId,
             name: "root",
@@ -191,7 +192,7 @@ const MenuSidebar = () => {
 
       // Fetch the full file system after ensuring root exists
       const fileResponse = await axios.get(
-        `https://eureka.innotrat.in/api/v1/files/${userId}`
+        `${API.MAIN}/api/v1/files/${userId}`
       );
 
       if (fileResponse.data.success) {
@@ -212,7 +213,7 @@ const MenuSidebar = () => {
 
     try {
       const { data } = await axios.post(
-        "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+        `${API.MAIN}/api/v1/createFileAndFolder`,
         {
           parentId: parentFolder._id,
           name: newItemName,
@@ -253,7 +254,7 @@ const MenuSidebar = () => {
 
     try {
       // First API request to create a product
-      const response = await axios.post("https://eureka.innotrat.in/product", {
+      const response = await axios.post(`${API.MAIN}/product`, {
         name: projectName,
         userId,
       });
@@ -267,7 +268,7 @@ const MenuSidebar = () => {
 
       // Second API request to create a file/folder
       const { data } = await axios.post(
-        "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+        `${API.MAIN}/api/v1/createFileAndFolder`,
         {
           parentId: fileSystem?._id,
           name: projectName,
@@ -301,7 +302,7 @@ const MenuSidebar = () => {
   const handleFolderDelete = async (id) => {
     try {
       const response = await axios.delete(
-        "https://eureka.innotrat.in/api/v1/deleteFileAndFolder",
+        `${API.MAIN}/api/v1/deleteFileAndFolder`,
         {
           data: { fileId: id }, // Correct way to send data in DELETE request
         }
@@ -400,7 +401,7 @@ const MenuSidebar = () => {
       // Send API request to update file content
 
       const response = await axios.put(
-        "https://eureka.innotrat.in/api/v1/updateFileAndFolder",
+        `${API.MAIN}/api/v1/updateFileAndFolder`,
         { fileId, newName: fileName, newContent }
       );
 

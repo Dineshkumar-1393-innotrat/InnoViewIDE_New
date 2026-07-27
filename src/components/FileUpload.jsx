@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API } from '@/config';
 
 const FileUpload = () => {
   const [loading, setLoading] = useState(false);
@@ -14,7 +15,7 @@ const FileUpload = () => {
     data.append("cloud_name", "dnonssl9s");
 
     try {
-      const res = await fetch("https://api.cloudinary.com/v1_1/dnonssl9s/image/upload", {
+      const res = await fetch(`${API.CLOUDINARY}/v1_1/dnonssl9s/image/upload`, {
         method: "POST",
         body: data,
       });

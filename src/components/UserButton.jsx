@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API } from '@/config';
 import { Button, IconButton, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Text, Spinner, useDisclosure } from "@chakra-ui/react";
 import { FaUser } from "react-icons/fa";
 import axios from "axios";
@@ -20,7 +21,7 @@ const UserButton = () => {
         if (!userId) return;
         setLoading(true);
         try {
-            const response = await axios.get(`https://eureka.innotrat.in/api/v1/getAllUserDetails/${userId}`);
+            const response = await axios.get(`${API.MAIN}/api/v1/getAllUserDetails/${userId}`);
             if (response.data.status === "success") {
                 setUserData(response.data.data);
                 onOpen();

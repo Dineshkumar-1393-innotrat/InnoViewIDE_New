@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API } from '@/config';
 import {
     Modal,
     ModalOverlay,
@@ -54,7 +55,7 @@ const RenameItemModal = ({ isOpen, onClose, item, onSuccess }) => {
             }
 
             const { data } = await axios.put(
-                "https://eureka.innotrat.in/api/v1/updateFileAndFolder",
+                `${API.MAIN}/api/v1/updateFileAndFolder`,
                 payload
             );
 

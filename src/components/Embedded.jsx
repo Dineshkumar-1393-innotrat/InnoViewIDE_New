@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { API } from '@/config';
 import { useColorMode, Button, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, RadioGroup, Stack, Radio } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 // import Footer from './Footer';
@@ -31,7 +32,7 @@ const Embedded = () => {
         setIsFlashing(true); // Disable the button
 
         try {
-            const res = await fetch('https://admin.innotrat.in/submit-code', {
+            const res = await fetch(`${API.ADMIN}/submit-code`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code })

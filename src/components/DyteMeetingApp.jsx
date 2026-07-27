@@ -1,10 +1,11 @@
 // import React, { useState } from 'react';
+import { API } from '@/config';
 // import { DyteMeeting } from '@dytesdk/react-ui-kit';
 // import { DyteProvider, useDyteClient } from '@dytesdk/react-web-core';
 // import { Box, Button, Input, Select, VStack, HStack, Heading } from '@chakra-ui/react';
 
 // // Configure your Dyte backend URL here
-// const DYTE_BACKEND_URL = 'https://eureka.innotrat.in/api/v1';
+// const DYTE_BACKEND_URL = `${API.MAIN}/api/v1`;
 
 // const DyteMeetingApp = ({ onClose }) => {
 //     const [meeting, setMeeting] = useState(null);
@@ -129,7 +130,7 @@ import { DyteProvider, useDyteClient } from '@dytesdk/react-web-core';
 import { Box, Button, Input, Select, VStack, HStack, Heading, Text, Spinner, Center } from '@chakra-ui/react';
 
 // Configure your Dyte backend URL here
-const DYTE_BACKEND_URL = 'https://eureka.innotrat.in/api/v1';
+const DYTE_BACKEND_URL = `${API.MAIN}/api/v1`;
 
 const DyteMeetingApp = ({ onClose, onMinimize, autoJoinMeetingId = null, autoCreate = false, onMeetingCreated }) => {
     const [meetingId, setMeetingId] = useState('');

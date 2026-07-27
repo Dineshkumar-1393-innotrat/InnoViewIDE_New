@@ -1,4 +1,5 @@
 // import { Button, useToast } from "@chakra-ui/react";
+import { API } from '@/config';
 // import { useEffect, useState } from "react";
 // import axios from "axios";
 
@@ -18,7 +19,7 @@
 //     if (!token) return;
 
 //     try {
-//       await axios.post("https://eureka.innotrat.in/api/v1/auth/logout", { token });
+//       await axios.post(`${API.MAIN}/api/v1/auth/logout`, { token });
 
 //       // Remove token from session storage
 //       sessionStorage.removeItem("token");
@@ -75,7 +76,7 @@ const AuthButton = () => {
 
     setIsLoggingOut(true);
     try {
-      await axios.post("https://eureka.innotrat.in/api/v1/auth/logout", { token });
+      await axios.post(`${API.MAIN}/api/v1/auth/logout`, { token });
 
       // On successful logout, clear session storage and navigate
       sessionStorage.removeItem("token");

@@ -25,6 +25,7 @@ import {
   Center,
 } from "@chakra-ui/react";
 import { DeleteIcon, EditIcon, CheckIcon } from "@chakra-ui/icons";
+import { API } from '@/config';
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Editor from "@monaco-editor/react";
@@ -52,7 +53,7 @@ const CodeDrawer = () => {
       // setLoading(true);
       try {
         const response = await axios.get(
-          `https://eureka.innotrat.in/api/v1/files/${user?.userId}`
+          `${API.MAIN}/api/v1/files/${user?.userId}`
         );
 
         console.log("file response:", response.data);

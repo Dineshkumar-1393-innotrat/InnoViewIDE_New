@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API } from '@/config';
 import {
     Box,
     VStack,
@@ -59,7 +60,7 @@ const ProductCreationTestDemo = () => {
         const fetchComponents = async () => {
             setLoadingComponents(true);
             try {
-                const resp = await axios.get('https://eureka.innotrat.in/api/v2/componentTypes');
+                const resp = await axios.get(`${API.MAIN}/api/v2/componentTypes`);
                 if (resp.data.status === "success") {
                     setComponentTypes(resp.data.data);
                     if (resp.data.data.length > 0) {
@@ -133,7 +134,7 @@ const ProductCreationTestDemo = () => {
                 components: componentsPayload
             };
 
-            const resp = await axios.post(`https://eureka.innotrat.in/product/${productId}/definitionNew`, payload);
+            const resp = await axios.post(`${API.MAIN}/product/${productId}/definitionNew`, payload);
 
             toast({
                 title: "Product Definition Saved",

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { API } from '@/config';
 import { Plus, Save, Loader2, X } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -107,7 +108,7 @@ const DiagramTabs = ({ title = 'Tabs', kind, onSaveJSON }) => {
           const fileName = `${baseFileName}_${formattedTabName}${extension}`;
 
           console.log(`[DiagramTabs] Creating individual diagram file: ${fileName} in folder: ${folderName}`);
-          const { data } = await axios.post("https://eureka.innotrat.in/api/v1/createFileAndFolder", {
+          const { data } = await axios.post(`${API.MAIN}/api/v1/createFileAndFolder`, {
             parentId: folderId,
             name: fileName,
             type: "file",
@@ -136,7 +137,7 @@ const DiagramTabs = ({ title = 'Tabs', kind, onSaveJSON }) => {
     const tabToClose = tabs.find(t => t.id === id);
     if (tabToClose && tabToClose.fileId) {
       try {
-        await axios.delete("https://eureka.innotrat.in/api/v1/deleteFileAndFolder", {
+        await axios.delete(`${API.MAIN}/api/v1/deleteFileAndFolder`, {
           data: { fileId: tabToClose.fileId }
         });
         window.dispatchEvent(new Event('file-system-refresh'));

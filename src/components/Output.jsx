@@ -1,4 +1,5 @@
 // import { forwardRef, useImperativeHandle, useMemo, useState, useEffect } from "react";
+import { API } from '@/config';
 // import {
 //   Box,
 //   Badge,
@@ -1497,7 +1498,7 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
 
     try {
       const { data } = await axios.post(
-        "https://admin.innotrat.in/submit-code",
+        `${API.ADMIN}/submit-code`,
         { code: sourceCode },
         { headers: { "Content-Type": "application/json" } }
       );

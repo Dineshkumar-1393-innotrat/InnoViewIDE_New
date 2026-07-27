@@ -1,4 +1,5 @@
 // import React, { useState, useEffect } from 'react';
+import { API } from '@/config';
 // import {
 //   Button,
 //   Modal,
@@ -80,7 +81,7 @@
 //     }
 
 //     try {
-//       const response = await fetch('https://eureka.innotrat.in/api/v1/addProjects', {
+//       const response = await fetch(`${API.MAIN}/api/v1/addProjects`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
@@ -122,7 +123,7 @@
 
 //     const projectId = sessionStorage.getItem('projectId');
 //     try {
-//       const response = await fetch('https://eureka.innotrat.in/api/v1/createFolders', {
+//       const response = await fetch(`${API.MAIN}/api/v1/createFolders`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
@@ -166,7 +167,7 @@
 //     const folderId = sessionStorage.getItem('folderId');
 
 //     try {
-//       const response = await fetch('https://eureka.innotrat.in/api/v1/createFiles', {
+//       const response = await fetch(`${API.MAIN}/api/v1/createFiles`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
@@ -466,7 +467,7 @@
 //     showLoadingModal('Loading file...');
 //     try {
 //       const response = await fetch(
-//         `https://eureka.innotrat.in/api/v1/loadFile/${projectId}/${folderId}/${fileName}`,
+//         `${API.MAIN}/api/v1/loadFile/${projectId}/${folderId}/${fileName}`,
 //         {
 //           method: 'GET',
 //           headers: { 'Content-Type': 'application/json' },
@@ -524,7 +525,7 @@
 //     }
 
 //     try {
-//       const response = await fetch(`https://eureka.innotrat.in/api/v1/updateFiles/${fileId}`, {
+//       const response = await fetch(`${API.MAIN}/api/v1/updateFiles/${fileId}`, {
 //         method: 'PUT',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
@@ -890,7 +891,7 @@
 //     }
 
 //     try {
-//       const response = await fetch('https://eureka.innotrat.in/api/v1/addProjects', {
+//       const response = await fetch(`${API.MAIN}/api/v1/addProjects`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
@@ -932,7 +933,7 @@
 
 //     const projectId = sessionStorage.getItem('projectId');
 //     try {
-//       const response = await fetch('https://eureka.innotrat.in/api/v1/createFolders', {
+//       const response = await fetch(`${API.MAIN}/api/v1/createFolders`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
@@ -976,7 +977,7 @@
 //     const folderId = sessionStorage.getItem('folderId');
 
 //     try {
-//       const response = await fetch('https://eureka.innotrat.in/api/v1/createFiles', {
+//       const response = await fetch(`${API.MAIN}/api/v1/createFiles`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({
@@ -1010,7 +1011,7 @@
 //     setFlashStatus(null);
 
 //     try {
-//       const response = await fetch('https://admin.innotrat.in/submit-code', {
+//       const response = await fetch(`${API.ADMIN}/submit-code`, {
 //         method: 'POST',
 //         headers: { 'Content-Type': 'application/json' },
 //         body: JSON.stringify({ code: formData.code })
@@ -1289,7 +1290,7 @@ const SimulationPopup = ({ children }) => {
     const fetchActiveProjectCodeFile = async () => {
       try {
         const response = await axios.get(
-          `https://eureka.innotrat.in/api/v1/files/${user?.userId}`
+          `${API.MAIN}/api/v1/files/${user?.userId}`
         );
 
         console.log("response from popup", response.data);
@@ -1321,7 +1322,7 @@ const SimulationPopup = ({ children }) => {
     setIsSaving(true); // Start loading animation
 
     try {
-      await axios.put("https://eureka.innotrat.in/api/v1/updateFileAndFolder", {
+      await axios.put(`${API.MAIN}/api/v1/updateFileAndFolder`, {
         fileId,
         newName: fileName,
         newContent: code,
@@ -1352,7 +1353,7 @@ const SimulationPopup = ({ children }) => {
 
   // const handleFlash = async () => {
   //   try {
-  //     const response = await fetch("https://admin.innotrat.in/submit-code", {
+  //     const response = await fetch(`${API.ADMIN}/submit-code`, {
   //       method: "POST",
   //       headers: { "Content-Type": "application/json" },
   //       body: JSON.stringify({ code }),

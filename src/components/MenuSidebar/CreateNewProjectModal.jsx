@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API } from '@/config';
 import {
   Modal,
   ModalOverlay,
@@ -63,7 +64,7 @@ const CreateNewProjectModal = ({
   const createDefaultFile = async (parentId, userId) => {
     try {
       const { data } = await axios.post(
-        "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+        `${API.MAIN}/api/v1/createFileAndFolder`,
         {
           parentId: parentId,
           name: "simulation.c",
@@ -93,7 +94,7 @@ const CreateNewProjectModal = ({
   // ) => {
   //   try {
   //     // First API request to create a product
-  //     const response = await axios.post("https://eureka.innotrat.in/product", {
+  //     const response = await axios.post(`${API.MAIN}/product`, {
   //       name: projectName,
   //       userId,
   //     });
@@ -107,7 +108,7 @@ const CreateNewProjectModal = ({
 
   //     // Second API request to create a file/folder
   //     const { data } = await axios.post(
-  //       "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //       `${API.MAIN}/api/v1/createFileAndFolder`,
   //       {
   //         parentId: fileSystem?._id,
   //         name: projectName,
@@ -128,7 +129,7 @@ const CreateNewProjectModal = ({
   //     setActiveProjectName(data?.file?.name);
 
   //     await axios.post(
-  //       "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //       `${API.MAIN}/api/v1/createFileAndFolder`,
   //       {
   //         parentId: data?.file?._id,
   //         name: "simulation.c",
@@ -177,7 +178,7 @@ const CreateNewProjectModal = ({
   //   try {
   //     // Single API call: create folder/file & project metadata
   //     const { data } = await axios.post(
-  //       "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //       `${API.MAIN}/api/v1/createFileAndFolder`,
   //       {
   //         parentId: parentFileSystem?._id,
   //         name: projectName,
@@ -208,7 +209,7 @@ const CreateNewProjectModal = ({
   //     if (createdFile && createdFile._id && type === "folder") {
   //       try {
   //         await axios.post(
-  //           "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //           `${API.MAIN}/api/v1/createFileAndFolder`,
   //           {
   //             parentId: createdFile._id,
   //             name: "simulation.c",
@@ -256,7 +257,7 @@ const CreateNewProjectModal = ({
   //   try {
   //     // Single API call: create folder/file & project metadata
   //     const { data } = await axios.post(
-  //       "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //       `${API.MAIN}/api/v1/createFileAndFolder`,
   //       {
   //         parentId: parentFileSystem?._id,
   //         name: projectName,
@@ -303,7 +304,7 @@ const CreateNewProjectModal = ({
   //     if (createdFile && createdFile._id && type === "folder") {
   //       try {
   //         await axios.post(
-  //           "https://eureka.innotrat.in/api/v1/createFileAndFolder",
+  //           `${API.MAIN}/api/v1/createFileAndFolder`,
   //           {
   //             parentId: createdFile._id,
   //             name: "simulation.c",

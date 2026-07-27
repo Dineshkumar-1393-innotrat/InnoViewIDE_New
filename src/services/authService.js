@@ -1,4 +1,5 @@
-const API_BASE_URL = 'https://eureka.innotrat.in/api/v1/auth';
+import { API } from '@/config';
+const API_BASE_URL = `${API.MAIN}/api/v1/auth`;
 
 export const signup = async (userData) => {
   const response = await fetch(`${API_BASE_URL}/signup`, {
