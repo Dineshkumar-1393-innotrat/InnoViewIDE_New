@@ -20,8 +20,9 @@ import UploadDropzone from "./UploadDropzone";
 import UploadProgress from "./UploadProgress";
 import { importProjectZip } from "../../store/workspaceSlice";
 import { FolderOpen, Github, DownloadCloud, Blocks } from "lucide-react";
+import { getUserInfo } from "../../../../utilities";
 
-const UploadModal = ({ isOpen, onClose }) => {
+const UploadModal = ({ isOpen, onClose, onSuccess }) => {
   const dispatch = useDispatch();
   const toast = useToast();
   const { runtimeState, progress } = useSelector((state) => state.workspace);
@@ -54,15 +55,40 @@ const UploadModal = ({ isOpen, onClose }) => {
   const handleUpload = () => {
     if (!selectedFile) return;
     
-    dispatch(importProjectZip(selectedFile)).then((result) => {
+    let userId = null;
+    try {
+      const userInfo = getUserInfo();
+      userId = userInfo?.userId;
+    } catch (e) {
+      console.error("Failed to parse userInfo", e);
+    }
+
+    dispatch(importProjectZip({ 
+      file: selectedFile, 
+      userId,
+      projectName: selectedFile.name.replace(".zip", "")
+    })).then((result) => {
       if (result.meta.requestStatus === "fulfilled") {
         toast({
           title: "Upload Successful",
-          description: "Project uploaded successfully. Starting workspace...",
+          description: "Project uploaded successfully.",
           status: "success",
           duration: 3000,
           isClosable: true,
         });
+
+        const rootFolderId = result.payload?.rootFolderId;
+        const finalProjectName = selectedFile.name.replace(".zip", "");
+        if (rootFolderId) {
+          try {
+            localStorage.setItem("activeProjectId", rootFolderId);
+            localStorage.setItem("activeProjectName", finalProjectName);
+          } catch (e) {
+            console.error("Failed to save active project to local storage", e);
+          }
+        }
+
+        if (onSuccess) onSuccess(rootFolderId, finalProjectName); // Notify parent to refresh File System
         onClose(); // Close modal after successful upload
       } else {
         toast({

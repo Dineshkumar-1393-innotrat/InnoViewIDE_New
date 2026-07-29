@@ -1,7 +1,7 @@
-import React from "react";
-import { Box, Flex, Text, Spinner, useColorModeValue, Link, VStack, Icon, Badge } from "@chakra-ui/react";
+import React, { useState } from "react";
+import { Box, Flex, Text, Spinner, useColorModeValue, Link, VStack, Icon, Badge, IconButton, Tooltip } from "@chakra-ui/react";
 import { useSelector } from "react-redux";
-import { ExternalLink, CheckCircle, Code, Server } from "lucide-react";
+import { ExternalLink, CheckCircle, Code, Server, RotateCw } from "lucide-react";
 
 // Helper to bundle static files into a single HTML string
 const buildStaticSrcDoc = (projectFiles) => {
@@ -34,7 +34,6 @@ const buildStaticSrcDoc = (projectFiles) => {
       if (cssRegex.test(result)) {
         result = result.replace(cssRegex, `<style>${content}</style>`);
       } else {
-        // Fallback append
         result = result.replace('</head>', `<style>${content}</style></head>`);
       }
     }
@@ -43,7 +42,6 @@ const buildStaticSrcDoc = (projectFiles) => {
       if (jsRegex.test(result)) {
         result = result.replace(jsRegex, `<script>${content}</script>`);
       } else {
-        // Fallback append
         result = result.replace('</body>', `<script>${content}</script></body>`);
       }
     }
@@ -52,32 +50,61 @@ const buildStaticSrcDoc = (projectFiles) => {
 };
 
 const PreviewPanel = () => {
-  const { runtimeState, previewUrl, framework, projectType, scripts, projectFiles } = useSelector((state) => state.workspace);
+  const { runtimeState, previewUrl, framework, projectType, scripts, projectFiles, rootFolderId, activeSubApp } = useSelector((state) => state.workspace);
   const bgColor = useColorModeValue("white", "gray.800");
+  const [iframeKey, setIframeKey] = useState(0);
 
-  if (!["starting", "running"].includes(runtimeState)) {
+  if (!["starting", "running", "ready", "stopped", "installing"].includes(runtimeState)) {
     return null;
   }
 
-  // If there's a preview URL and it's a simple HTML page, we could use an iframe.
-  // But for now, we follow the professional placeholder design for frameworks.
+  const activeRootId = rootFolderId || localStorage.getItem("activeProjectId");
+  const subApp = activeSubApp || "_root";
+  const effectivePreviewUrl = previewUrl || (activeRootId ? `http://localhost:5004/preview/${activeRootId}/${subApp}` : null);
+
+  const handleRefreshIframe = () => {
+    setIframeKey((prev) => prev + 1);
+  };
 
   return (
     <Box flex="1" h="100%" bg={bgColor} borderLeft="1px solid" borderColor={useColorModeValue("gray.200", "gray.700")}>
       <Flex h="40px" bg={useColorModeValue("gray.50", "gray.900")} align="center" px={4} borderBottom="1px solid" borderColor={useColorModeValue("gray.200", "gray.700")}>
-        <Text fontSize="sm" fontWeight="semibold">Preview</Text>
-        {previewUrl && runtimeState === "running" && (
-          <Link href={previewUrl} isExternal ml="auto" color="blue.500" fontSize="sm" display="flex" alignItems="center">
-            {previewUrl} <ExternalLink size={14} style={{ marginLeft: "4px" }} />
+        <Text fontSize="sm" fontWeight="semibold" mr={2}>Preview</Text>
+        {effectivePreviewUrl && (
+          <Tooltip label="Reload Preview">
+            <IconButton
+              aria-label="Reload Preview"
+              icon={<RotateCw size={14} />}
+              size="xs"
+              variant="ghost"
+              mr={2}
+              onClick={handleRefreshIframe}
+            />
+          </Tooltip>
+        )}
+        {effectivePreviewUrl && runtimeState === "running" && (
+          <Link href={effectivePreviewUrl} isExternal ml="auto" color="blue.500" fontSize="xs" display="flex" alignItems="center">
+            {effectivePreviewUrl} <ExternalLink size={12} style={{ marginLeft: "4px" }} />
           </Link>
         )}
       </Flex>
       
-      <Flex flex="1" h="calc(100% - 40px)" align="center" justify="center" direction="column" p={projectType === "static" && runtimeState === "running" ? 0 : 6}>
+      <Flex flex="1" h="calc(100% - 40px)" align="center" justify="center" direction="column" p={0}>
         {runtimeState === "running" ? (
-          projectType === "static" ? (
+          effectivePreviewUrl ? (
             <Box w="100%" h="100%" bg="white">
               <iframe 
+                key={iframeKey}
+                src={effectivePreviewUrl} 
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title="Live Application Preview"
+                allow="cross-origin-isolated; autoplay; camera; microphone; geolocation"
+              />
+            </Box>
+          ) : projectType === "static" ? (
+            <Box w="100%" h="100%" bg="white">
+              <iframe 
+                key={iframeKey}
                 srcDoc={buildStaticSrcDoc(projectFiles)} 
                 style={{ width: '100%', height: '100%', border: 'none' }}
                 title="Static Preview"
@@ -85,62 +112,36 @@ const PreviewPanel = () => {
               />
             </Box>
           ) : (
-            <VStack spacing={6} maxW="400px" w="100%" align="stretch" bg={useColorModeValue("gray.50", "gray.900")} p={6} borderRadius="lg" borderWidth="1px" borderColor={useColorModeValue("gray.200", "gray.700")}>
-            <VStack spacing={2} align="center">
-              <Icon as={CheckCircle} color="green.500" w={10} h={10} />
-              <Text fontSize="xl" fontWeight="bold">Project Detected</Text>
+            <VStack spacing={4} maxW="400px" w="100%" align="stretch" bg={useColorModeValue("gray.50", "gray.900")} p={6} borderRadius="lg" borderWidth="1px" borderColor={useColorModeValue("gray.200", "gray.700")}>
+              <VStack spacing={2} align="center">
+                <Icon as={CheckCircle} color="green.500" w={8} h={8} />
+                <Text fontSize="lg" fontWeight="bold">Project Ready</Text>
+              </VStack>
+              <Text fontSize="xs" color="gray.500" textAlign="center">
+                Click <strong>Start</strong> in the top header to run the development server and view your app preview.
+              </Text>
             </VStack>
-
-            <Box>
-              <Text fontSize="sm" color="gray.500" mb={1}>Framework:</Text>
-              <Badge colorScheme="blue" fontSize="md" px={3} py={1} borderRadius="md">{framework || "Unknown"}</Badge>
-            </Box>
-
-            <Box>
-              <Text fontSize="sm" color="gray.500" mb={1}>Status:</Text>
-              <Flex align="center" gap={2}>
-                <Icon as={Code} color="blue.500" size={16} />
-                <Text fontSize="sm" fontWeight="medium">Source files imported successfully.</Text>
-              </Flex>
-            </Box>
-
-            <Box bg={useColorModeValue("orange.50", "orange.900")} p={4} borderRadius="md" borderWidth="1px" borderColor={useColorModeValue("orange.200", "orange.700")}>
-              <Flex align="flex-start" gap={3}>
-                <Icon as={Server} color="orange.500" mt={1} />
-                <Box>
-                  <Text fontSize="sm" fontWeight="semibold" color="orange.700" mb={2}>
-                    Runtime execution is unavailable in frontend-only mode.
-                  </Text>
-                  <Text fontSize="xs" color="orange.600" mb={2}>
-                    A backend runtime will execute:
-                  </Text>
-                  {projectType === "static" ? (
-                    <VStack align="stretch" spacing={1} pl={2} mb={3}>
-                      <Text fontSize="xs" fontFamily="monospace" bg="blackAlpha.100" px={2} py={1} borderRadius="sm">- Start static file server</Text>
-                    </VStack>
-                  ) : (
-                    <VStack align="stretch" spacing={1} pl={2} mb={3}>
-                      <Text fontSize="xs" fontFamily="monospace" bg="blackAlpha.100" px={2} py={1} borderRadius="sm">- npm install</Text>
-                      {scripts && scripts.dev ? (
-                        <Text fontSize="xs" fontFamily="monospace" bg="blackAlpha.100" px={2} py={1} borderRadius="sm">- npm run dev</Text>
-                      ) : (
-                        <Text fontSize="xs" fontFamily="monospace" bg="blackAlpha.100" px={2} py={1} borderRadius="sm">- npm start</Text>
-                      )}
-                    </VStack>
-                  )}
-                  <Text fontSize="xs" color="orange.600" fontStyle="italic">
-                    Once backend integration is complete, a live preview will appear here.
-                  </Text>
-                </Box>
-              </Flex>
-            </Box>
-          </VStack>
           )
+        ) : runtimeState === "installing" ? (
+          <VStack spacing={3}>
+            <Spinner size="lg" color="blue.500" />
+            <Text fontSize="sm" color="gray.500">Installing project dependencies (npm install)...</Text>
+          </VStack>
+        ) : runtimeState === "starting" ? (
+          <VStack spacing={3}>
+            <Spinner size="lg" color="blue.500" />
+            <Text fontSize="sm" color="gray.500">Starting development server & detecting port...</Text>
+          </VStack>
         ) : (
-          <>
-            <Spinner size="lg" color="blue.500" mb={4} />
-            <Text color="gray.500">Waiting for development server...</Text>
-          </>
+          <VStack spacing={4} maxW="400px" w="100%" align="stretch" bg={useColorModeValue("gray.50", "gray.900")} p={6} borderRadius="lg" borderWidth="1px" borderColor={useColorModeValue("gray.200", "gray.700")}>
+            <VStack spacing={2} align="center">
+              <Icon as={CheckCircle} color="blue.500" w={8} h={8} />
+              <Text fontSize="lg" fontWeight="bold">Application Stopped</Text>
+            </VStack>
+            <Text fontSize="xs" color="gray.500" textAlign="center">
+              Click <strong>Start</strong> in the top header to launch the development server and view live preview.
+            </Text>
+          </VStack>
         )}
       </Flex>
     </Box>

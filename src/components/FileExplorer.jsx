@@ -35,11 +35,12 @@ import {
   FilePlus,
   MoreVertical,
   Pencil,
-  Lock
+  Lock,
+  Archive
 } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { getUserInfo, baseURL } from "../utilities";
 import { useProject } from "../ProjectContext";
 import CreateNewProjectModal from "./MenuSidebar/CreateNewProjectModal";
@@ -49,9 +50,11 @@ import {
   fetchFileSystem,
   buildTree,
 } from "./EmbeddedFileManagement/EmbeddedFileManagement";
-import UploadButton from "../features/workspace/upload/components/UploadButton";
+import UploadModal from "../features/workspace/upload/components/UploadModal";
+import { setWorkspaceMetadata } from "../features/workspace/store/workspaceSlice";
 
 const FileExplorer = ({ variant }) => {
+  const dispatch = useDispatch();
   const [fileSystem, setFileSystem] = useState({});
   const [user, setUser] = useState({});
   const [error, setError] = useState(null);
@@ -72,6 +75,11 @@ const FileExplorer = ({ variant }) => {
     isOpen: isRenameItemOpen,
     onOpen: onRenameItemOpen,
     onClose: onRenameItemClose
+  } = useDisclosure();
+  const {
+    isOpen: isUploadModalOpen,
+    onOpen: onUploadModalOpen,
+    onClose: onUploadModalClose
   } = useDisclosure();
 
   const {
@@ -195,24 +203,25 @@ const FileExplorer = ({ variant }) => {
 
   const isActiveProjectInFolder = (node, activeId, activeName) => {
     if (!node) return false;
-    // Check current node
-    if (String(node._id) === String(activeId) || node.name === activeName) {
+    if (activeId && node._id && String(node._id) === String(activeId)) {
       return true;
     }
-    // Check children recursively
-    if (node.children && node.children.length > 0) {
-      return node.children.some(child => isActiveProjectInFolder(child, activeId, activeName));
+    if (activeName && node.name && node.name === activeName) {
+      return true;
+    }
+    if (Array.isArray(node.children) && node.children.length > 0) {
+      return node.children.some((child) => isActiveProjectInFolder(child, activeId, activeName));
     }
     return false;
   };
 
   const deleteNodeFromTree = (nodes, nodeId) => {
-    if (!nodes) return [];
+    if (!nodes || !Array.isArray(nodes)) return [];
     return nodes
-      .filter((node) => node._id !== nodeId)
+      .filter((node) => node && node._id !== nodeId && node.id !== nodeId)
       .map((node) => ({
         ...node,
-        children: node.children ? deleteNodeFromTree(node.children, nodeId) : [],
+        children: Array.isArray(node.children) ? deleteNodeFromTree(node.children, nodeId) : [],
       }));
   };
 
@@ -220,20 +229,49 @@ const FileExplorer = ({ variant }) => {
   const toast = useToast();
 
   const confirmDelete = async () => {
-    if (!itemToDelete) return;
+    if (!itemToDelete?.node) return;
     const { node } = itemToDelete;
-    const id = node._id;
+    const id = node._id || node.id;
+
+    if (!id) {
+      console.error("No valid ID found for deletion", node);
+      toast({
+        title: "Deletion failed.",
+        description: "Invalid file or folder ID.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+        position: "bottom-right",
+      });
+      onDeleteAlertClose();
+      return;
+    }
     
     setIsDeleting(true);
+
     try {
       await axios.delete(
         `${baseURL}/api/v1/deleteFileAndFolder`,
         { data: { fileId: id } }
       );
+    } catch (error) {
+      console.error("Error deleting item from server:", error);
+      onDeleteAlertClose();
+      toast({
+        title: "Deletion failed.",
+        description: error.response?.data?.message || error.message || "An error occurred while deleting the item.",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+        position: "bottom-right",
+      });
+      handleRefresh();
+      setIsDeleting(false);
+      return;
+    }
 
-      console.log("Deleting item:", node.name, id);
-      
-      // Close modal IMMEDIATELY after successful API call
+    try {
+      console.log("Deleted item successfully:", node.name, id);
       onDeleteAlertClose();
       
       if (isActiveProjectInFolder(node, activeProjectId, activeProjectName)) {
@@ -247,30 +285,29 @@ const FileExplorer = ({ variant }) => {
         localStorage.removeItem("activeProductName");
       }
 
-      setFileSystem((prev) => ({
-        ...prev,
-        children: deleteNodeFromTree(prev.children, id),
-      }));
+      setFileSystem((prev) => {
+        if (!prev) return prev;
+        if (Array.isArray(prev)) {
+          return deleteNodeFromTree(prev, id);
+        }
+        return {
+          ...prev,
+          children: deleteNodeFromTree(prev.children || [], id),
+        };
+      });
 
       toast({
         title: "Successfully deleted.",
-        description: `${node.name} has been removed.`,
+        description: `${node.name || "Item"} has been removed.`,
         status: "success",
         duration: 3000,
         isClosable: true,
         position: "bottom-right",
       });
-    } catch (error) {
-      console.error("Error deleting item:", error);
-      onDeleteAlertClose(); // Also close on error to avoid sticking
-      toast({
-        title: "Deletion failed.",
-        description: error.response?.data?.message || "An error occurred while deleting the item.",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-        position: "bottom-right",
-      });
+
+      window.dispatchEvent(new Event('file-system-refresh'));
+    } catch (err) {
+      console.error("Error updating UI after deletion:", err);
       handleRefresh();
     } finally {
       setIsDeleting(false);
@@ -309,6 +346,11 @@ const FileExplorer = ({ variant }) => {
       setActiveProjectName(folder.name);
       setActiveProductId(folder.productId);
       setActiveProductName(folder.name);
+      dispatch(setWorkspaceMetadata({
+        rootFolderId: folder._id,
+        projectName: folder.name,
+        runtimeState: "ready"
+      }));
     }
 
     setFileSystem(updatedFileSystem);
@@ -320,6 +362,11 @@ const FileExplorer = ({ variant }) => {
       setActiveProjectName(project.name);
       setActiveProductId(project.productId);
       setActiveProductName(project.name);
+      dispatch(setWorkspaceMetadata({
+        rootFolderId: project._id,
+        projectName: project.name,
+        runtimeState: "ready"
+      }));
 
       try {
         localStorage.setItem("activeProjectId", project._id);
@@ -490,6 +537,23 @@ const FileExplorer = ({ variant }) => {
                     _hover={{ color: "orange.600", bg: "orange.50" }}
                   />
                 </Tooltip>
+                <Tooltip label={isNodeProtected ? "Protected" : "Import Project"} hasArrow>
+                  <IconButton
+                    aria-label="Import Project"
+                    icon={isNodeProtected ? <Lock size={14} /> : <Archive size={14} />}
+                    size="xs"
+                    width="22px"
+                    height="22px"
+                    variant="ghost"
+                    color={isNodeProtected ? actionIconColor : "teal.500"}
+                    isDisabled={isNodeProtected}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUploadModalOpen();
+                    }}
+                    _hover={{ color: "teal.600", bg: "teal.50" }}
+                  />
+                </Tooltip>
                 <Tooltip label={isNodeProtected ? "Protected" : "Delete"} hasArrow>
                   <IconButton
                     aria-label="Delete"
@@ -643,7 +707,6 @@ const FileExplorer = ({ variant }) => {
         >
           Create New Project
         </Button>
-        <UploadButton />
       </VStack>
 
       {error && (
@@ -717,6 +780,18 @@ const FileExplorer = ({ variant }) => {
           </AlertDialogContent>
         </AlertDialogOverlay>
       </AlertDialog>
+
+      <UploadModal 
+        isOpen={isUploadModalOpen} 
+        onClose={onUploadModalClose} 
+        onSuccess={(newProjectId, newProjectName) => {
+          if (newProjectId && newProjectName) {
+            setActiveProjectId(newProjectId);
+            setActiveProjectName(newProjectName);
+          }
+          handleRefresh();
+        }} 
+      />
     </Box>
   );
 };

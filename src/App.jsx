@@ -156,6 +156,7 @@ import FlowchartTest from "./components/FlowchartTest";
 import BlockProgramming from "./components/BlockProgramming";
 import MathCodeEditor from "./components/MathCodeEditor";
 import MeetingPage from "./components/MeetingPage";
+import RuleEnginePage from "./components/RuleEngine/RuleEnginePage";
 
 
 const App = () => {
@@ -245,6 +246,7 @@ const App = () => {
                 <Route path="/mathcodeeditor" element={<MathCodeEditor />} />
                 <Route path="/meet" element={<MeetingPage />} />
                 <Route path="/meet/:meetingId" element={<MeetingPage />} />
+                <Route path="/rule-engine" element={<RuleEnginePage />} />
 
                 <Route path="/autosave-demo" element={<AutoSaveDemo />} />
               </Routes>

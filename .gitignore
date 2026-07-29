@@ -83,3 +83,13 @@ releases/
 **/release/
 **/releases/
 **/downloads/
+
+# Extracted temporary files and directories
+dynamic_rule_engine_extracted/
+backend_src/
+iw/
+*_extracted/
+*_extracted*/
+InnoIDE_Backend.zip
+dynamic rule-engine*.zip
+

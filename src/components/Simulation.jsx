@@ -261,6 +261,141 @@ import {
 } from "../store/slices/simulationSlice";
 import { useResizableSidebar } from '../hooks/useResizableSidebar';
 
+const SimulationNode = React.memo(({
+  item,
+  index,
+  dragPos,
+  isActive,
+  rotation,
+  hasConn,
+  onSelect,
+  onDrag,
+  onDragStop,
+  onResizeStop,
+  onRotateStart,
+  onContextMenu
+}) => {
+  return (
+    <Rnd
+      position={{
+        x: dragPos?.x ?? item.x,
+        y: dragPos?.y ?? item.y
+      }}
+      size={{ width: item.width, height: item.height }}
+      enableResizing={isActive}
+      disableDragging={false}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(index);
+      }}
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        onSelect(index);
+      }}
+      onDrag={onDrag}
+      onResizeStop={onResizeStop}
+      onDragStop={onDragStop}
+      style={{
+        transform: `rotate(${rotation}deg)`,
+        transformOrigin: "center",
+        position: "absolute",
+        cursor: "move",
+      }}
+      onContextMenu={(e) => onContextMenu(e, index)}
+    >
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        {isActive && (
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="xMidYMid meet"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              pointerEvents: "none",
+              zIndex: 10,
+            }}
+          >
+            <polygon
+              points="50,10 90,30 90,70 50,90 10,70 10,30"
+              fill="none"
+              stroke="blue"
+              strokeWidth="2"
+              strokeDasharray="5,5"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+        )}
+        <Tooltip
+          label={item.symbol.name}
+          placement="top"
+          hasArrow
+          bg="gray.700"
+          color="white"
+          fontSize="sm"
+          px={3}
+          py={2}
+          borderRadius="md"
+        >
+          <img
+            src={item.symbol.src}
+            alt={item.symbol.name}
+            style={{
+              width: "100%",
+              height: "100%",
+              pointerEvents: "all",
+              transform: `rotate(${item.rotation}deg)`,
+            }}
+          />
+        </Tooltip>
+
+        {item.symbol.name === "Microcontroller" && !hasConn && (
+          <>
+            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z1</div>
+            <div style={{ position: 'absolute', top: '25%', right: 0, transform: 'translate(50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z2</div>
+            <div style={{ position: 'absolute', top: '75%', right: 0, transform: 'translate(50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z3</div>
+            <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translate(-50%, 50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z4</div>
+            <div style={{ position: 'absolute', top: '75%', left: 0, transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z5</div>
+            <div style={{ position: 'absolute', top: '25%', left: 0, transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z6</div>
+          </>
+        )}
+
+        {isActive && (
+          <div
+            className="rotate-handle"
+            style={{
+              position: "absolute",
+              top: "-25px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "30px",
+              height: "30px",
+              background: "rgba(0, 0, 255, 0.7)",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto",
+              transition: "transform 0.2s ease-in-out",
+            }}
+            onMouseDown={(e) => {
+              e.target.style.cursor = "grabbing";
+              onRotateStart(index, e);
+            }}
+            onMouseUp={(e) => {
+              e.target.style.cursor = "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto";
+            }}
+          >
+            🔄
+          </div>
+        )}
+      </div>
+    </Rnd>
+  );
+});
+
 const BlockDiagram = () => {
   const dispatch = useDispatch();
   const tabs = useSelector((state) => state.simulation.tabs);
@@ -956,19 +1091,30 @@ const BlockDiagram = () => {
 
   const Canvas = () => {
     const [dragPositions, setDragPositions] = useState({});
+    const canvasRef = useRef(null);
 
     const [, drop] = useDrop(
       () => ({
         accept: "symbol",
         drop: (item, monitor) => {
           const offset = monitor.getClientOffset();
-          if (item && item.symbol && offset) {
+          if (item && item.symbol && offset && canvasRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            // Calculate precise drop coordinate based on cursor offset and canvas bounding box
+            const componentWidth = 100;
+            const componentHeight = 100;
+            const x = offset.x - rect.left - (componentWidth / 2);
+            const y = offset.y - rect.top - (componentHeight / 2);
+            
+            // Add scroll offsets if the canvas is scrollable
+            const scrollLeft = canvasRef.current.scrollLeft || 0;
+            const scrollTop = canvasRef.current.scrollTop || 0;
             const newSymbol = {
               symbol: item.symbol,
-              x: offset.x - 100,
-              y: offset.y - 100,
-              width: 100, // Reduced default size
-              height: 100, // Reduced default size
+              x: x + scrollLeft,
+              y: y + scrollTop,
+              width: componentWidth,
+              height: componentHeight,
               rotation: 0,
               id: Date.now() + Math.random(),
             };
@@ -977,8 +1123,14 @@ const BlockDiagram = () => {
           }
         },
       }),
-      [droppedItems],
+      [droppedItems, activeTabId],
     );
+
+    // Merge refs for the drop target
+    const dropRef = useCallback((node) => {
+      canvasRef.current = node;
+      drop(node);
+    }, [drop]);
 
     const handleRotateStart = (index, event) => {
       event.preventDefault();
@@ -1124,7 +1276,7 @@ const BlockDiagram = () => {
         `}
         </style>
         <div
-          ref={drop}
+          ref={dropRef}
           className="canvas-placeholder"
           style={{
             width: "100%",
@@ -1163,16 +1315,21 @@ const BlockDiagram = () => {
               const item2 = droppedItems.find((i) => String(i.id) === id2);
 
               if (item1 && item2) {
+                // Use intermediate drag coordinates if active, otherwise use Redux state coords
+                const pos1 = dragPositions[id1] ? dragPositions[id1] : { x: item1.x, y: item1.y };
+                const pos2 = dragPositions[id2] ? dragPositions[id2] : { x: item2.x, y: item2.y };
+                
                 return (
                   <line
                     key={connKey}
-                    x1={item1.x + item1.width / 2}
-                    y1={item1.y + item1.height / 2}
-                    x2={item2.x + item2.width / 2}
-                    y2={item2.y + item2.height / 2}
+                    x1={pos1.x + item1.width / 2}
+                    y1={pos1.y + item1.height / 2}
+                    x2={pos2.x + item2.width / 2}
+                    y2={pos2.y + item2.height / 2}
                     stroke="black"
                     strokeWidth="2"
                     strokeDasharray="5,5" // Optional: dashed line
+                    style={{ pointerEvents: "none" }} // Ensure SVG lines do not block drag events
                   />
                 );
               }
@@ -1207,168 +1364,62 @@ const BlockDiagram = () => {
             </div>
           ))}
 
-          {droppedItems.map((item, index) => (
-            <Rnd
-              key={index}
-              position={{ 
-                x: dragPositions[item.id]?.x ?? item.x, 
-                y: dragPositions[item.id]?.y ?? item.y 
-              }}
-              size={{ width: item.width, height: item.height }}
-              enableResizing={activeSymbol === index}
-              disableDragging={false}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSelect(index);
-              }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                handleSelect(index);
-              }}
-              onDrag={(e, d) => {
-                // Update local state during drag for smooth controlled movement
-                setDragPositions(prev => ({
-                  ...prev,
-                  [item.id]: { x: d.x, y: d.y }
-                }));
-              }}
-              onResizeStop={(e, dir, ref, delta, position) =>
-                handleResizeStop(index, dir, ref, delta, position)
-              }
-              onDragStop={(e, d) => {
-                const item = droppedItems[index];
-                if (item) {
-                  // First apply hex snap to get visually-attached position
-                  const rawItem = { ...item, x: d.x, y: d.y };
-                  const { x: snapX, y: snapY, snapped } = calculateSnapPosition(rawItem, droppedItems);
-                  const finalX = snapped ? snapX : d.x;
-                  const finalY = snapped ? snapY : d.y;
+          {droppedItems.map((item, index) => {
+            const dragPos = dragPositions[item.id];
+            const isActive = activeSymbol === index;
+            const rotation = rotatingItem?.index === index ? rotatingItem.rotation : item.rotation;
+            const hasConn = hasConnection(item.id);
 
-                  const updatedItem = { ...item, x: finalX, y: finalY };
-
-                  // Clear local drag state
-                  setDragPositions(prev => {
-                    const newState = { ...prev };
-                    delete newState[item.id];
-                    return newState;
-                  });
-
-                  dispatch(
-                    updateSymbolInTab({
-                      tabId: activeTabId,
-                      symbolId: item.id,
-                      updates: { x: finalX, y: finalY },
-                    }),
-                  );
-
-                  // Check for connections after drag (using snapped position)
-                  handleConnectionDetection(updatedItem);
+            return (
+              <SimulationNode
+                key={item.id}
+                item={item}
+                index={index}
+                dragPos={dragPos}
+                isActive={isActive}
+                rotation={rotation}
+                hasConn={hasConn}
+                onSelect={handleSelect}
+                onDrag={(e, d) => {
+                  setDragPositions(prev => ({
+                    ...prev,
+                    [item.id]: { x: d.x, y: d.y }
+                  }));
+                }}
+                onResizeStop={(e, dir, ref, delta, position) =>
+                  handleResizeStop(index, dir, ref, delta, position)
                 }
-              }}
-              style={{
-                transform: `rotate(${rotatingItem?.index === index ? rotatingItem.rotation : item.rotation}deg)`,
-                transformOrigin: "center",
-                position: "absolute",
-                cursor: "move",
-              }}
-              onContextMenu={(e) => handleContextMenu(e, index)}
-            >
-              <div
-                style={{ position: "relative", width: "100%", height: "100%" }}
-              >
-                {activeSymbol === index && (
-                  <svg
-                    width="100%"
-                    height="100%"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="xMidYMid meet"
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      pointerEvents: "none",
-                      zIndex: 10,
-                    }}
-                  >
-                    <polygon
-                      points="50,10 90,30 90,70 50,90 10,70 10,30"
-                      fill="none"
-                      stroke="blue"
-                      strokeWidth="2"
-                      strokeDasharray="5,5"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </svg>
-                )}
-                <Tooltip
-                  label={item.symbol.name}
-                  placement="top"
-                  hasArrow
-                  bg="gray.700"
-                  color="white"
-                  fontSize="sm"
-                  px={3}
-                  py={2}
-                  borderRadius="md"
-                >
-                  <img
-                    src={item.symbol.src}
-                    alt={item.symbol.name}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      pointerEvents: "all",
-                      transform: `rotate(${item.rotation}deg)`,
-                    }}
-                  />
-                </Tooltip>
+                onDragStop={(e, d) => {
+                  const currentItem = droppedItems[index];
+                  if (currentItem) {
+                    const rawItem = { ...currentItem, x: d.x, y: d.y };
+                    const { x: snapX, y: snapY, snapped } = calculateSnapPosition(rawItem, droppedItems);
+                    const finalX = snapped ? snapX : d.x;
+                    const finalY = snapped ? snapY : d.y;
+                    const updatedItem = { ...currentItem, x: finalX, y: finalY };
 
-                {item.symbol.name === "Microcontroller" && !hasConnection(item.id) && (
-                  <>
-                    <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z1</div>
-                    <div style={{ position: 'absolute', top: '25%', right: 0, transform: 'translate(50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z2</div>
-                    <div style={{ position: 'absolute', top: '75%', right: 0, transform: 'translate(50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z3</div>
-                    <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translate(-50%, 50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z4</div>
-                    <div style={{ position: 'absolute', top: '75%', left: 0, transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z5</div>
-                    <div style={{ position: 'absolute', top: '25%', left: 0, transform: 'translate(-50%, -50%)', background: '#3b82f6', color: 'white', fontSize: '10px', padding: '2px 4px', borderRadius: '4px', zIndex: 10 }}>Z6</div>
-                  </>
-                )}
+                    setDragPositions(prev => {
+                      const newState = { ...prev };
+                      delete newState[currentItem.id];
+                      return newState;
+                    });
 
-                {activeSymbol === index && (
-                  <div
-                    className="rotate-handle"
-                    style={{
-                      position: "absolute",
-                      top: "-25px", // Move slightly higher for better reach
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: "30px", // Increase handle size
-                      height: "30px",
-                      background: "rgba(0, 0, 255, 0.7)", // Slight transparency for better visibility
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor:
-                        "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto", // Custom rotation cursor
-                      transition: "transform 0.2s ease-in-out",
-                    }}
-                    onMouseDown={(e) => {
-                      e.target.style.cursor = "grabbing"; // Change cursor on click
-                      handleRotateStart(index, e);
-                    }}
-                    onMouseUp={(e) => {
-                      e.target.style.cursor =
-                        "url('https://upload.wikimedia.org/wikipedia/commons/0/02/Rotate_cursor.svg'), auto";
-                    }}
-                  >
-                    🔄 {/* Unicode icon for rotation visual cue */}
-                  </div>
-                )}
-                {/* Size display overlay removed per user request */}
-              </div>
-            </Rnd>
-          ))}
+                    dispatch(
+                      updateSymbolInTab({
+                        tabId: activeTabId,
+                        symbolId: currentItem.id,
+                        updates: { x: finalX, y: finalY },
+                      }),
+                    );
+
+                    handleConnectionDetection(updatedItem);
+                  }
+                }}
+                onRotateStart={handleRotateStart}
+                onContextMenu={handleContextMenu}
+              />
+            );
+          })}
 
           {/* Spark effects */}
           {sparkEffects.map((spark) => (

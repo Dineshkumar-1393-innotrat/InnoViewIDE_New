@@ -94,13 +94,15 @@ const CreateProductDefintionModal = ({
       <Button
         onClick={onOpen}
         size={"sm"}
-        colorScheme="teal"
+        bg="#2563eb"
+        color="#ffffff"
+        _hover={{ bg: "#1d4ed8" }}
         borderRadius="full"
         height="32px"
-        px={6}
+        px={5}
         zIndex={999}
       >
-        Define Product
+        + Define Product
       </Button>
 
       <Modal isOpen={isOpen} onClose={onClose} size={"xl"}>

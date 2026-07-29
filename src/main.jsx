@@ -5,6 +5,7 @@ import { ChakraProvider } from "@chakra-ui/react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import App from "./App";
 import theme from "./theme";
+import "./components/RuleEngine/styles/index.css";
 import '@dytesdk/ui-kit/dist/collection/components/dyte-ui-provider/dyte-ui-provider.css';
 import '@dytesdk/ui-kit/dist/collection/components/dyte-meeting/dyte-meeting.css';
 import '@dytesdk/ui-kit/dist/collection/components/dyte-grid/dyte-grid.css';

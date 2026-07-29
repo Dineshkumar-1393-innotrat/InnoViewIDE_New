@@ -38,6 +38,7 @@ import hexLogo from '../assets/hex_bg.png';
 import DyteMeetingApp from './DyteMeetingApp';
 import { Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody } from '@chakra-ui/react';
 import ShareModal from './share/ShareModal';
+import RuleEngineModal from './RuleEngine/RuleEngineModal';
 import { IconButton } from '@mui/material';
 import { Share as ShareIcon } from '@mui/icons-material';
 import { useProject } from '../ProjectContext';
@@ -120,7 +121,7 @@ const loadIdentityFromStorage = () => {
 
   return null;
 };
-const DEFAULT_TABS = ['Block Diagram', 'Flowchart', 'Simulation', 'Code Editor', 'Block Programming', 'MathCodeEditor'];
+const DEFAULT_TABS = ['Block Diagram', 'Flowchart', 'Simulation', 'Code Editor', 'Block Programming', 'MathCodeEditor', 'Dynamic Rule Engine'];
 
 const TAB_ICON_MAP = {
   'Block Diagram': Blocks,
@@ -129,7 +130,7 @@ const TAB_ICON_MAP = {
   'Code Editor': Braces,
   'Block Programming': Boxes,
   'MathCodeEditor': Calculator,
-
+  'Dynamic Rule Engine': Brain,
 };
 
 import { onboardingSteps } from '../data/onboardingSteps';
@@ -175,6 +176,7 @@ const EditorNavbar = ({
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRuleEngineOpen, setIsRuleEngineOpen] = useState(false);
 
   useEffect(() => {
     if (!accountOpen && !activeMenu && !downloadMenuOpen) return;
@@ -212,7 +214,7 @@ const EditorNavbar = ({
 
   const handleLogout = () => {
     Promise.resolve(projectLogout?.()).then(() => {
-        return Promise.resolve(onLogout?.());
+      return Promise.resolve(onLogout?.());
     }).finally(() => {
       setAccountOpen(false);
       window.location.assign(loginPath);
@@ -402,7 +404,7 @@ const EditorNavbar = ({
     <header className={`editor-navbar ${isMobileMenuOpen ? 'mobile-menu-open' : ''}`}>
       <div className="editor-navbar__left">
         {/* ✅ Mobile Menu Toggle */}
-        <button 
+        <button
           className="editor-navbar__mobile-toggle"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           aria-label="Toggle mobile menu"
@@ -504,6 +506,8 @@ const EditorNavbar = ({
                   navigate('/BlockDiagram');
                 } else if (tabId === 'Block Programming') {
                   navigate('/blockprogramming');
+                } else if (tabId === 'Dynamic Rule Engine') {
+                  navigate('/rule-engine');
                 } else {
                   onTabChange?.(tabId);
                 }
@@ -597,6 +601,7 @@ const EditorNavbar = ({
         >
           <Video size={18} />
         </button>
+
         {/* <button type="button" className="editor-navbar__icon-btn" title="Templates">
           <Braces size={18} />
         </button> */}
@@ -625,10 +630,10 @@ const EditorNavbar = ({
           )}
         </div>
         {/* Share button */}
-        <IconButton 
+        <IconButton
           onClick={() => setIsShareOpen(true)}
           title="Share"
-          sx={{ 
+          sx={{
             color: '#64748b',
             '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
             p: 1
@@ -638,9 +643,14 @@ const EditorNavbar = ({
         </IconButton>
       </div>
 
-      <ShareModal 
-        open={isShareOpen} 
-        onClose={() => setIsShareOpen(false)} 
+      <ShareModal
+        open={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+      />
+
+      <RuleEngineModal
+        isOpen={isRuleEngineOpen}
+        onClose={() => setIsRuleEngineOpen(false)}
       />
 
       {isHelpReferenceOpen && createPortal(

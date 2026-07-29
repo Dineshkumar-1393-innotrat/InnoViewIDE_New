@@ -3,49 +3,52 @@ import { Flex, HStack, Button, Text, useColorModeValue } from "@chakra-ui/react"
 import { useDispatch, useSelector } from "react-redux";
 import { Play, Square, RotateCw, Download, Trash2, ExternalLink, Package } from "lucide-react";
 import ProjectStatus from "./ProjectStatus";
-import { setRuntimeState, appendTerminalLog, clearTerminalLogs } from "../../store/workspaceSlice";
+import { 
+  setRuntimeState, 
+  appendTerminalLog, 
+  clearTerminalLogs,
+  startChildApp,
+  stopChildApp,
+  installChildApp,
+  fetchChildAppLogs
+} from "../../store/workspaceSlice";
 
 const WorkspaceHeader = () => {
   const dispatch = useDispatch();
-  const { runtimeState, projectName, projectType, previewUrl, terminalLogs } = useSelector((state) => state.workspace);
+  const { 
+    runtimeState, 
+    projectName, 
+    projectType, 
+    previewUrl, 
+    terminalLogs,
+    rootFolderId,
+    activeSubApp 
+  } = useSelector((state) => state.workspace);
   const bgColor = useColorModeValue("white", "gray.800");
   const borderColor = useColorModeValue("gray.200", "gray.700");
 
   const isProcessing = ["uploading", "extracting", "detecting", "installing", "starting"].includes(runtimeState);
   const isRunning = runtimeState === "running";
+  const targetRootId = rootFolderId || localStorage.getItem("activeProjectId");
+  const targetSubApp = activeSubApp || "_root";
 
-  if (runtimeState === "idle") return null;
+  if (!targetRootId && !projectName && runtimeState === "idle") return null;
 
   const handleStart = () => {
-    dispatch(setRuntimeState("starting"));
-    dispatch(appendTerminalLog("> Starting development server..."));
-    setTimeout(() => {
-      dispatch(setRuntimeState("running"));
-      dispatch(appendTerminalLog("> VITE v7.2.1"));
-      dispatch(appendTerminalLog("> Local: http://localhost:5173"));
-    }, 1500);
+    dispatch(startChildApp({ rootFolderId: targetRootId, subAppName: targetSubApp }));
   };
 
   const handleStop = () => {
-    dispatch(setRuntimeState("stopped"));
-    dispatch(appendTerminalLog("> Server stopped by user."));
+    dispatch(stopChildApp({ rootFolderId: targetRootId, subAppName: targetSubApp }));
   };
 
-  const handleRestart = () => {
-    handleStop();
-    setTimeout(() => {
-      handleStart();
-    }, 1000);
+  const handleRestart = async () => {
+    await dispatch(stopChildApp({ rootFolderId: targetRootId, subAppName: targetSubApp }));
+    dispatch(startChildApp({ rootFolderId: targetRootId, subAppName: targetSubApp }));
   };
 
   const handleInstall = () => {
-    dispatch(setRuntimeState("installing"));
-    dispatch(appendTerminalLog("> Running npm install..."));
-    setTimeout(() => {
-      dispatch(appendTerminalLog("> added packages, and audited..."));
-      dispatch(appendTerminalLog("> Done."));
-      dispatch(setRuntimeState("stopped"));
-    }, 2000);
+    dispatch(installChildApp({ rootFolderId: targetRootId, subAppName: targetSubApp }));
   };
 
   const handleClear = () => {
@@ -53,19 +56,23 @@ const WorkspaceHeader = () => {
   };
 
   const handlePreview = () => {
-    if (previewUrl) {
-      window.open(previewUrl, "_blank");
+    const url = previewUrl || (targetRootId ? `http://localhost:5004/preview/${targetRootId}/${targetSubApp}` : null);
+    if (url) {
+      window.open(url, "_blank");
     }
   };
 
-  const handleDownloadLogs = () => {
-    const element = document.createElement("a");
-    const file = new Blob([terminalLogs.join("\n")], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = `${projectName || "project"}-logs.txt`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+  const handleFetchLogs = async () => {
+    const res = await dispatch(fetchChildAppLogs({ rootFolderId: targetRootId, subAppName: targetSubApp }));
+    if (res.payload) {
+      const element = document.createElement("a");
+      const file = new Blob([res.payload], { type: "text/plain" });
+      element.href = URL.createObjectURL(file);
+      element.download = `${projectName || "project"}-logs.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    }
   };
 
   return (
@@ -104,7 +111,7 @@ const WorkspaceHeader = () => {
         <Button size="xs" leftIcon={<Trash2 size={14} />} variant="ghost" colorScheme="red" title="Clear Terminal" onClick={handleClear}>
           Clear
         </Button>
-        <Button size="xs" leftIcon={<Download size={14} />} variant="ghost" title="Download Logs" onClick={handleDownloadLogs}>
+        <Button size="xs" leftIcon={<Download size={14} />} variant="ghost" title="Download Logs" onClick={handleFetchLogs}>
           Logs
         </Button>
       </HStack>

@@ -1058,7 +1058,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               minH={0}
               overflow="hidden"
             >
-              {runtimeState !== "idle" && <WorkspaceHeader />}
+              <WorkspaceHeader />
               <Flex
                 align="center"
                 flexWrap="wrap"
@@ -1286,7 +1286,6 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                     </Text>
                   </Box>
                 )}
-
                 <style>
                   {`
                     @keyframes blink-canvas {
@@ -1296,7 +1295,7 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                   `}
                 </style>
 
-                {["starting", "running"].includes(runtimeState) ? (
+                {["starting", "running", "ready", "stopped", "failed", "installing"].includes(runtimeState) ? (
                   <Flex h="100%">
                     <Box flex="1" h="100%">
                       <Editor
@@ -1342,8 +1341,8 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
                   ? "0 30px 60px rgba(8,15,32,0.45)"
                   : "0 24px 60px rgba(15,23,42,0.06)"
               }
-              p={3}
-              h={isOutputExpanded ? { base: "280px", lg: "340px" } : { base: "80px", lg: "100px" }}
+              p={2}
+              h={isOutputExpanded ? { base: "300px", lg: "420px" } : { base: "160px", lg: "220px" }}
               transition="height 0.3s ease-in-out"
               flexShrink={0}
               display="flex"
@@ -1351,7 +1350,10 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               overflow="hidden"
             >
               {runtimeState !== "idle" ? (
-                <TerminalPanel />
+                <TerminalPanel 
+                  isExpanded={isOutputExpanded}
+                  onToggleExpand={() => setIsOutputExpanded(!isOutputExpanded)}
+                />
               ) : (
                 <Output
                   ref={outputRef}

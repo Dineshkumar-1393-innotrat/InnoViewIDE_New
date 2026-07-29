@@ -31,6 +31,8 @@ import Navbar from "./Navbar";
 import Footer from "../Footer";
 import CodeEditor from "../CodeEditor/CodeEditor";
 import { useProject } from "../../ProjectContext.jsx";
+import { useDispatch } from "react-redux";
+import { setProjectFiles } from "../../features/workspace/store/workspaceSlice";
 
 export const checkProductDefinition = async (
   activeProductId,
@@ -112,8 +114,8 @@ export const buildTree = (flatArray) => {
     } else {
       if (item.name === "root") {
         root = idMap[item._id]; // The explicit root node
-      } else {
-        orphans.push(idMap[item._id]); // Items without parentId that are not "root"
+      } else if (!item.parentId) {
+        orphans.push(idMap[item._id]); // Only true top-level items without parentId
       }
     }
   });
@@ -205,6 +207,15 @@ const EmbeddedFileManagement = () => {
     activeProjectName,
     activeProductId,
   } = useProject();
+
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (fileSystem && fileSystem._id) {
+      // The old flow expected an array with one root item for static projects
+      dispatch(setProjectFiles([fileSystem]));
+    }
+  }, [fileSystem, dispatch]);
 
   const addItem = async (parentFolder, type, userId) => {
     try {

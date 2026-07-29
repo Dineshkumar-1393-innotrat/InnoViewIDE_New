@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from 'url';
 
+import tailwindcss from "@tailwindcss/vite";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -12,7 +14,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     headers: {
       "Cross-Origin-Opener-Policy": "unsafe-none",
@@ -22,7 +24,7 @@ export default defineConfig({
     proxy: {
       // ─── Eureka backend (REST API) ───────────────────────────────────────
       '/api/v1': {
-        target: 'https://eureka.innotrat.in',
+        target: 'http://localhost:5004',
         changeOrigin: true,
         secure: false,
         timeout: 60000,
@@ -35,7 +37,7 @@ export default defineConfig({
       },
       // ─── Product microservice (local) ────────────────────────────────────
       '/product-api': {
-        target: 'https://eureka.innotrat.in',
+        target: 'http://localhost:5004',
         changeOrigin: true,
         secure: false,
         timeout: 60000,
@@ -49,7 +51,7 @@ export default defineConfig({
       },
       // ─── Eureka Google OAuth ─────────────────────────────────────────────
       '/auth': {
-        target: 'https://eureka.innotrat.in',
+        target: 'http://localhost:5004',
         changeOrigin: true,
         secure: false,
         timeout: 60000,
@@ -61,7 +63,7 @@ export default defineConfig({
         }
       },
       '/product': {
-        target: 'https://eureka.innotrat.in',
+        target: 'http://localhost:5004',
         changeOrigin: true,
         secure: false,
         timeout: 60000,
