@@ -1349,23 +1349,16 @@ const CodeEditor = ({ currentPanel, onDebugClick, onFlashClick }) => {
               flexDirection="column"
               overflow="hidden"
             >
-              {runtimeState !== "idle" ? (
-                <TerminalPanel 
-                  isExpanded={isOutputExpanded}
-                  onToggleExpand={() => setIsOutputExpanded(!isOutputExpanded)}
-                />
-              ) : (
-                <Output
-                  ref={outputRef}
-                  editorRef={editorRef}
-                  language={language}
-                  id="code-editor-output"
-                  onFlashComplete={handleFlashComplete}
-                  onFlashStart={handleFlashStart}
-                  onExpand={() => setIsOutputExpanded(true)}
-                  onCollapse={() => setIsOutputExpanded(false)}
-                />
-              )}
+              <Output
+                ref={outputRef}
+                editorRef={editorRef}
+                language={language}
+                id="code-editor-output"
+                onFlashComplete={handleFlashComplete}
+                onFlashStart={handleFlashStart}
+                onExpand={() => setIsOutputExpanded(true)}
+                onCollapse={() => setIsOutputExpanded(false)}
+              />
             </Box>
           </Flex>
         </Flex>

@@ -1160,9 +1160,12 @@ import {
 import { executeCode } from "../api";
 import OutputStatus from "./OutputStatus";
 
+import { useSelector } from "react-redux";
+import TerminalPanel from "../features/workspace/terminal/components/TerminalPanel";
 import axios from "axios";
 
 const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest }, ref) => {
+  const { runtimeState } = useSelector((state) => state.workspace);
   const panelRef = useRef(null);
   const toast = useToast();
   const { colorMode } = useColorMode();
@@ -1209,6 +1212,12 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
       panelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
+
+  useEffect(() => {
+    if (runtimeState && runtimeState !== "idle") {
+      setActivePanel("terminal");
+    }
+  }, [runtimeState]);
 
   // Serial Monitor Logic (Web Serial API)
   useEffect(() => {
@@ -1729,51 +1738,59 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
         )}
 
         {activePanel === "terminal" && (
-          <Box display="flex" flexDirection="column" gap={0} bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6} minH="300px">
-            <Box
-              fontFamily="monospace"
-              fontSize="16px"
-              mb={4}
-              color="black"
-              maxH="400px"
-              overflowY="auto"
-              sx={{
-                '&::-webkit-scrollbar': { width: '8px' },
-                '&::-webkit-scrollbar-thumb': { bg: 'gray.200', borderRadius: '4px' },
-              }}
-            >
-              {terminalOutput.map((line, i) => (
-                <Text key={i} mb={1} whiteSpace="pre-wrap">
-                  {line}
-                </Text>
-              ))}
-            </Box>
-            <HStack spacing={3} alignItems="center" h="40px" mt={2} mb={0}>
-              <Text color="green.600" fontWeight="bold" fontSize="16px" whiteSpace="nowrap" lineHeight="1">
-                {`user@innoide:${cwd}$`}
-              </Text>
-              <Input
-                variant="outline"
-                size="md"
-                fontSize="16px"
-                sx={{ margin: "0px !important", color: "black", _placeholder: { color: "gray.500" } }}
-                placeholder="Enter your input"
-                value={terminalInput}
-                onChange={(e) => setTerminalInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                autoFocus
-                borderColor="blue.500"
-                _hover={{ borderColor: "blue.400" }}
-                _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
-                color="black"
-                bg="transparent"
-                borderRadius="md"
-                maxW="400px"
-                h="36px"
-
+          runtimeState !== "idle" ? (
+            <Box h="100%" minH="250px">
+              <TerminalPanel 
+                isExpanded={true}
+                onToggleExpand={onExpand}
               />
-            </HStack>
-          </Box>
+            </Box>
+          ) : (
+            <Box display="flex" flexDirection="column" gap={0} bg="white" border="1px solid" borderColor="gray.200" borderRadius="md" p={6} minH="300px">
+              <Box
+                fontFamily="monospace"
+                fontSize="16px"
+                mb={4}
+                color="black"
+                maxH="400px"
+                overflowY="auto"
+                sx={{
+                  '&::-webkit-scrollbar': { width: '8px' },
+                  '&::-webkit-scrollbar-thumb': { bg: 'gray.200', borderRadius: '4px' },
+                }}
+              >
+                {terminalOutput.map((line, i) => (
+                  <Text key={i} mb={1} whiteSpace="pre-wrap">
+                    {line}
+                  </Text>
+                ))}
+              </Box>
+              <HStack spacing={3} alignItems="center" h="40px" mt={2} mb={0}>
+                <Text color="green.600" fontWeight="bold" fontSize="16px" whiteSpace="nowrap" lineHeight="1">
+                  {`user@innoide:${cwd}$`}
+                </Text>
+                <Input
+                  variant="outline"
+                  size="md"
+                  fontSize="16px"
+                  sx={{ margin: "0px !important", color: "black", _placeholder: { color: "gray.500" } }}
+                  placeholder="Enter your input"
+                  value={terminalInput}
+                  onChange={(e) => setTerminalInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  autoFocus
+                  borderColor="blue.500"
+                  _hover={{ borderColor: "blue.400" }}
+                  _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px #3182ce" }}
+                  color="black"
+                  bg="transparent"
+                  borderRadius="md"
+                  maxW="400px"
+                  h="36px"
+                />
+              </HStack>
+            </Box>
+          )
         )}
       </Box>
     </Box>
