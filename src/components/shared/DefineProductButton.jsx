@@ -85,8 +85,8 @@ const DefineProductButton = ({
     }
   };
 
-  // Always render the button to allow users to create/view products IF a project is active
-  if (!activeProjectId) {
+  // Always render the button to allow users to create/view products IF a valid project is active
+  if (!activeProjectId || !activeProductId || !activeProjectName || activeProjectName === "Untitled Project") {
     return null;
   }
 

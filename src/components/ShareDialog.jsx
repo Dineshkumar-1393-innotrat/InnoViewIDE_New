@@ -180,7 +180,7 @@ const ShareDialog = ({
                             </div>
                         </div>
 
-                        <div className="share-dialog__field share-dialog__field--inline">
+                        <div className="share-dialog__field share-dialog__field--inline" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
                             <label className="share-dialog__checkbox-label">
                                 <input
                                     type="checkbox"
@@ -206,6 +206,21 @@ const ShareDialog = ({
                                     }
                                 />
                             )}
+
+                            <label className="share-dialog__checkbox-label" style={{ marginTop: '8px' }}>
+                                <input
+                                    type="checkbox"
+                                    className="share-dialog__checkbox"
+                                    checked={settings.publishToMarketplace || false}
+                                    onChange={(e) =>
+                                        setSettings((s) => ({
+                                            ...s,
+                                            publishToMarketplace: e.target.checked,
+                                        }))
+                                    }
+                                />
+                                <span style={{ fontWeight: 600, color: '#2563eb' }}>Publish To Marketplace</span>
+                            </label>
                         </div>
                     </section>
                 </div>

@@ -1,19 +1,42 @@
-import React from 'react';
-import { Box, Typography, IconButton, Radio, RadioGroup, FormControlLabel, Select, MenuItem, Checkbox, TextField } from '@mui/material';
+import React, { useState } from 'react';
+import { 
+  Box, 
+  Typography, 
+  IconButton, 
+  Radio, 
+  RadioGroup, 
+  FormControlLabel, 
+  Select, 
+  MenuItem, 
+  Checkbox, 
+  TextField,
+  Button
+} from '@mui/material';
 import { ChevronLeft, X } from 'lucide-react';
 
 const ShareSettingsScreen = ({ 
   onBack, 
   onClose,
-  access,
+  access = 'anyone',
   onAccessChange,
-  permission,
+  permission = 'view',
   onPermissionChange,
-  passwordRequired,
+  passwordRequired = false,
   onPasswordToggle,
-  password,
-  onPasswordChange
+  password = '',
+  onPasswordChange,
+  publishToMarketplace = false,
+  onPublishToMarketplaceToggle,
+  onSubmitSettings
 }) => {
+  const [localPublish, setLocalPublish] = useState(publishToMarketplace);
+
+  const handleSubmit = () => {
+    if (onSubmitSettings) {
+      onSubmitSettings({ localPublish });
+    }
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -28,14 +51,14 @@ const ShareSettingsScreen = ({
         </IconButton>
       </Box>
 
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: '#475569' }}>
           Who Can Access
         </Typography>
         <Select
           fullWidth
           value={access}
-          onChange={(e) => onAccessChange(e.target.value)}
+          onChange={(e) => onAccessChange && onAccessChange(e.target.value)}
           size="small"
           sx={{ borderRadius: '8px', backgroundColor: '#f8fafc' }}
         >
@@ -50,13 +73,13 @@ const ShareSettingsScreen = ({
         </Typography>
       </Box>
 
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: '#475569' }}>
           What Can They Do
         </Typography>
         <RadioGroup
           value={permission}
-          onChange={(e) => onPermissionChange(e.target.value)}
+          onChange={(e) => onPermissionChange && onPermissionChange(e.target.value)}
           sx={{ pl: 1 }}
         >
           <FormControlLabel 
@@ -72,33 +95,83 @@ const ShareSettingsScreen = ({
         </RadioGroup>
       </Box>
 
-      <Box>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: '#475569' }}>
           Additional Security
         </Typography>
-        <FormControlLabel
-          control={
-            <Checkbox 
-              checked={passwordRequired} 
-              onChange={(e) => onPasswordToggle(e.target.checked)} 
-              size="small" 
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <FormControlLabel
+            control={
+              <Checkbox 
+                checked={passwordRequired} 
+                onChange={(e) => onPasswordToggle && onPasswordToggle(e.target.checked)} 
+                size="small" 
+              />
+            }
+            label={<Typography variant="body2">Password Required</Typography>}
+          />
+          {passwordRequired && (
+            <TextField
+              fullWidth
+              placeholder="Enter Password"
+              type="password"
+              size="small"
+              value={password}
+              onChange={(e) => onPasswordChange && onPasswordChange(e.target.value)}
+              sx={{ 
+                '& .MuiOutlinedInput-root': { borderRadius: '8px', backgroundColor: '#ffffff' } 
+              }}
             />
-          }
-          label={<Typography variant="body2">Password Required</Typography>}
-        />
-        <TextField
-          disabled={!passwordRequired}
-          fullWidth
-          placeholder="Enter Password"
-          type="password"
-          size="small"
-          value={password}
-          onChange={(e) => onPasswordChange(e.target.value)}
-          sx={{ 
-            mt: 1,
-            '& .MuiOutlinedInput-root': { borderRadius: '8px', backgroundColor: passwordRequired ? '#ffffff' : '#f1f5f9' } 
+          )}
+
+          <FormControlLabel
+            control={
+              <Checkbox 
+                checked={localPublish} 
+                onChange={(e) => {
+                  setLocalPublish(e.target.checked);
+                  onPublishToMarketplaceToggle && onPublishToMarketplaceToggle(e.target.checked);
+                }} 
+                size="small" 
+              />
+            }
+            label={
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#2563eb' }}>
+                Publish To Marketplace
+              </Typography>
+            }
+          />
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 3, pt: 2, borderTop: '1px solid #f1f5f9' }}>
+        <Button
+          variant="outlined"
+          onClick={onBack || onClose}
+          sx={{
+            borderRadius: '8px',
+            textTransform: 'none',
+            borderColor: '#cbd5e1',
+            color: '#475569',
+            '&:hover': { borderColor: '#94a3b8', backgroundColor: '#f8fafc' }
           }}
-        />
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          sx={{
+            borderRadius: '8px',
+            backgroundColor: '#2563eb',
+            textTransform: 'none',
+            fontWeight: 600,
+            boxShadow: 'none',
+            '&:hover': { backgroundColor: '#1d4ed8' }
+          }}
+        >
+          Submit
+        </Button>
       </Box>
     </Box>
   );

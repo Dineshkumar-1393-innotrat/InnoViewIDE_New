@@ -1163,6 +1163,7 @@ import OutputStatus from "./OutputStatus";
 import { useSelector } from "react-redux";
 import TerminalPanel from "../features/workspace/terminal/components/TerminalPanel";
 import axios from "axios";
+import ApiBuilderPanel from "./ApiBuilderPanel";
 
 const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest }, ref) => {
   const { runtimeState } = useSelector((state) => state.workspace);
@@ -1395,8 +1396,17 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
       setActivePanel("terminal");
       setTimeout(scrollToPanel, 100);
     };
-    const handlePostman = () => {
+    const handlePostman = (e) => {
+      if (e?.detail) {
+        if (e.detail.url) setPostmanUrl(e.detail.url);
+        if (e.detail.method) setPostmanMethod(e.detail.method);
+        if (e.detail.body) setPostmanBody(e.detail.body);
+      }
       setActivePanel("postman");
+      setTimeout(scrollToPanel, 100);
+    };
+    const handleRestApi = () => {
+      setActivePanel("restApi");
       setTimeout(scrollToPanel, 100);
     };
 
@@ -1405,6 +1415,7 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
     window.addEventListener('innoide:debug-console', handleDebugConsole);
     window.addEventListener('innoide:terminal-open', handleTerminalOpen);
     window.addEventListener('innoide:postman', handlePostman);
+    window.addEventListener('innoide:rest-api', handleRestApi);
 
     return () => {
       window.removeEventListener('innoide:view-output', handleViewOutput);
@@ -1412,6 +1423,7 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
       window.removeEventListener('innoide:debug-console', handleDebugConsole);
       window.removeEventListener('innoide:terminal-open', handleTerminalOpen);
       window.removeEventListener('innoide:postman', handlePostman);
+      window.removeEventListener('innoide:rest-api', handleRestApi);
     };
   }, []);
 
@@ -1564,6 +1576,7 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
           { id: "debug", label: "Debug Console" },
           { id: "terminal", label: "Terminal" },
           { id: "postman", label: "Postman" },
+          { id: "restApi", label: "REST API" },
         ].map((item) => (
           <Button
             key={item.id}
@@ -1607,6 +1620,22 @@ const Output = forwardRef(({ editorRef, language, onExpand, onCollapse, ...rest 
         minH="0"
         bg={colorMode === "dark" ? "gray.900" : "white"}
       >
+
+        {/* REST API Builder Panel UI */}
+        {activePanel === "restApi" && (
+          <ApiBuilderPanel
+            onOpenPostman={(reqData) => {
+              if (reqData) {
+                if (reqData.url) setPostmanUrl(reqData.url);
+                if (reqData.method) setPostmanMethod(reqData.method);
+                if (reqData.body) setPostmanBody(reqData.body);
+              }
+              setActivePanel("postman");
+              if (onExpand) onExpand();
+              scrollToPanel();
+            }}
+          />
+        )}
 
         {/* Postman Panel UI - Rendered independently if toggled */}
         {activePanel === "postman" && (

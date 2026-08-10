@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs, Tab } from '@mui/material';
-import { Link as LinkIcon, Github } from 'lucide-react';
+import { Link as LinkIcon, Github, Store } from 'lucide-react';
 
 const ShareTabs = ({ activeTab, onTabChange }) => {
   return (
@@ -24,6 +24,13 @@ const ShareTabs = ({ activeTab, onTabChange }) => {
         label="GitHub" 
         value="github" 
         icon={<Github size={18} />} 
+        iconPosition="start" 
+        sx={{ textTransform: 'none', fontWeight: 600, minHeight: '48px' }}
+      />
+      <Tab 
+        label="Marketplace" 
+        value="marketplace" 
+        icon={<Store size={18} />} 
         iconPosition="start" 
         sx={{ textTransform: 'none', fontWeight: 600, minHeight: '48px' }}
       />

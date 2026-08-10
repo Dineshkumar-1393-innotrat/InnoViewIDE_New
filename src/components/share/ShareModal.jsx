@@ -18,6 +18,7 @@ import ShareTabs from './ShareTabs';
 import ShareSettingsScreen from './ShareSettingsScreen';
 import GithubTab from './GithubTab';
 import CopyLinkTab from './CopyLinkTab';
+import PublishCommunityModal from './PublishCommunityModal';
 import { SuccessScreen, FailureScreen } from './FeedbackScreens';
 import {
   getGithubRepos,
@@ -46,6 +47,8 @@ const ShareModal = ({ open, onClose }) => {
   const [permission, setPermission] = useState('view');
   const [passwordEnabled, setPasswordEnabled] = useState(false);
   const [password, setPassword] = useState('');
+  const [publishToMarketplace, setPublishToMarketplace] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [emails, setEmails] = useState([]);
   const [people, setPeople] = useState([
     { id: '1', name: 'You', email: 'test888@gmail.com', role: 'Owner', avatar: 'Y', color: '#64748b' }
@@ -85,6 +88,9 @@ const ShareModal = ({ open, onClose }) => {
       if (isFirstTime) {
         fetchRepos();
       }
+    } else if (newValue === 'marketplace') {
+      onClose();
+      setIsPublishModalOpen(true);
     } else {
       setView('main');
     }
@@ -193,129 +199,135 @@ const ShareModal = ({ open, onClose }) => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Dialog
-        open={open}
-        onClose={onClose}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: { borderRadius: '16px', p: 1, backgroundColor: '#ffffff' }
-        }}
-      >
-        {success && activeTab === 'github' ? (
-          <SuccessScreen
-            onClose={() => { setSuccess(false); setView('main'); setActiveTab('link'); }}
-          />
-        ) : error && activeTab === 'github' ? (
-          <FailureScreen
-            onClose={() => setError('')}
-            message={error}
-          />
-        ) : view === 'settings' ? (
-          <DialogContent sx={{ p: 3 }}>
-            <ShareSettingsScreen
-              onBack={() => setView('main')}
-              onClose={onClose}
-              access={access}
-              onAccessChange={setAccess}
-              permission={permission}
-              onPermissionChange={setPermission}
-              passwordRequired={passwordEnabled}
-              password={password}
-              onPasswordChange={setPassword}
+    <>
+      <ThemeProvider theme={theme}>
+        <Dialog
+          open={open}
+          onClose={onClose}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: '16px', p: 1, backgroundColor: '#ffffff' }
+          }}
+        >
+          {success && activeTab === 'github' ? (
+            <SuccessScreen
+              onClose={() => { setSuccess(false); setView('main'); setActiveTab('link'); }}
             />
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={() => setView('main')}
-              sx={{
-                mt: 3,
-                borderRadius: '8px',
-                backgroundColor: '#1e3a8a',
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: 'none',
-                h: 44
-              }}
-            >
-              Done
-            </Button>
-          </DialogContent>
-        ) : (
-          <>
-            <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>Share this file</Typography>
-              <IconButton onClick={onClose} size="small" sx={{ color: '#64748b' }}>
-                <X size={20} />
-              </IconButton>
-            </DialogTitle>
-
-            <DialogContent sx={{ p: 2, '&::-webkit-scrollbar': { width: '8px' } }}>
-              <ShareTabs activeTab={activeTab} onTabChange={handleTabChange} />
-
-              {view === 'main' ? (
-                <Box>
-                  <Box sx={{ mt: 2 }}>
-                    <InviteSection
-                      emails={emails}
-                      onAddEmail={handleAddEmail}
-                      onRemoveEmail={handleRemoveEmail}
-                      onInvite={handleInvite}
-                    />
-                  </Box>
-                  <CopyLinkTab link={link} onCopy={handleCopy} />
-                  <AccessControl
-                    access={access}
-                    permission={permission}
-                    people={people}
-                    onNavigateToSettings={() => setView('settings')}
-                  />
-                  {error && activeTab === 'link' && <Alert severity="error" sx={{ mt: 2, borderRadius: '8px' }}>{error}</Alert>}
-                  {success && activeTab === 'link' && <Alert severity="success" sx={{ mt: 2, borderRadius: '8px' }}>Link copied to clipboard!</Alert>}
-
-                  <Box sx={{ mt: 3 }}>
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      onClick={onClose}
-                      sx={{
-                        borderRadius: '8px',
-                        backgroundColor: '#1e3a8a',
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        boxShadow: 'none',
-                        h: 44
-                      }}
-                    >
-                      Done
-                    </Button>
-                  </Box>
-                </Box>
-              ) : (
-                <GithubTab
-                  isFirstTime={isFirstTime}
-                  repoId={repoId}
-                  onRepoIdChange={setRepoId}
-                  onSaveRepo={handleSaveRepo}
-                  repos={repos}
-                  selectedRepo={selectedRepo}
-                  onRepoChange={setSelectedRepo}
-                  branch={branch}
-                  onBranchChange={setBranch}
-                  commitMessage={commitMessage}
-                  onCommitChange={setCommitMessage}
-                  onPush={handlePush}
-                  loading={loading}
-                  error={error}
-                  success={success}
-                />
-              )}
+          ) : error && activeTab === 'github' ? (
+            <FailureScreen
+              onClose={() => setError('')}
+              message={error}
+            />
+          ) : view === 'settings' ? (
+            <DialogContent sx={{ p: 3 }}>
+              <ShareSettingsScreen
+                onBack={() => setView('main')}
+                onClose={onClose}
+                access={access}
+                onAccessChange={setAccess}
+                permission={permission}
+                onPermissionChange={setPermission}
+                passwordRequired={passwordEnabled}
+                onPasswordToggle={setPasswordEnabled}
+                password={password}
+                onPasswordChange={setPassword}
+                publishToMarketplace={publishToMarketplace}
+                onPublishToMarketplaceToggle={setPublishToMarketplace}
+                onSubmitSettings={({ localPublish }) => {
+                  setView('main');
+                  if (localPublish) {
+                    onClose();
+                    setIsPublishModalOpen(true);
+                  }
+                }}
+              />
             </DialogContent>
-          </>
-        )}
-      </Dialog>
-    </ThemeProvider>
+          ) : (
+            <>
+              <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>Share this file</Typography>
+                <IconButton onClick={onClose} size="small" sx={{ color: '#64748b' }}>
+                  <X size={20} />
+                </IconButton>
+              </DialogTitle>
+
+              <DialogContent sx={{ p: 2, '&::-webkit-scrollbar': { width: '8px' } }}>
+                <ShareTabs activeTab={activeTab} onTabChange={handleTabChange} />
+
+                {view === 'main' ? (
+                  <Box>
+                    <Box sx={{ mt: 2 }}>
+                      <InviteSection
+                        emails={emails}
+                        onAddEmail={handleAddEmail}
+                        onRemoveEmail={handleRemoveEmail}
+                        onInvite={handleInvite}
+                      />
+                    </Box>
+                    <CopyLinkTab link={link} onCopy={handleCopy} />
+                    <AccessControl
+                      access={access}
+                      permission={permission}
+                      people={people}
+                      onNavigateToSettings={() => setView('settings')}
+                    />
+                    {error && activeTab === 'link' && <Alert severity="error" sx={{ mt: 2, borderRadius: '8px' }}>{error}</Alert>}
+                    {success && activeTab === 'link' && <Alert severity="success" sx={{ mt: 2, borderRadius: '8px' }}>Link copied to clipboard!</Alert>}
+
+                    <Box sx={{ mt: 3 }}>
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={onClose}
+                        sx={{
+                          borderRadius: '8px',
+                          backgroundColor: '#1e3a8a',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          boxShadow: 'none',
+                          h: 44
+                        }}
+                      >
+                        Done
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <GithubTab
+                    isFirstTime={isFirstTime}
+                    repoId={repoId}
+                    onRepoIdChange={setRepoId}
+                    onSaveRepo={handleSaveRepo}
+                    repos={repos}
+                    selectedRepo={selectedRepo}
+                    onRepoChange={setSelectedRepo}
+                    branch={branch}
+                    onBranchChange={setBranch}
+                    commitMessage={commitMessage}
+                    onCommitChange={setCommitMessage}
+                    onPush={handlePush}
+                    loading={loading}
+                    error={error}
+                    success={success}
+                  />
+                )}
+              </DialogContent>
+            </>
+          )}
+        </Dialog>
+      </ThemeProvider>
+
+      <PublishCommunityModal
+        open={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        projectName="INOVIEW, INNOMART, S..."
+        authorName="Nandhini"
+        onPublished={(data) => {
+          console.log('Project published to Marketplace:', data);
+        }}
+      />
+    </>
   );
 };
 

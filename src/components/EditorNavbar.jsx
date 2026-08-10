@@ -28,6 +28,7 @@ import {
   Radio,
   Library,
   Workflow,
+  Database,
   Cpu,
   Boxes,
   Calculator,
@@ -336,6 +337,10 @@ const EditorNavbar = ({
     window.dispatchEvent(new CustomEvent('innoide:postman'));
   }, []);
 
+  const handleRestApi = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('innoide:rest-api'));
+  }, []);
+
   const toolItems = useMemo(() => {
     return [
       {
@@ -374,8 +379,14 @@ const EditorNavbar = ({
         icon: <Radio size={14} />,
         handler: handlePostman,
       },
+      {
+        key: 'restApi',
+        label: 'REST API',
+        icon: <Database size={14} />,
+        handler: handleRestApi,
+      },
     ];
-  }, [handleFlash, handleViewOutput, handleProblem, handleDebugConsole, handleTerminal, handlePostman, isFlashing, isDeviceConnected]);
+  }, [handleFlash, handleViewOutput, handleProblem, handleDebugConsole, handleTerminal, handlePostman, handleRestApi, isFlashing, isDeviceConnected]);
 
   const toggleMenu = (menuKey) => {
     setActiveMenu((current) => (current === menuKey ? null : menuKey));

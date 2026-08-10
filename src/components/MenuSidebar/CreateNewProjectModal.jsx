@@ -11,6 +11,8 @@ import {
   FormControl,
   FormLabel,
   Input,
+  Textarea,
+  Select,
   RadioGroup,
   Stack,
   Radio,
@@ -35,6 +37,8 @@ const CreateNewProjectModal = ({
   setFileSystem,
 }) => {
   const [projectName, setProjectName] = useState("");
+  const [description, setDescription] = useState("");
+  const [projectCategory, setProjectCategory] = useState("Logistics");
   const [boardType, setBoardType] = useState("STM32 U5");
   const [projectType, setProjectType] = useState("bare metal");
   const [feature, setFeature] = useState("writeCode");
@@ -348,7 +352,9 @@ const CreateNewProjectModal = ({
     projectName,
     projectType,
     boardType,
-    feature
+    feature,
+    projDesc,
+    category
   ) => {
     try {
       // 1. Create Project in the file system first to get a projectId
@@ -362,6 +368,8 @@ const CreateNewProjectModal = ({
           projectType,
           boardType,
           features: feature,
+          description: projDesc,
+          category: category,
         }
       );
 
@@ -379,7 +387,8 @@ const CreateNewProjectModal = ({
         name: projectName,
         userId,
         projectId: generatedProjectId, // Pass projectId to satisfy backend validation
-        productDesc: "Testing"
+        productDesc: projDesc || "Testing",
+        category: category || "Logistics"
       });
 
       const productId = prodResponse.data.productID || prodResponse.data.productId;
@@ -431,18 +440,46 @@ const CreateNewProjectModal = ({
         <ModalCloseButton />
         <ModalBody>
           <FormControl isRequired>
-            <FormLabel>Project Name</FormLabel>
+            <FormLabel fontSize="sm" fontWeight="bold">Project Name</FormLabel>
             <Input
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              placeholder="Enter project name"
+              placeholder="e.g. Smart Factory Monitor"
               color="gray.800"
               _selection={{ bg: "blue.200", color: "gray.800" }}
             />
           </FormControl>
 
+          <FormControl mt={4}>
+            <FormLabel fontSize="sm" fontWeight="bold">Description</FormLabel>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe what this project monitors..."
+              color="gray.800"
+              rows={3}
+              resize="none"
+            />
+          </FormControl>
+
+          <FormControl mt={4}>
+            <FormLabel fontSize="sm" fontWeight="bold">Project Category</FormLabel>
+            <Select
+              value={projectCategory}
+              onChange={(e) => setProjectCategory(e.target.value)}
+              color="gray.800"
+            >
+              <option value="Logistics">Logistics</option>
+              <option value="Industrial IoT">Industrial IoT</option>
+              <option value="Environmental">Environmental</option>
+              <option value="Energy">Energy</option>
+              <option value="Agriculture">Agriculture</option>
+              <option value="Smart Building">Smart Building</option>
+            </Select>
+          </FormControl>
+
           <FormControl mt={4} isRequired>
-            <FormLabel>Project Type</FormLabel>
+            <FormLabel fontSize="sm" fontWeight="bold">Project Type</FormLabel>
             <RadioGroup value={projectType} onChange={setProjectType}>
               <Stack direction="row">
                 <Radio value="bare metal">Bare Metal</Radio>
@@ -452,7 +489,7 @@ const CreateNewProjectModal = ({
           </FormControl>
 
           <FormControl mt={4} isRequired>
-            <FormLabel>Board</FormLabel>
+            <FormLabel fontSize="sm" fontWeight="bold">Board</FormLabel>
             <RadioGroup value={boardType} onChange={setBoardType}>
               <Stack direction="row">
                 <Radio value="STM32 U5">STM32 U5</Radio>
@@ -463,7 +500,7 @@ const CreateNewProjectModal = ({
           </FormControl>
 
           <FormControl mt={4}>
-            <FormLabel>Additional Options</FormLabel>
+            <FormLabel fontSize="sm" fontWeight="bold">Additional Options</FormLabel>
             <RadioGroup value={feature} onChange={setFeature}>
               <VStack align="start">
                 <Radio value="writeCode">Write Code</Radio>
@@ -479,27 +516,6 @@ const CreateNewProjectModal = ({
           <Button variant="outline" mr={3} onClick={onClose}>
             Cancel
           </Button>
-          {/* <Button
-            colorScheme="blue"
-            onClick={async () => {
-              try {
-                await handleCreateProject(
-                  fileSystem,
-                  folder,
-                  userId,
-                  projectName,
-                  projectType,
-                  boardType,
-                  feature
-                );
-              } catch (error) {
-                console.log(error);
-              }
-            }}
-            isDisabled={!projectName.trim()}
-          >
-            Create
-          </Button> */}
 
           <Button
             colorScheme="blue"
@@ -517,7 +533,9 @@ const CreateNewProjectModal = ({
                   projectName,
                   projectType,
                   boardType,
-                  feature // string like "writeCode", "flowChart", etc.
+                  feature, // string like "writeCode", "flowChart", etc.
+                  description,
+                  projectCategory
                 );
               } catch (error) {
                 console.error("Create project error:", error);

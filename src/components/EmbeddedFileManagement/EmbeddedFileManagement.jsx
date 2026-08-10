@@ -667,7 +667,7 @@ const EmbeddedFileManagement = () => {
         </Box>
 
         <Box flex="1" mt={{ base: 0, md: 16 }} p={4} bg="gray.900" minHeight="100vh" overflowX="auto">
-          {activeProjectId && (
+          {activeProjectId && activeProductId && activeProjectName && activeProjectName !== "Untitled Project" && (
             <Box>
               {isProductDefined && (
                 <ProductEditModal

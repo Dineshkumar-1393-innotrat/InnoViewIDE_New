@@ -780,7 +780,7 @@ const CreateProductDefinition = ({
 
       alert("Prodcut defined successfuly!");
 
-      if (userId) await fetchFileSystem(userId);
+      if (userId && typeof fetchFileSystem === "function") await fetchFileSystem(userId);
 
       setIsProductDefined(() => true);
 
@@ -808,11 +808,11 @@ const CreateProductDefinition = ({
   useEffect(() => {
     return () => {
       const userInfo = getUserInfo();
-      if (userInfo) {
+      if (userInfo && typeof fetchFileSystem === "function") {
         fetchFileSystem(userInfo.userId);
       }
     };
-  }, []);
+  }, [fetchFileSystem]);
 
   return (
     <Box>

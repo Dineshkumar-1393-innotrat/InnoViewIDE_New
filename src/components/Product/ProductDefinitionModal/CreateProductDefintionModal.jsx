@@ -87,7 +87,11 @@ const CreateProductDefintionModal = ({
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const { activeProductId, activeProjectName } = useProject();
+  const { activeProductId, activeProjectName, activeProjectId } = useProject();
+
+  if (!activeProjectId || !activeProductId || !activeProjectName || activeProjectName === "Untitled Project") {
+    return null;
+  }
 
   return (
     <>

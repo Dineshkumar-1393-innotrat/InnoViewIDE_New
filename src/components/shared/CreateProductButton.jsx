@@ -75,8 +75,8 @@ const CreateProductButton = () => {
         window.dispatchEvent(new Event("innoide:refresh-filesystem"));
     }, [activeProductId]);
 
-    // If there is no active project, we shouldn't show any product-related buttons.
-    if (!activeProjectId) {
+    // If there is no active project or no active product, we shouldn't show any product-related buttons.
+    if (!activeProjectId || !activeProductId || !activeProjectName || activeProjectName === "Untitled Project") {
         return null;
     }
 
